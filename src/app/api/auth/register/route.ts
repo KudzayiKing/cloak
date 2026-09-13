@@ -5,12 +5,14 @@ import {
   clearLoginRateLimit,
   clientIp,
   createSession,
+  hashToken,
   hashPassword,
   isSecureRequest,
   SESSION_COOKIE,
   sessionCookieOptions,
 } from "@/lib/cloak/server/auth";
 import {
+  ensureReservePasses,
   entitlementForUser,
   grantMembership,
   hashInviteTokenServer,
@@ -23,14 +25,10 @@ export const dynamic = "force-dynamic";
 /*
  * POST /api/auth/register — account creation (pricing spec §9, §41-§43).
  *
- * Access model: anyone may create an identity, but the APP is gated by the
- * paywall — without a payment or an invitation the account holds no
- * membership. The invite path is the Reserve guest flow: a valid pending
- * invitation token redeems atomically at registration, so a guest goes
- * from "no account" to "full Cloak Private" in one step (origin
- * reserve_guest_pass). An invalid/expired token does NOT block account
- * creation — the account simply lands on the paywall honestly, and the
- * pass is never silently wasted.
+ * Access model: account creation is membership-gated. A new user can create
+ * a Cloak ID only after a verified USDC payment claim or a valid Reserve
+ * guest invitation. The wallet never becomes the identity; the setup token
+ * is one-time and hash-stored.
  */
 
 interface RegisterBody {
@@ -38,6 +36,7 @@ interface RegisterBody {
   password?: string;
   displayName?: string;
   inviteToken?: string;
+  paymentClaimToken?: string;
   // Dagger device registry binding (dagger codex §16)
   deviceId?: string;
   deviceName?: string;
@@ -87,7 +86,16 @@ export async function POST(req: NextRequest) {
   /* Invitation (optional): validated BEFORE the account exists; a race on
    * redemption inside the transaction is reported honestly. */
   const inviteToken = (body.inviteToken ?? "").trim() || null;
+  const paymentClaimToken = (body.paymentClaimToken ?? "").trim() || null;
+  if (inviteToken && paymentClaimToken) {
+    return NextResponse.json(
+      { ok: false, error: "bad_request", message: "Use one account setup method at a time." },
+      { status: 400 }
+    );
+  }
+
   let invite: { id: string; passId: string } | null = null;
+  let paymentClaim: { id: string; membership: string } | null = null;
   if (inviteToken) {
     await lazyExpireInvites();
     const found = await db.guestPassInvite.findUnique({
@@ -97,6 +105,40 @@ export async function POST(req: NextRequest) {
     if (found && found.status === "pending" && found.pass.status === "issued") {
       invite = { id: found.id, passId: found.passId };
     }
+  }
+  if (paymentClaimToken) {
+    const found = await db.membershipClaim.findUnique({
+      where: { setupTokenHash: hashToken(paymentClaimToken) },
+      select: {
+        id: true,
+        status: true,
+        membership: true,
+        setupExpiresAt: true,
+        redeemedByUserId: true,
+      },
+    });
+    if (
+      found &&
+      found.status === "issued" &&
+      !found.redeemedByUserId &&
+      found.setupExpiresAt &&
+      found.setupExpiresAt.getTime() > Date.now()
+    ) {
+      paymentClaim = { id: found.id, membership: found.membership };
+    }
+  }
+
+  if (!invite && !paymentClaim) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: paymentClaimToken ? "payment_claim_invalid" : "membership_required",
+        message: paymentClaimToken
+          ? "That payment setup link is invalid or expired."
+          : "Create an account after payment verification or with a valid invitation.",
+      },
+      { status: 403 }
+    );
   }
 
   const passwordHash = await hashPassword(password);
@@ -128,6 +170,28 @@ export async function POST(req: NextRequest) {
         });
         await grantMembership(txDb, user.id, "private", "reserve_guest_pass");
       }
+      if (paymentClaim) {
+        const updated = await txDb.membershipClaim.updateMany({
+          where: {
+            id: paymentClaim.id,
+            status: "issued",
+            redeemedByUserId: null,
+            setupExpiresAt: { gt: new Date() },
+          },
+          data: {
+            status: "redeemed",
+            redeemedByUserId: user.id,
+            redeemedAt: new Date(),
+            setupTokenHash: null,
+            setupExpiresAt: null,
+          },
+        });
+        if (updated.count !== 1) throw new Error("claim_race");
+        await grantMembership(txDb, user.id, paymentClaim.membership, "direct_usdc");
+        if (paymentClaim.membership === "reserve") {
+          await ensureReservePasses(txDb, user.id);
+        }
+      }
       const fresh = await txDb.user.findUniqueOrThrow({
         where: { id: user.id },
         select: {
@@ -158,6 +222,12 @@ export async function POST(req: NextRequest) {
     if (err instanceof Error && err.message === "invite_race") {
       return NextResponse.json(
         { ok: false, error: "invite_race", message: "That invitation was just redeemed." },
+        { status: 409 }
+      );
+    }
+    if (err instanceof Error && err.message === "claim_race") {
+      return NextResponse.json(
+        { ok: false, error: "payment_claim_invalid", message: "That payment setup link was just used." },
         { status: 409 }
       );
     }

@@ -423,6 +423,26 @@ await test("Stripe checkout is removed from app source and deployment env", () =
   assert.deepEqual(hits, []);
 });
 
+await test("checkout can start before sign-up and account creation is payment-gated", () => {
+  const requestRoute = readFileSync(join(process.cwd(), "src/app/api/payments/request/route.ts"), "utf8");
+  const verifyRoute = readFileSync(join(process.cwd(), "src/app/api/payments/verify/route.ts"), "utf8");
+  const registerRoute = readFileSync(join(process.cwd(), "src/app/api/auth/register/route.ts"), "utf8");
+  const signInScreen = readFileSync(join(process.cwd(), "src/components/cloak/auth/sign-in-screen.tsx"), "utf8");
+  const checkoutDialog = readFileSync(
+    join(process.cwd(), "src/components/cloak/membership/usdc-checkout-dialog.tsx"),
+    "utf8"
+  );
+
+  assert.ok(!requestRoute.includes('error: "unauthenticated"'), "payment request must not require sign-in");
+  assert.ok(requestRoute.includes("userId: user?.id ?? null"), "anonymous payment requests must be persisted");
+  assert.ok(verifyRoute.includes("claimToken"), "anonymous verification must return a setup claim");
+  assert.ok(registerRoute.includes("paymentClaimToken"), "registration must consume the payment claim");
+  assert.ok(registerRoute.includes("membership_required"), "unpaid registration must be blocked");
+  assert.ok(!signInScreen.includes("Create account"), "sign-in screen must not offer unpaid sign-up");
+  assert.ok(checkoutDialog.includes("Create Cloak ID"), "checkout must collect Cloak ID after payment");
+  assert.ok(checkoutDialog.includes("Install PWA"), "post-payment onboarding must prompt PWA installation");
+});
+
 /* ---------- summary ---------- */
 
 console.log(`\n${passed} passed, ${failed} failed`);

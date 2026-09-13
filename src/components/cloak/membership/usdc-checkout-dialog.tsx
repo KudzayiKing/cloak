@@ -25,9 +25,10 @@
  * effects.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InstallPWAButton } from "@/components/cloak/pwa/install-pwa-button";
 import {
   Dialog,
   DialogContent,
@@ -36,7 +37,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { RiseDialogContent } from "@/components/cloak/shared/rise-dialog-content";
-import { navigate } from "@/hooks/use-hash-route";
 import { useCloakStore } from "@/stores/cloak-store";
 import { cn } from "@/lib/utils";
 import {
@@ -46,6 +46,7 @@ import {
   CopyIcon,
   ExternalLinkIcon,
   InfoIcon,
+  KeyRoundIcon,
   LoaderCircleIcon,
   QrCodeIcon,
   ShieldCheckIcon,
@@ -104,12 +105,15 @@ export function UsdcCheckoutDialog({
   );
 }
 
-type Phase = "loading" | "details" | "verifying" | "confirmed" | "problem";
+type Phase = "loading" | "details" | "verifying" | "account" | "confirmed" | "problem";
 
 interface VerifyOutcome {
   status: string;
   message: string;
   solscanUrl?: string;
+  claimToken?: string;
+  membership?: IndividualMembershipSku;
+  setupExpiresAt?: number;
 }
 
 function CheckoutBody({
@@ -119,14 +123,22 @@ function CheckoutBody({
   plan: IndividualMembershipSku;
   onClose: () => void;
 }) {
+  const authUser = useCloakStore((s) => s.auth.user);
+  const register = useCloakStore((s) => s.register);
   const setMembershipEntitlement = useCloakStore((s) => s.setMembershipEntitlement);
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [needsAuth, setNeedsAuth] = useState(false);
   const [request, setRequest] = useState<PaymentRequestPayload | null>(null);
   const [outcome, setOutcome] = useState<VerifyOutcome | null>(null);
+  const [claimToken, setClaimToken] = useState<string | null>(null);
+  const [accountCreated, setAccountCreated] = useState(false);
   const [signature, setSignature] = useState("");
+  const [handle, setHandle] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [password, setPassword] = useState("");
+  const [accountError, setAccountError] = useState<string | null>(null);
+  const [accountBusy, setAccountBusy] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [copiedField, setCopiedField] = useState<
     "address" | "amount" | "reference" | "payUri" | "details" | null
@@ -151,14 +163,6 @@ function CheckoutBody({
           message?: string;
         };
         if (cancelled) return;
-        if (res.status === 401) {
-          /* Checkout requires an identity — the paywall inside the app is
-             the signed-in path. Route there; membership stays pending. */
-          setLoadError("Sign in to Cloak first — then start your checkout from inside the app.");
-          setNeedsAuth(true);
-          setPhase("problem");
-          return;
-        }
         if (!res.ok || !json.ok || !json.request) {
           setLoadError(json.message ?? "Cloak could not open a payment request. Try again.");
           setPhase("problem");
@@ -244,6 +248,9 @@ function CheckoutBody({
         /* The server settled the claim + entitlement; mirror its response. */
         setMembershipEntitlement(data.entitlement);
         setPhase("confirmed");
+      } else if (data.status === "confirmed" && data.claimToken) {
+        setClaimToken(data.claimToken);
+        setPhase("account");
       } else if (data.status === "confirming" || data.status === "not_found") {
         setPhase("details"); // still awaiting the network — allow retry
       } else {
@@ -261,6 +268,35 @@ function CheckoutBody({
 
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
+
+  const createAccount = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!claimToken || accountBusy) return;
+    if (!handle.trim() || password.length < 8) {
+      setAccountError("Choose a Cloak ID and a passphrase of at least 8 characters.");
+      return;
+    }
+    setAccountBusy(true);
+    setAccountError(null);
+    const result = await register(handle.trim(), password, displayName.trim() || undefined, undefined, claimToken);
+    setAccountBusy(false);
+    if (result.ok) {
+      setAccountCreated(true);
+      setPhase("confirmed");
+      return;
+    }
+    const copy: Record<string, string> = {
+      bad_handle: "Cloak IDs are 3-24 characters using letters, numbers, and underscores.",
+      bad_password: "Passphrases are 8-256 characters.",
+      handle_taken: "That Cloak ID is already taken. Choose another, or sign in.",
+      payment_claim_invalid: "That payment setup link is invalid, expired, or already used.",
+      membership_required: "Payment verification is required before account creation.",
+      rate_limited: "Too many attempts. Wait a few minutes and try again.",
+      server_error: "Something went wrong on our side. Try again.",
+    };
+    setAccountError(copy[result.error] ?? copy.server_error);
+    setPassword("");
+  };
 
   if (phase === "loading") {
     return (
@@ -281,7 +317,7 @@ function CheckoutBody({
             Payment confirmed
           </div>
           <p className="mt-1.5 text-[13px] leading-relaxed text-cloak-text-secondary">
-            {title} is ready.
+            {accountCreated ? "Your Cloak ID is ready." : `${title} is ready.`}
           </p>
         </div>
         <dl className="space-y-2.5 rounded-lg border border-cloak-border bg-cloak-surface px-4 py-4 text-[13px]">
@@ -320,47 +356,153 @@ function CheckoutBody({
           </a>
         )}
         <p className="text-[11.5px] leading-relaxed text-cloak-text-muted">
-          Your payment wallet is not your Cloak identity. Payment and messaging remain
-          separate systems.
+          Your payment wallet is not your Cloak identity. Use your Cloak ID and
+          passphrase whenever you sign in on a trusted device.
         </p>
+        {accountCreated && (
+          <div className="rounded-lg border border-cloak-border bg-cloak-surface p-3.5">
+            <p className="text-[12.5px] font-medium text-cloak-text">Install Cloak</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-cloak-text-secondary">
+              Add Cloak to your device before opening the chat app.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <InstallPWAButton
+                size="sm"
+                variant="gold"
+                className="h-10 w-full justify-center"
+                label="Install PWA"
+              />
+              <Button
+                variant="outline"
+                className="h-10 border-cloak-border-strong text-[13px] text-cloak-text hover:bg-cloak-surface"
+                onClick={() => {
+                  onClose();
+                  window.location.hash = "#/app/messages";
+                }}
+              >
+                Open Cloak
+              </Button>
+            </div>
+          </div>
+        )}
         <Button
           className="cloak-cta-gold h-11 w-full border border-black/20 text-sm font-medium text-[#141310] hover:text-[#141310]"
-          onClick={onClose}
+          onClick={() => {
+            onClose();
+            if (authUser) window.location.hash = "#/app/messages";
+          }}
         >
-          Done
+          {accountCreated ? "Done" : authUser ? "Open Cloak" : "Done"}
         </Button>
+      </div>
+    );
+  }
+
+  if (phase === "account") {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-lg border border-cloak-success/30 bg-cloak-success/10 p-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-cloak-success">
+            <CircleCheckIcon size={16} className="shrink-0" />
+            Payment confirmed
+          </div>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-cloak-text-secondary">
+            Create your Cloak ID and passphrase to activate {title}.
+          </p>
+        </div>
+
+        <form onSubmit={createAccount} className="space-y-3.5">
+          <label className="block">
+            <span className="mb-1.5 block text-[12px] font-medium text-cloak-text-secondary">
+              Cloak ID
+            </span>
+            <Input
+              value={handle}
+              onChange={(e) => {
+                setHandle(e.target.value);
+                setAccountError(null);
+              }}
+              placeholder="your-name"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              className="border-cloak-border bg-cloak-bg text-[15px] text-cloak-text placeholder:text-cloak-text-muted"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-[12px] font-medium text-cloak-text-secondary">
+              Display name
+            </span>
+            <Input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="How you appear to others"
+              autoComplete="nickname"
+              className="border-cloak-border bg-cloak-bg text-[15px] text-cloak-text placeholder:text-cloak-text-muted"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-[12px] font-medium text-cloak-text-secondary">
+              Passphrase
+            </span>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setAccountError(null);
+              }}
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+              className="border-cloak-border bg-cloak-bg text-[15px] text-cloak-text placeholder:text-cloak-text-muted"
+            />
+          </label>
+
+          {accountError && (
+            <div
+              role="alert"
+              className="flex items-start gap-1.5 rounded-lg border border-cloak-danger/25 bg-cloak-danger/5 px-3 py-2.5 text-[12.5px] leading-relaxed text-cloak-danger"
+            >
+              <TriangleAlertIcon size={13} className="mt-0.5 shrink-0" />
+              {accountError}
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            disabled={accountBusy}
+            className="cloak-cta-gold h-11 w-full border border-black/20 text-sm font-medium text-[#141310] hover:text-[#141310]"
+          >
+            {accountBusy ? (
+              <LoaderCircleIcon size={15} className="mr-1.5 animate-spin" />
+            ) : (
+              <KeyRoundIcon size={15} className="mr-1.5" />
+            )}
+            Create Cloak ID
+          </Button>
+        </form>
       </div>
     );
   }
 
   if (phase === "problem" && !request) {
     /* The payment request itself failed to open — honest retry, or the
-       signed-out hint with a direct path to the identity gate. */
+       honest retry. */
     return (
       <div className="space-y-4">
         <div role="status" className="rounded-lg border border-cloak-warning/30 bg-cloak-warning/10 p-3.5">
           <p className="text-[12.5px] font-medium text-cloak-warning">Request unavailable</p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-cloak-text-secondary">{loadError}</p>
         </div>
-        {needsAuth ? (
-          <Button
-            className="cloak-cta-gold h-10 w-full border border-black/20 text-[13px] font-medium text-[#141310] hover:text-[#141310]"
-            onClick={() => {
-              onClose();
-              navigate("/app/messages");
-            }}
-          >
-            Sign in to Cloak
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            className="h-10 w-full border-cloak-border-strong text-[13px] text-cloak-text hover:bg-cloak-surface"
-            onClick={() => window.location.reload()}
-          >
-            Reload
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          className="h-10 w-full border-cloak-border-strong text-[13px] text-cloak-text hover:bg-cloak-surface"
+          onClick={() => window.location.reload()}
+        >
+          Reload
+        </Button>
       </div>
     );
   }

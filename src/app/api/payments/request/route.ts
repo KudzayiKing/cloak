@@ -32,9 +32,6 @@ interface RequestBody {
 
 export async function POST(req: NextRequest) {
   const user = await getSessionUser(req);
-  if (!user) {
-    return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
-  }
 
   let body: RequestBody = {};
   try {
@@ -51,23 +48,29 @@ export async function POST(req: NextRequest) {
   /* Fresh state: settle stale awaiting_payment requests as expired so the
    * expiry view never lies about what is still payable. */
   await db.paymentRequest.updateMany({
-    where: { userId: user.id, status: "awaiting_payment", expiresAt: { lte: new Date() } },
+    where: {
+      status: "awaiting_payment",
+      expiresAt: { lte: new Date() },
+      ...(user ? { userId: user.id } : { userId: null }),
+    },
     data: { status: "expired" },
   });
 
-  const full = await db.user.findUnique({
-    where: { id: user.id },
-    select: { membershipTier: true },
-  });
-  if (full?.membershipTier) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "already_member",
-        message: "This account already holds an active membership.",
-      },
-      { status: 409 }
-    );
+  if (user) {
+    const full = await db.user.findUnique({
+      where: { id: user.id },
+      select: { membershipTier: true },
+    });
+    if (full?.membershipTier) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "already_member",
+          message: "This account already holds an active membership.",
+        },
+        { status: 409 }
+      );
+    }
   }
 
   const skuRow = MEMBERSHIP_SKUS[sku];
@@ -77,7 +80,7 @@ export async function POST(req: NextRequest) {
 
   const created = await db.paymentRequest.create({
     data: {
-      userId: user.id,
+      userId: user?.id ?? null,
       sku,
       amountAtomic: skuRow.atomicUsdcAmount,
       reference,

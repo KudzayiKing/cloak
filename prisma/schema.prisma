@@ -13,24 +13,24 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id           String   @id @default(cuid())
-  handle       String   @unique // stored without the leading "@", lowercase
-  displayName  String
-  passwordHash String // scrypt: "salt:hash" hex
-  about        String?
+  id                  String    @id @default(cuid())
+  handle              String    @unique // stored without the leading "@", lowercase
+  displayName         String
+  passwordHash        String // scrypt: "salt:hash" hex
+  about               String?
   // E2EE identity: base64 raw public ECDH P-256 key (65 bytes). Server is
   // an untrusted directory for it — clients wrap conversation keys with it.
-  identityPublicKey String?
+  identityPublicKey   String?
   // Passphrase-wrapped private key backup (JSON: kdf salt/iterations +
   // AES-GCM nonce/ct, all base64). Lets a NEW device restore the identity
   // from the login passphrase; the server cannot unwrap it.
-  identityKeyBackup String?
+  identityKeyBackup   String?
   // Server-authoritative membership entitlement (pricing & membership spec
   // §35, direct-settlement spec §57). Written ONLY by payment verification
   // (claim redemption) or guest-pass redemption — never by client input.
@@ -38,33 +38,33 @@ model User {
   membershipTier      String? // private | reserve (| private_circle | office | sovereign)
   membershipOrigin    String? // direct_usdc | reserve_guest_pass | admin_grant | ...
   membershipGrantedAt DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  sessions       Session[]
-  participations Participation[]
-  messages       Message[]
-  joinRequests   GroupJoinRequest[]
-  keyWraps       ConversationKeyWrap[]
-  paymentRequests PaymentRequest[]
-  claimsRedeemed  MembershipClaim[]
-  passesGranted   GuestPass[]        @relation("passGrants")
-  passesRedeemed  GuestPass[]        @relation("passRedemptions")
-  circlesOwned    Circle[]           @relation("circleOwnerships")
-  circleMemberships CircleMember[]   @relation("circleMemberships")
-  circleJoinRequests CircleJoinRequest[] @relation("circleJoinRequests")
-  blocksIssued    BlockedUser[]      @relation("blocksIssued")
-  blocksReceived  BlockedUser[]      @relation("blocksReceived")
-  notifications   UserNotification[] @relation("notifications")
-  pushSubscriptions PushSubscription[] @relation("pushSubscriptions")
-  privacySettings UserPrivacySettings? @relation("privacySettings")
+  sessions           Session[]
+  participations     Participation[]
+  messages           Message[]
+  joinRequests       GroupJoinRequest[]
+  keyWraps           ConversationKeyWrap[]
+  paymentRequests    PaymentRequest[]
+  claimsRedeemed     MembershipClaim[]
+  passesGranted      GuestPass[]           @relation("passGrants")
+  passesRedeemed     GuestPass[]           @relation("passRedemptions")
+  circlesOwned       Circle[]              @relation("circleOwnerships")
+  circleMemberships  CircleMember[]        @relation("circleMemberships")
+  circleJoinRequests CircleJoinRequest[]   @relation("circleJoinRequests")
+  blocksIssued       BlockedUser[]         @relation("blocksIssued")
+  blocksReceived     BlockedUser[]         @relation("blocksReceived")
+  notifications      UserNotification[]    @relation("notifications")
+  pushSubscriptions  PushSubscription[]    @relation("pushSubscriptions")
+  privacySettings    UserPrivacySettings?  @relation("privacySettings")
 }
 
 model Session {
   id         String   @id @default(cuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash  String @unique // SHA-256 hex of the opaque cookie token
+  tokenHash  String   @unique // SHA-256 hex of the opaque cookie token
   // Dagger device registry (dagger codex §16/§18): client-generated stable
   // uuid per browser install, bound at login/bind time. Null for sessions
   // created before the registry existed (legacy).
@@ -101,11 +101,11 @@ model Device {
 // refresh a session, fetch messages, or receive push — getSessionUser
 // enforces this on every request. reason: dagger | manual.
 model DeviceRevocation {
-  id         String   @id @default(cuid())
-  userId     String
-  deviceId   String   @unique
-  reason     String   @default("dagger")
-  revokedAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  deviceId  String   @unique
+  reason    String   @default("dagger")
+  revokedAt DateTime @default(now())
 
   @@index([userId])
 }
@@ -159,8 +159,8 @@ model Conversation {
   // Cloak Circle membership (circles spec §24, v1: a group belongs to at
   // most one Circle — the column IS the one-to-one link). Null = an
   // independent group. Detached (not deleted) when the Circle is deleted.
-  circleId      String?
-  circle        Circle? @relation(fields: [circleId], references: [id], onDelete: SetNull)
+  circleId String?
+  circle   Circle? @relation(fields: [circleId], references: [id], onDelete: SetNull)
 
   participations Participation[]
   messages       Message[]
@@ -172,35 +172,35 @@ model Conversation {
 }
 
 model Participation {
-  id             String      @id @default(cuid())
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  userId         String
-  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String       @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Group role (groups spec §6): owner | admin | member. 1:1 rows stay "member".
-  role           String      @default("member")
+  role            String       @default("member")
   // Per-participant delivery / read markers for outgoing tick states
   lastDeliveredAt DateTime?
   lastReadAt      DateTime?
   // New-member history cutoff: messages before this instant are hidden from
   // this participant when the conversation's historyPolicy is "none".
-  historyFrom    DateTime?
-  removedAt      DateTime? // soft marker when removed from a group (audit)
-  createdAt      DateTime  @default(now())
+  historyFrom     DateTime?
+  removedAt       DateTime? // soft marker when removed from a group (audit)
+  createdAt       DateTime     @default(now())
 
   @@unique([conversationId, userId])
   @@index([userId])
 }
 
 model Message {
-  id             String      @id @default(cuid())
+  id             String       @id @default(cuid())
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  authorId       String?     // User.id; null for system/service notices
-  author         User?       @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  kind           String      @default("text") // text | system | file | image | voice | view-once
+  authorId       String? // User.id; null for system/service notices
+  author         User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  kind           String       @default("text") // text | system | file | image | voice | view-once
   body           String
-  createdAt      DateTime    @default(now())
+  createdAt      DateTime     @default(now())
   // Ghost chats: when this passes, the message is purged on next access.
   expiresAt      DateTime?
 
@@ -266,13 +266,15 @@ model GroupJoinRequest {
   @@index([conversationId])
 }
 
-/* ====================================================================
+/**
+ * ====================================================================
  * Payment domain (USDC direct-settlement spec §14-§16, §36-§38, §53,
  * §57). The server owns amounts (SKU map), attribution (unique reference
  * key), expiry, idempotency (one claim per signature) and the claim ->
  * entitlement pipeline. The client never supplies a payable amount and
  * never self-issues a membership.
- * ==================================================================== */
+ * ====================================================================
+ */
 
 // One expiring payment request per checkout attempt. `reference` is a
 // 32-byte base58 key embedded in the Solana Pay URI (spec §16 Option B);
@@ -280,17 +282,19 @@ model GroupJoinRequest {
 // payment to this row. Automated activation requires that reference because
 // the public treasury address alone cannot prove request ownership.
 model PaymentRequest {
-  id           String    @id @default(cuid())
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  // Null while a new customer pays before creating a Cloak ID. Existing
+  // members who start checkout while signed in still bind the request here.
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   sku          String // private | reserve (server-side SKU map §53)
   amountAtomic String // exact expected atomic USDC units — never client-derived
-  reference    String    @unique
-  status       String    @default("awaiting_payment") // awaiting_payment | confirmed | expired
+  reference    String   @unique
+  status       String   @default("awaiting_payment") // awaiting_payment | confirmed | expired
   signature    String? // consumed transaction signature (unique with claim)
   expiresAt    DateTime // now + PAYMENT_REQUEST_EXPIRY_MINUTES (spec §15)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -305,13 +309,16 @@ model MembershipClaim {
   signature        String    @unique
   sku              String // private | reserve
   membership       String // private | reserve
-  status           String    @default("redeemed") // issued | redeemed
+  status           String    @default("issued") // issued | redeemed
   paymentRequestId String?
+  setupTokenHash   String?   @unique // one-time post-payment account setup token
+  setupExpiresAt   DateTime?
   redeemedByUserId String?
   redeemedBy       User?     @relation(fields: [redeemedByUserId], references: [id], onDelete: SetNull)
   redeemedAt       DateTime?
   createdAt        DateTime  @default(now())
 
+  @@unique([paymentRequestId])
   @@index([redeemedByUserId])
 }
 
@@ -320,56 +327,58 @@ model MembershipClaim {
 // redeemed | expired | revoked_before_redemption. Redeemed = permanently
 // consumed; expired/revoked slots return to the allocation.
 model GuestPass {
-  id               String           @id @default(cuid())
+  id               String            @id @default(cuid())
   ownerUserId      String
-  owner            User             @relation("passGrants", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  owner            User              @relation("passGrants", fields: [ownerUserId], references: [id], onDelete: Cascade)
   slotIndex        Int // 0..9
-  status           String           @default("available")
+  status           String            @default("available")
   redeemedByUserId String?
-  redeemedBy       User?            @relation("passRedemptions", fields: [redeemedByUserId], references: [id], onDelete: SetNull)
+  redeemedBy       User?             @relation("passRedemptions", fields: [redeemedByUserId], references: [id], onDelete: SetNull)
   redeemedAt       DateTime?
   issuedAt         DateTime?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   invites          GuestPassInvite[]
 
   @@unique([ownerUserId, slotIndex])
   @@index([ownerUserId])
 }
 
-/* ====================================================================
+/**
+ * ====================================================================
  * Cloak Circles (groups & circles spec §23-§46, §61, §63, §80). A Circle
  * is an umbrella STRUCTURE over independent group conversations: circle
  * membership alone grants zero conversation access (§26) — a member sees
  * the circle shell and only the groups they are ALSO a participant of.
  * Everything below is backend-authoritative (§80); the client mirrors.
- * ==================================================================== */
+ * ====================================================================
+ */
 
 model Circle {
-  id          String @id @default(cuid())
-  name        String
-  description String?
+  id               String    @id @default(cuid())
+  name             String
+  description      String?
   // "personal" (a Reserve member's included Circle) | "managed"
   // (private_circle / office / sovereign contracts). Deliberately NOT the
   // commercial tier itself — spec §35 keeps product and billing separate.
-  kind        String   @default("personal") // personal | managed
-  ownerUserId String
-  owner       User     @relation("circleOwnerships", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  kind             String    @default("personal") // personal | managed
+  ownerUserId      String
+  owner            User      @relation("circleOwnerships", fields: [ownerUserId], references: [id], onDelete: Cascade)
   // Circle security policy defaults (spec §38) applied to groups CREATED
   // inside the circle; groups may only be stricter (§39 — a group can
   // never weaken a circle restriction).
-  historyDefault   String @default("none") // none | all
-  aiDefault        String @default("disabled") // disabled | current_request | allowed
-  inviteExpiryDays Int    @default(7)
+  historyDefault   String    @default("none") // none | all
+  aiDefault        String    @default("disabled") // disabled | current_request | allowed
+  inviteExpiryDays Int       @default(7)
   // Archive (spec §45): stops new groups + disables invites, keeps data.
-  archivedAt  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  archivedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  members     CircleMember[]
-  invites     CircleInvite[]
-  auditEvents CircleAuditEvent[]
-  joinRequests CircleJoinRequest[]
+  members       CircleMember[]
+  invites       CircleInvite[]
+  auditEvents   CircleAuditEvent[]
+  joinRequests  CircleJoinRequest[]
   conversations Conversation[]
 
   @@index([ownerUserId])

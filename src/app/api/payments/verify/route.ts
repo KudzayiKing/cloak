@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
-import { getSessionUser } from "@/lib/cloak/server/auth";
+import { getSessionUser, hashToken } from "@/lib/cloak/server/auth";
 import { entitlementForUser, ensureReservePasses, grantMembership } from "@/lib/cloak/server/membership-server";
 import {
   MEMBERSHIP_SKUS,
@@ -181,9 +182,6 @@ function anyUsdcMoved(pre: TokenBalance[], post: TokenBalance[]): boolean {
 
 export async function POST(req: NextRequest) {
   const user = await getSessionUser(req);
-  if (!user) {
-    return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
-  }
 
   let body: VerifyRequestBody = {};
   try {
@@ -210,7 +208,7 @@ export async function POST(req: NextRequest) {
 
   /* The request must exist, belong to the caller, and still be payable. */
   const paymentRequest = await db.paymentRequest.findUnique({ where: { id: requestId } });
-  if (!paymentRequest || paymentRequest.userId !== user.id) {
+  if (!paymentRequest || (paymentRequest.userId && paymentRequest.userId !== user?.id)) {
     return NextResponse.json(
       { status: "bad_request" as PaymentVerifyStatus, message: "Unknown payment request." },
       { status: 400 }
@@ -222,6 +220,19 @@ export async function POST(req: NextRequest) {
       message: "This payment request has already been settled.",
       solscanUrl: paymentRequest.signature ? solscanTxUrl(paymentRequest.signature) : undefined,
     });
+  }
+
+  if (user) {
+    const full = await db.user.findUnique({
+      where: { id: user.id },
+      select: { membershipTier: true },
+    });
+    if (full?.membershipTier) {
+      return NextResponse.json({
+        status: "already_used" as PaymentVerifyStatus,
+        message: "This account already holds an active membership.",
+      });
+    }
   }
   if (paymentRequest.status !== "awaiting_payment" || paymentRequest.expiresAt.getTime() <= Date.now()) {
     return NextResponse.json({
@@ -370,12 +381,42 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  /* Exact payment — claim issuance + entitlement in one atomic transaction
-   * (spec §57: payment confirmed -> claim issued once; claim redeemed ->
-   * entitlement granted once). The UNIQUE(signature) constraint is the
-   * race-proof idempotency guard. */
+  /* Exact payment. Existing signed-in users are activated immediately.
+   * Anonymous buyers receive a one-time setup token so account creation is
+   * payment-gated without making the wallet their identity. */
   const tier = skuRow.membership;
   try {
+    if (!user) {
+      const setupToken = randomBytes(32).toString("base64url");
+      const setupExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await db.$transaction(async (txDb) => {
+        await txDb.paymentRequest.update({
+          where: { id: paymentRequest.id, status: "awaiting_payment" },
+          data: { status: "confirmed", signature },
+        });
+        await txDb.membershipClaim.create({
+          data: {
+            signature,
+            sku,
+            membership: tier,
+            status: "issued",
+            paymentRequestId: paymentRequest.id,
+            setupTokenHash: hashToken(setupToken),
+            setupExpiresAt,
+          },
+        });
+      });
+
+      return NextResponse.json({
+        ...payload,
+        status: "confirmed" as PaymentVerifyStatus,
+        message: "Payment confirmed. Create your Cloak ID to activate membership.",
+        claimToken: setupToken,
+        membership: tier,
+        setupExpiresAt: setupExpiresAt.getTime(),
+      });
+    }
+
     const entitlement = await db.$transaction(async (txDb) => {
       await txDb.paymentRequest.update({
         where: { id: paymentRequest.id, status: "awaiting_payment" },

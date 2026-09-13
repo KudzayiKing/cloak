@@ -3,10 +3,9 @@
 /*
  * SignInScreen — identity gate for app routes. The session cookie is the
  * source of truth; this screen collects a Cloak ID + passphrase and hands
- * both to /api/auth/login, or creates an account via /api/auth/register
- * (access to the app itself still requires payment or an invitation — the
- * paywall handles that; the account is just the identity). Visual language
- * matches the paywall.
+ * both to /api/auth/login. New-account creation happens only after payment
+ * verification or invitation redemption, so this screen does not offer an
+ * unpaid sign-up path.
  */
 
 import { useRef, useState } from "react";
@@ -29,10 +28,7 @@ const ERROR_COPY: Record<string, string> = {
 
 export function SignInScreen() {
   const signIn = useCloakStore((s) => s.signIn);
-  const register = useCloakStore((s) => s.register);
-  const [mode, setMode] = useState<"sign-in" | "create">("sign-in");
   const [handle, setHandle] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -48,10 +44,7 @@ export function SignInScreen() {
     }
     setBusy(true);
     setError(null);
-    const res =
-      mode === "sign-in"
-        ? await signIn(trimmed, password)
-        : await register(trimmed, password, displayName.trim() || undefined);
+    const res = await signIn(trimmed, password);
     setBusy(false);
     if (res.ok) {
       navigate("/app/messages");
@@ -93,12 +86,11 @@ export function SignInScreen() {
               <KeyRoundIcon size={20} />
             </span>
             <h1 className="cloak-display text-2xl font-medium text-cloak-text">
-              {mode === "sign-in" ? "Sign in to Cloak" : "Create your Cloak ID"}
+              Sign in to Cloak
             </h1>
             <p className="mt-2.5 text-[13px] leading-relaxed text-cloak-text-secondary">
-              {mode === "sign-in"
-                ? "Your conversations stay tied to this device. Signing in restores them — nothing is shared beyond it."
-                : "Your account is your identity. Membership is unlocked next, by payment or invitation."}
+              Your conversations stay tied to this device. New Cloak IDs are
+              created after payment verification or invitation redemption.
             </p>
           </div>
 
@@ -113,31 +105,13 @@ export function SignInScreen() {
                   setHandle(e.target.value);
                   setError(null);
                 }}
-                placeholder={mode === "sign-in" ? "@your.id" : "your-name"}
+                placeholder="@your.id"
                 autoComplete="username"
                 autoCapitalize="none"
                 spellCheck={false}
                 className="border-cloak-border bg-cloak-bg text-[15px] text-cloak-text placeholder:text-cloak-text-muted"
               />
             </label>
-
-            {mode === "create" && (
-              <label className="block">
-                <span className="mb-1.5 block text-[12px] font-medium text-cloak-text-secondary">
-                  Display name (optional)
-                </span>
-                <Input
-                  value={displayName}
-                  onChange={(e) => {
-                    setDisplayName(e.target.value);
-                    setError(null);
-                  }}
-                  placeholder="How you appear to others"
-                  autoComplete="nickname"
-                  className="border-cloak-border bg-cloak-bg text-[15px] text-cloak-text placeholder:text-cloak-text-muted"
-                />
-              </label>
-            )}
 
             <label className="block">
               <span className="mb-1.5 block text-[12px] font-medium text-cloak-text-secondary">
@@ -151,8 +125,8 @@ export function SignInScreen() {
                   setPassword(e.target.value);
                   setError(null);
                 }}
-                placeholder={mode === "create" ? "At least 8 characters" : "••••••••••••"}
-                autoComplete={mode === "create" ? "new-password" : "current-password"}
+                placeholder="••••••••••••"
+                autoComplete="current-password"
                 className="border-cloak-border bg-cloak-bg text-[15px] text-cloak-text placeholder:text-cloak-text-muted"
               />
             </label>
@@ -173,21 +147,18 @@ export function SignInScreen() {
               className="bg-cloak-gold/20 hover:bg-cloak-gold/25 h-12 w-full border border-cloak-gold/30 text-[15px] font-medium text-cloak-gold hover:text-cloak-gold"
             >
               {busy && <LoaderCircleIcon size={15} className="mr-2 animate-spin" />}
-              {mode === "sign-in" ? "Sign in" : "Create account"}
+              Sign in
             </Button>
           </form>
 
           <p className="mt-5 text-center text-[12.5px] text-cloak-text-secondary">
-            {mode === "sign-in" ? "New to Cloak? " : "Already have a Cloak ID? "}
+            New to Cloak?{" "}
             <button
               type="button"
-              onClick={() => {
-                setMode(mode === "sign-in" ? "create" : "sign-in");
-                setError(null);
-              }}
+              onClick={() => navigate("/pricing")}
               className="font-medium text-cloak-gold underline-offset-2 transition-colors hover:text-cloak-text hover:underline"
             >
-              {mode === "sign-in" ? "Create an account" : "Sign in"}
+              Choose a membership
             </button>
           </p>
         </div>

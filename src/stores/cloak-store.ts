@@ -392,7 +392,8 @@ interface CloakState {
     handle: string,
     password: string,
     displayName: string | undefined,
-    inviteToken?: string
+    inviteToken?: string,
+    paymentClaimToken?: string
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
   signOut: () => Promise<void>;
 
@@ -798,7 +799,7 @@ export const useCloakStore = create<CloakState>()(
         void syncPushAfterAuth();
         return { ok: true as const };
       },
-      register: async (handle, password, displayName, inviteToken) => {
+      register: async (handle, password, displayName, inviteToken, paymentClaimToken) => {
         const identity = deviceIdentity();
         const res = await api<{
           user: AuthUser;
@@ -810,6 +811,7 @@ export const useCloakStore = create<CloakState>()(
             password,
             displayName,
             inviteToken: inviteToken || undefined,
+            paymentClaimToken: paymentClaimToken || undefined,
             deviceId: identity.deviceId,
             deviceName: identity.name,
             deviceToken: identity.deviceToken,
