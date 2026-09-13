@@ -1,0 +1,5 @@
+Contact: https://cloak.space-z.ai/#/security
+Expires: 2027-09-11T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://cloak.space-z.ai/.well-known/security.txt
+Policy: https://cloak.space-z.ai/#/security

@@ -1,0 +1,348 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-cloak-serif);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Cloak design tokens */
+  --color-cloak-bg: var(--cloak-bg);
+  --color-cloak-bg-elevated: var(--cloak-bg-elevated);
+  --color-cloak-surface: var(--cloak-surface);
+  --color-cloak-surface-hover: var(--cloak-surface-hover);
+  --color-cloak-border: var(--cloak-border);
+  --color-cloak-border-strong: var(--cloak-border-strong);
+  --color-cloak-text: var(--cloak-text);
+  --color-cloak-text-secondary: var(--cloak-text-secondary);
+  --color-cloak-text-muted: var(--cloak-text-muted);
+  --color-cloak-gold: var(--cloak-gold);
+  --color-cloak-gold-bright: var(--cloak-gold-bright);
+  --color-cloak-gold-soft: var(--cloak-gold-soft);
+  --color-cloak-danger: var(--cloak-danger);
+  --color-cloak-success: var(--cloak-success);
+  --color-cloak-warning: var(--cloak-warning);
+}
+
+/*
+ * Cloak design system — dark-first.
+ * Visual idea: a private digital vault that happens to be an effortless messenger.
+ */
+:root {
+  --radius: 0.75rem;
+
+  /* Cloak core palette (spec §11) */
+  --cloak-bg: #0b0b0c;
+  --cloak-bg-elevated: #111113;
+  --cloak-surface: #151517;
+  --cloak-surface-hover: #1b1b1e;
+  --cloak-border: rgba(255, 255, 255, 0.08);
+  --cloak-border-strong: rgba(255, 255, 255, 0.13);
+
+  --cloak-text: #f4f2ec;
+  --cloak-text-secondary: #a4a3a0;
+  --cloak-text-muted: #747474;
+
+  --cloak-gold: #d6b15e;
+  --cloak-gold-bright: #e7c56f;
+  --cloak-gold-soft: rgba(214, 177, 94, 0.12);
+
+  --cloak-danger: #c86a6a;
+  --cloak-success: #6fa987;
+  --cloak-warning: #c8a35a;
+
+  /* Map shadcn primitives onto the Cloak palette (dark-first, dark is the theme) */
+  --background: #0b0b0c;
+  --foreground: #f4f2ec;
+  --card: #151517;
+  --card-foreground: #f4f2ec;
+  --popover: #111113;
+  --popover-foreground: #f4f2ec;
+  --primary: #d6b15e;
+  --primary-foreground: #0b0b0c;
+  --secondary: #1b1b1e;
+  --secondary-foreground: #f4f2ec;
+  --muted: #1b1b1e;
+  --muted-foreground: #a4a3a0;
+  --accent: #1b1b1e;
+  --accent-foreground: #f4f2ec;
+  --destructive: #c86a6a;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: rgba(214, 177, 94, 0.55);
+  --chart-1: #d6b15e;
+  --chart-2: #6fa987;
+  --chart-3: #c86a6a;
+  --chart-4: #a4a3a0;
+  --chart-5: #c8a35a;
+  --sidebar: #111113;
+  --sidebar-foreground: #f4f2ec;
+  --sidebar-primary: #d6b15e;
+  --sidebar-primary-foreground: #0b0b0c;
+  --sidebar-accent: #1b1b1e;
+  --sidebar-accent-foreground: #f4f2ec;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: rgba(214, 177, 94, 0.55);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    background-color: var(--cloak-bg);
+    color-scheme: dark;
+    min-height: 100%;
+    overscroll-behavior: none;
+  }
+  body {
+    @apply bg-background text-foreground;
+    min-height: 100dvh;
+    background-color: var(--cloak-bg);
+    font-feature-settings: "ss01" on, "cv05" on;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: rgba(214, 177, 94, 0.28);
+    color: #f4f2ec;
+  }
+}
+
+/* Cloak scrollbar language — thin, quiet */
+.cloak-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+.cloak-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.cloak-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+.cloak-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Wordmark — EB Garamond, weight 600, set as "Cloak" (user requirement) */
+.cloak-wordmark {
+  font-family: var(--font-cloak-serif), "EB Garamond", Georgia, serif;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+}
+
+/* Editorial display headlines use serif for brand moments */
+.cloak-display {
+  font-family: var(--font-cloak-serif), "EB Garamond", Georgia, serif;
+  letter-spacing: -0.01em;
+}
+
+/* Hairline gold divider used across marketing sections */
+.cloak-hairline {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(214, 177, 94, 0.35),
+    transparent
+  );
+  height: 1px;
+}
+
+/* Subtle vault texture — very low noise grid, no Matrix effects */
+.cloak-vault-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 78%);
+}
+
+/* Redacted text for Cloak Mode previews */
+.cloak-redacted {
+  position: relative;
+  color: transparent !important;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  user-select: none;
+}
+.cloak-redacted::selection {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* One-time security state pulse (spec §13) */
+@keyframes cloak-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(111, 169, 135, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(111, 169, 135, 0);
+  }
+}
+.cloak-pulse-once {
+  animation: cloak-pulse 1.4s ease-out 1;
+}
+
+/* Gentle message appearance */
+@keyframes cloak-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.cloak-message-in {
+  animation: cloak-message-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Gold shimmer for primary CTA hover — restrained */
+.cloak-cta-gold {
+  background: linear-gradient(180deg, #e2c072 0%, #d6b15e 55%, #c8a452 100%);
+}
+.cloak-cta-gold:hover {
+  background: linear-gradient(180deg, #ecca80 0%, #e0bd6a 55%, #d0ac58 100%);
+}
+
+/* Ghost Chat marker — white Lucide ghost, gentle float (user requirement) */
+@keyframes cloak-ghost-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(-1.5px) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(0deg);
+    opacity: 0.82;
+  }
+  75% {
+    transform: translateY(-1.5px) rotate(6deg);
+  }
+}
+.cloak-ghost-float {
+  display: inline-block;
+  animation: cloak-ghost-float 2.8s ease-in-out infinite;
+  transform-origin: 50% 85%;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.28));
+}
+
+/* Cloak Intelligence "thinking" dots */
+@keyframes cloak-typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+.cloak-typing-dot {
+  animation: cloak-typing 1.2s ease-in-out infinite;
+}
+.cloak-typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.cloak-typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cloak-message-in,
+  .cloak-pulse-once,
+  .cloak-ghost-float,
+  .cloak-typing-dot {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Dagger icon (codex §3, owner correction): the Lucide Sword glyph's tip is
+   drawn at the glyph's TOP-LEFT, so pointing the blade straight DOWN takes
+   225deg clockwise (135deg clockwise from top-left lands pointing right —
+   owner feedback). The bob keyframes carry the same rotation because a bare
+   translateY keyframe would override the static transform and snap the blade
+   upright while hovering/pressing. translateY comes FIRST in the transform
+   list so the bob stays vertical: a translate listed after rotate is applied
+   inside the rotated frame and would slide the dagger diagonally. Bobs on
+   mouse-over with a fine pointer (web) and while pressed (mobile). No
+   continuous animation otherwise; disabled entirely under
+   prefers-reduced-motion. */
+@keyframes cloak-dagger-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(225deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(225deg);
+  }
+}
+.cloak-dagger-glyph {
+  transform: rotate(225deg);
+  will-change: transform;
+}
+@media (hover: hover) and (pointer: fine) {
+  .cloak-dagger-trigger:hover .cloak-dagger-glyph {
+    animation: cloak-dagger-bob 0.9s ease-in-out infinite;
+  }
+}
+.cloak-dagger-trigger[data-pressed="true"] .cloak-dagger-glyph {
+  animation: cloak-dagger-bob 0.9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cloak-dagger-trigger:hover .cloak-dagger-glyph,
+  .cloak-dagger-trigger[data-pressed="true"] .cloak-dagger-glyph {
+    animation: none;
+  }
+}

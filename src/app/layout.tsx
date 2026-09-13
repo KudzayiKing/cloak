@@ -1,0 +1,88 @@
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono, EB_Garamond } from "next/font/google";
+import "./globals.css";
+import { Toaster } from "@/components/ui/toaster";
+import { PwaRegister } from "@/components/cloak/pwa/pwa-register";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+/* Brand wordmark font — user requirement: header wordmark uses EB Garamond */
+const cloakSerif = EB_Garamond({
+  variable: "--font-cloak-serif",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+});
+
+export const metadata: Metadata = {
+  title: "Cloak — Private Communications & Local-First Intelligence",
+  description:
+    "Private messaging, trusted Circles and local-first AI designed for conversations that should remain under your control. No ads. No behavioral advertising.",
+  applicationName: "Cloak",
+  manifest: "/manifest.webmanifest",
+  keywords: [
+    "Cloak",
+    "private messaging",
+    "local-first AI",
+    "private communications",
+    "privacy",
+  ],
+  authors: [{ name: "Cloak" }],
+  icons: {
+    icon: [
+      { url: "/icons/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Cloak",
+    statusBarStyle: "black",
+  },
+  openGraph: {
+    title: "Cloak — Private Communications & Local-First Intelligence",
+    description:
+      "Private messaging, trusted Circles and local-first AI designed for conversations that should remain under your control.",
+    siteName: "Cloak",
+    type: "website",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0B0B0C",
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  /* Android Chrome: shrink the layout viewport when the keyboard opens so
+     dialogs and the composer rise with it (iOS is handled per-dialog via
+     the visualViewport keyboard-rise hook). */
+  interactiveWidget: "resizes-content",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} ${cloakSerif.variable} antialiased bg-background text-foreground`}
+      >
+        {children}
+        <PwaRegister />
+        <Toaster />
+      </body>
+    </html>
+  );
+}

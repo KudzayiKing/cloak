@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cloak — Offline</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #0b0b0c;
+        color: #f4f2ec;
+        font-family: system-ui, -apple-system, sans-serif;
+        text-align: center;
+        padding: 24px;
+      }
+      .mark {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 20px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: grid;
+        place-items: center;
+      }
+      h1 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+      p { color: #a4a3a0; font-size: 14px; margin: 0; max-width: 34ch; line-height: 1.6; }
+    </style>
+  </head>
+  <body>
+    <div>
+      <div class="mark">
+        <svg width="30" height="30" viewBox="0 0 512 512" fill="none">
+          <path d="M 356 148 A 148 148 0 1 0 356 364" stroke="#f4f2ec" stroke-width="48" stroke-linecap="round"/>
+          <circle cx="356" cy="256" r="32" fill="#f4f2ec"/>
+        </svg>
+      </div>
+      <h1>You are offline</h1>
+      <p>Cloak could not reach the network. Your conversations remain stored on this device.</p>
+    </div>
+  </body>
+</html>
