@@ -7,7 +7,6 @@ import {
   loadConversationDetail,
   loadConversationsForUser,
   mapConversation,
-  purgeExpiredMessages,
   GHOST_SECONDS_ALLOWED,
 } from "@/lib/cloak/server/conversations";
 
@@ -19,7 +18,6 @@ export async function GET(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
   }
-  await purgeExpiredMessages();
   const payload = await loadConversationsForUser(user.id);
   return NextResponse.json({ ok: true, ...payload });
 }

@@ -152,38 +152,6 @@ export function mapMessage(
   };
 }
 
-/** Count messages the viewer has not read yet (respects history window). */
-async function unreadCountFor(conv: {
-  id: string;
-  participations: ParticipationRow[];
-  isGroup: boolean;
-}, viewerId: string, lastMessage?: MessageRow): Promise<number> {
-  const mine = conv.participations.find((p) => p.userId === viewerId);
-  if (!mine) return 0;
-  const since = mine.lastReadAt;
-  const from = mine.historyFrom;
-
-  // Fast path: the only candidate message is older than every boundary.
-  if (lastMessage) {
-    const t = lastMessage.createdAt.getTime();
-    if (since && t <= since.getTime()) return 0;
-    if (from && t < from.getTime()) return 0;
-    if (lastMessage.authorId === viewerId || lastMessage.authorId === null) return 0;
-  }
-
-  return db.message.count({
-    where: {
-      conversationId: conv.id,
-      /* SQL "!= " excludes NULLs by definition, so system messages
-         (authorId null) never count as unread — matches the fast path.
-         NOTE: notIn: [null] is rejected by Prisma and 500s the route. */
-      authorId: { not: viewerId },
-      ...(since ? { createdAt: { gt: since } } : {}),
-      ...(from ? { createdAt: { gte: from } } : {}),
-    },
-  });
-}
-
 export function mapConversation(
   conv: ConvRow,
   viewerId: string,
@@ -270,13 +238,14 @@ export function mapConversation(
 }
 
 export async function loadConversationsForUser(userId: string) {
-  await purgeExpiredMessages();
+  const now = new Date();
   const convs = await db.conversation.findMany({
     where: { participations: { some: { userId, removedAt: null } } },
     include: {
       participations: true,
       circle: { select: { id: true, name: true, aiDefault: true } },
       messages: {
+        where: { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
         orderBy: { createdAt: "desc" as const },
         take: 1,
         include: { author: true },
@@ -287,18 +256,15 @@ export async function loadConversationsForUser(userId: string) {
 
   /* People you share a conversation with -> contacts list. Removed group
      members stop being contacts through the group but keep their DMs. */
-  const memberships = await db.participation.findMany({
-    where: { userId, removedAt: null },
-    select: { conversationId: true },
-  });
-  const convIds = memberships.map((m) => m.conversationId);
-  const coMemberRows = convIds.length
-    ? await db.participation.findMany({
-        where: { conversationId: { in: convIds }, userId: { not: userId }, removedAt: null },
-        select: { userId: true },
-      })
-    : [];
-  const peerIds = [...new Set(coMemberRows.map((r) => r.userId))];
+  const peerIds = [
+    ...new Set(
+      convs.flatMap((conv) =>
+        conv.participations
+          .filter((p) => p.userId !== userId && !p.removedAt)
+          .map((p) => p.userId)
+      )
+    ),
+  ];
   const peers = peerIds.length
     ? await db.user.findMany({ where: { id: { in: peerIds } } })
     : [];
@@ -313,13 +279,7 @@ export async function loadConversationsForUser(userId: string) {
     identityPublicKey: u.identityPublicKey,
   }));
 
-  const conversations = await Promise.all(
-    convs.map(async (conv) =>
-      mapConversation(conv, userId, {
-        unreadCount: await unreadCountFor(conv, userId, conv.messages?.[0]),
-      })
-    )
-  );
+  const conversations = convs.map((conv) => mapConversation(conv, userId));
 
   /* Order by last message time (mirrors the sidebar's own sort). */
   conversations.sort((a, b) => {
