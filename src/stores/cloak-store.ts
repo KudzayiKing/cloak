@@ -40,6 +40,7 @@ import {
   type DaggerConfiguration,
 } from "@/lib/cloak/dagger";
 import { MODEL_MANIFEST } from "@/lib/cloak/config";
+import { DEFAULT_CLOAK_THEME, type CloakTheme } from "@/lib/cloak/theme";
 import {
   parseAttachmentEnvelope,
   saveLocalAttachment,
@@ -653,6 +654,9 @@ interface CloakState {
   cloakMode: boolean;
   /** Chat text size (user feedback): small | medium | large. */
   chatFontSize: "small" | "medium" | "large";
+  /** Colour theme. Dark is the default; light is the owner-supplied palette.
+      Carried on <html> as a class by ThemeSync — see src/lib/cloak/theme.ts. */
+  theme: CloakTheme;
   /** Web nav rail collapsed to icons (user feedback round 14). */
   sidebarCollapsed: boolean;
   /** Target language for the long-press message translation (code from
@@ -665,6 +669,7 @@ interface CloakState {
   setCloakMode: (on: boolean) => void;
   toggleCloakMode: () => void;
   setChatFontSize: (size: "small" | "medium" | "large") => void;
+  setTheme: (theme: CloakTheme) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   setTranslationLanguage: (code: string) => void;
   setForwardSecrecy: (window: ForwardSecrecyWindow) => void;
@@ -1636,12 +1641,14 @@ export const useCloakStore = create<CloakState>()(
 
       cloakMode: false,
       chatFontSize: "large",
+      theme: DEFAULT_CLOAK_THEME,
       sidebarCollapsed: false,
       translationLanguage: "en",
       forwardSecrecy: "off" as ForwardSecrecyWindow,
       setCloakMode: (on) => set({ cloakMode: on }),
       toggleCloakMode: () => set((s) => ({ cloakMode: !s.cloakMode })),
       setChatFontSize: (size) => set({ chatFontSize: size }),
+      setTheme: (theme) => set({ theme }),
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
       setTranslationLanguage: (code) => set({ translationLanguage: code }),
       setForwardSecrecy: (window) => {
@@ -2297,6 +2304,10 @@ export const useCloakStore = create<CloakState>()(
       partialize: (s) => ({
         cloakMode: s.cloakMode,
         chatFontSize: s.chatFontSize,
+        /* Theme is a plain UI preference and persists like the others. The
+           inline bootstrap script in layout.tsx reads it back out of this
+           same key before first paint. */
+        theme: s.theme,
         sidebarCollapsed: s.sidebarCollapsed,
         translationLanguage: s.translationLanguage,
         forwardSecrecy: s.forwardSecrecy,

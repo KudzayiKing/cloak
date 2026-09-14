@@ -38,6 +38,7 @@ import { navigate } from "@/hooks/use-hash-route";
 import type { AIProcessingPreference, PreviewVisibility } from "@/lib/cloak/types";
 import { BRAND, MODEL_MANIFEST } from "@/lib/cloak/config";
 import { TRANSLATION_LANGUAGES } from "@/lib/cloak/translation-languages";
+import { DEFAULT_CLOAK_THEME, type CloakTheme } from "@/lib/cloak/theme";
 import {
   biometricAvailable,
   enrollBiometric,
@@ -893,12 +894,49 @@ function AppearanceSection() {
   const setChatFontSize = useCloakStore((s) => s.setChatFontSize);
   const translationLanguage = useCloakStore((s) => s.translationLanguage);
   const setTranslationLanguage = useCloakStore((s) => s.setTranslationLanguage);
+  const theme = useCloakStore((s) => s.theme);
+  const setTheme = useCloakStore((s) => s.setTheme);
 
   const fontSizes = [
     { id: "small", label: "Small" },
     { id: "medium", label: "Medium" },
     { id: "large", label: "Large" },
   ] as const;
+
+  /* Swatch colours are literal, not tokens: each preview has to show the OTHER
+     theme's palette while the current one is active, and a CSS variable would
+     resolve to whatever the live theme happens to be. */
+  const themeChoices: Array<{
+    id: CloakTheme;
+    label: string;
+    note: string;
+    bg: string;
+    surface: string;
+    border: string;
+    text: string;
+    gold: string;
+  }> = [
+    {
+      id: "dark",
+      label: "Dark",
+      note: "Dark surfaces reduce glare in low light.",
+      bg: "#0b0b0c",
+      surface: "#151517",
+      border: "rgba(255,255,255,0.13)",
+      text: "#f4f2ec",
+      gold: "#d6b15e",
+    },
+    {
+      id: "light",
+      label: "Light",
+      note: "Warm paper surfaces for bright rooms and daylight.",
+      bg: "#f4f0e8",
+      surface: "#e8e1d6",
+      border: "rgba(30,27,23,0.16)",
+      text: "#171513",
+      gold: "#b99343",
+    },
+  ];
 
   return (
     <Surface className="p-5">
@@ -907,25 +945,57 @@ function AppearanceSection() {
         Theme
       </h2>
       <div className="grid gap-2.5 sm:grid-cols-2">
-        <div className="rounded-xl border border-cloak-gold/40 bg-cloak-gold-soft/30 p-4">
-          <div className="mb-3 h-16 rounded-lg border border-cloak-border bg-cloak-bg" />
-          <p className="flex items-center gap-2 text-[13px] font-medium text-cloak-text">
-            Dark
-            <span className="rounded-full bg-cloak-gold-soft px-2 py-0.5 text-[10px] font-medium text-cloak-gold-bright">
-              Default
-            </span>
-          </p>
-        </div>
-        <div className="rounded-xl border border-cloak-border bg-cloak-surface/50 p-4 opacity-60">
-          <div className="mb-3 h-16 rounded-lg border border-cloak-border bg-cloak-surface" />
-          <p className="text-[13px] font-medium text-cloak-text-secondary">Light</p>
-          <p className="mt-0.5 text-[11px] text-cloak-text-muted">Coming after security review</p>
-        </div>
+        {themeChoices.map((choice) => {
+          const selected = theme === choice.id;
+          return (
+            <button
+              key={choice.id}
+              type="button"
+              onClick={() => setTheme(choice.id)}
+              aria-pressed={selected}
+              className={cn(
+                "rounded-xl border p-4 text-left transition-colors",
+                selected
+                  ? "border-cloak-gold/40 bg-cloak-gold-soft/30"
+                  : "border-cloak-border bg-cloak-surface/50 hover:border-cloak-border-strong"
+              )}
+            >
+              <span
+                className="mb-3 flex h-16 items-end gap-1.5 rounded-lg border p-2"
+                style={{ background: choice.bg, borderColor: choice.border }}
+              >
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ background: choice.text }}
+                />
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ background: choice.gold }}
+                />
+                <span
+                  className="h-2.5 flex-1 rounded-full"
+                  style={{ background: choice.surface }}
+                />
+              </span>
+              <span className="flex items-center gap-2 text-[13px] font-medium text-cloak-text">
+                {choice.label}
+                {choice.id === DEFAULT_CLOAK_THEME && (
+                  <span className="rounded-full bg-cloak-gold-soft px-2 py-0.5 text-[10px] font-medium text-cloak-gold-bright">
+                    Default
+                  </span>
+                )}
+              </span>
+              <span className="mt-0.5 block text-[11px] leading-relaxed text-cloak-text-muted">
+                {choice.note}
+              </span>
+            </button>
+          );
+        })}
       </div>
       <div className="mt-4 flex items-start gap-2 text-[11.5px] leading-relaxed text-cloak-text-muted">
         <InfoIcon size={13} className="mt-0.5 shrink-0" />
-        Cloak is dark-first by design: dark surfaces reduce glare in low light
-        and keep attention on conversations.
+        Cloak is dark-first by design, and both themes are built from the same
+        palette tokens — the choice applies to every screen on this device.
       </div>
 
       {/* Chat font size (user request): small / medium / large */}

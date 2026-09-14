@@ -120,6 +120,81 @@
   --sidebar-accent-foreground: #f4f2ec;
   --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: rgba(214, 177, 94, 0.55);
+
+  /* Chrome that is not a cloak-* token but still has to follow the theme. */
+  --cloak-scroll-thumb: rgba(255, 255, 255, 0.14);
+  --cloak-selection: rgba(214, 177, 94, 0.28);
+}
+
+/*
+ * Light mode (user-supplied palette). Applied when <html> carries .light
+ * instead of .dark — see src/lib/cloak/theme.ts for the switcher.
+ *
+ * The cloak-* values below are the owner's, verbatim. The shadcn primitives
+ * (--background, --card, …) are mapped onto the same palette so the ui/
+ * components follow without touching a single one of them.
+ */
+.light {
+  --cloak-bg: #f4f0e8;
+  --cloak-bg-elevated: #eee8de;
+  --cloak-surface: #e8e1d6;
+  --cloak-surface-hover: #ded5c8;
+  --cloak-border: rgba(30, 27, 23, 0.1);
+  --cloak-border-strong: rgba(30, 27, 23, 0.16);
+
+  --cloak-text: #171513;
+  --cloak-text-secondary: #625d55;
+  --cloak-text-muted: #8a8379;
+
+  --cloak-gold: #b99343;
+  --cloak-gold-bright: #cdaa59;
+  --cloak-gold-soft: rgba(185, 147, 67, 0.12);
+
+  --cloak-danger: #a85353;
+  --cloak-success: #527a63;
+  --cloak-warning: #a17e3c;
+
+  /* shadcn primitives, mapped onto the Cloak palette. */
+  --background: #f4f0e8;
+  --foreground: #171513;
+  --card: #e8e1d6;
+  --card-foreground: #171513;
+  --popover: #eee8de;
+  --popover-foreground: #171513;
+  --primary: #b99343;
+  /* Dark, not light: gold is a mid-tone, so ink on gold has to be dark in
+     BOTH themes. This mirrors the app's `bg-cloak-gold text-black` buttons. */
+  --primary-foreground: #171513;
+  --secondary: #ded5c8;
+  --secondary-foreground: #171513;
+  --muted: #ded5c8;
+  --muted-foreground: #625d55;
+  --accent: #ded5c8;
+  --accent-foreground: #171513;
+  --destructive: #a85353;
+  --border: rgba(30, 27, 23, 0.1);
+  --input: rgba(30, 27, 23, 0.14);
+  --ring: rgba(185, 147, 67, 0.55);
+  --chart-1: #b99343;
+  --chart-2: #527a63;
+  --chart-3: #a85353;
+  --chart-4: #625d55;
+  --chart-5: #a17e3c;
+  --sidebar: #eee8de;
+  --sidebar-foreground: #171513;
+  --sidebar-primary: #b99343;
+  --sidebar-primary-foreground: #171513;
+  --sidebar-accent: #ded5c8;
+  --sidebar-accent-foreground: #171513;
+  --sidebar-border: rgba(30, 27, 23, 0.1);
+  --sidebar-ring: rgba(185, 147, 67, 0.55);
+
+  --cloak-scroll-thumb: rgba(30, 27, 23, 0.18);
+  --cloak-selection: rgba(185, 147, 67, 0.28);
+
+  /* Tells the browser to render form controls, scrollbars and the canvas in
+     light. Without this, native widgets stay dark inside a light page. */
+  color-scheme: light;
 }
 
 @layer base {
@@ -140,22 +215,22 @@
     -webkit-font-smoothing: antialiased;
   }
   ::selection {
-    background: rgba(214, 177, 94, 0.28);
-    color: #f4f2ec;
+    background: var(--cloak-selection);
+    color: var(--cloak-text);
   }
 }
 
 /* Cloak scrollbar language — thin, quiet */
 .cloak-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+  scrollbar-color: var(--cloak-scroll-thumb) transparent;
 }
 .cloak-scroll::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 .cloak-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--cloak-scroll-thumb);
   border-radius: 999px;
 }
 .cloak-scroll::-webkit-scrollbar-track {
@@ -257,6 +332,28 @@
 }
 .cloak-cta-gold:hover {
   background: linear-gradient(180deg, #ecca80 0%, #e0bd6a 55%, #d0ac58 100%);
+}
+/* Light mode: the same button on a light surface needs the deeper gold, or it
+   reads as a washed-out highlight instead of a call to action. */
+.light .cloak-cta-gold {
+  background: linear-gradient(180deg, #cdaa59 0%, #b99343 55%, #a9843a 100%);
+}
+.light .cloak-cta-gold:hover {
+  background: linear-gradient(180deg, #d8b767 0%, #c49e4c 55%, #b08b3f 100%);
+}
+
+/*
+ * The Cloak artwork is a WHITE mark on transparency (user requirement: "the
+ * mark is always the white C artwork"). On the light background it would be
+ * invisible, so it must render black there.
+ *
+ * brightness(0) maps every non-transparent pixel to black and leaves the alpha
+ * channel alone, which keeps the antialiased edges clean. One file, correct in
+ * both themes — no second asset to keep in sync. invert(1) would also work on
+ * pure white but would flip any off-white or coloured pixel too.
+ */
+.light .cloak-logo-mark {
+  filter: brightness(0);
 }
 
 /*

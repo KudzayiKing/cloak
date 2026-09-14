@@ -89,12 +89,13 @@ export function SignInScreen() {
           aria-label="Cloak — home"
           className="mx-auto mb-10 flex items-center gap-3 text-cloak-text transition-opacity hover:opacity-85"
         >
-          {/* Brand mark — the white C-bubble artwork (upload/cloak_logo.svg) */}
+          {/* Brand mark — the C-bubble artwork (upload/cloak_logo.svg).
+              cloak-logo-mark renders it black in light mode. */}
           <img
             src="/cloak-logo.svg"
             alt=""
             aria-hidden="true"
-            className="h-9 w-9 object-contain"
+            className="cloak-logo-mark h-9 w-9 object-contain"
             draggable={false}
           />
           <span className="cloak-wordmark text-2xl text-cloak-text">Cloak</span>

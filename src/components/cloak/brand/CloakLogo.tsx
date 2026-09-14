@@ -31,7 +31,9 @@ export function CloakMark({ size = 22, className }: { size?: number; className?:
   );
 }
 
-/* The new Cloak logo artwork (user-created, served from /cloak-logo.svg). */
+/* The new Cloak logo artwork (user-created, served from /cloak-logo.svg).
+   `cloak-logo-mark` makes it render black in light mode — the artwork is a
+   white mark on transparency and would otherwise vanish on the light bg. */
 export function CloakLogoImage({
   size = 24,
   className,
@@ -46,7 +48,7 @@ export function CloakLogoImage({
       width={size}
       height={size}
       aria-hidden="true"
-      className={cn("shrink-0 object-contain", className)}
+      className={cn("cloak-logo-mark shrink-0 object-contain", className)}
     />
   );
 }

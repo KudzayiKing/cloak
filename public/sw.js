@@ -12,7 +12,7 @@
  *   received and never enriches it from any local store.
  */
 
-const VERSION = "cloak-shell-v24";
+const VERSION = "cloak-shell-v25";
 const SHELL_CACHE = `cloak-shell-${VERSION}`;
 const STATIC_CACHE = `cloak-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";

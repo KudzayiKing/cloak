@@ -22,6 +22,7 @@ node_modules
 !/scripts/verify-multi-account-fix.mjs
 !/scripts/verify-reaction-sizing.mts
 !/scripts/verify-pwa-update.mts
+!/scripts/verify-theme-and-icons.mts
 
 # next.js
 /.next/

@@ -3,6 +3,8 @@ import { Geist, Geist_Mono, EB_Garamond } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { PwaRegister } from "@/components/cloak/pwa/pwa-register";
+import { ThemeSync } from "@/components/cloak/theme/theme-sync";
+import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/cloak/theme";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -79,7 +81,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${cloakSerif.variable} antialiased bg-background text-foreground`}
       >
+        {/* Applies the stored theme before first paint, so a light-mode user
+            never sees a flash of the dark shell. Runs first in <body>, which
+            is before anything below it has painted. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
         {children}
+        <ThemeSync />
         <PwaRegister />
         <Toaster />
       </body>
