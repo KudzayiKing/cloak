@@ -1659,7 +1659,16 @@ export const useCloakStore = create<CloakState>()(
           const myUserId = get().auth.user?.id;
           let encrypted: string | null = null;
           if (myUserId) {
-            await waitForConversationKey(conversationId, 8000);
+            /* Sending should not wait for the background poll to prepare
+               keys. Run key maintenance immediately, then wait briefly for
+               the local key. A second pass covers races where the first
+               caller was already provisioning. */
+            await syncConversationKeys(conversationId, myUserId);
+            let readyKey = await waitForConversationKey(conversationId, 2500);
+            if (!readyKey) {
+              await syncConversationKeys(conversationId, myUserId);
+              readyKey = await waitForConversationKey(conversationId, 1500);
+            }
             /* Forward secrecy: when a window is active, retire an over-aged
                key version BEFORE encrypting so this message lands under a
                fresh root (CAS makes concurrent rotators safe — a 409 loser
@@ -1693,9 +1702,17 @@ export const useCloakStore = create<CloakState>()(
           /* Real transport — the API is the authority; the sync loop brings
              delivered/read states from the peer's participation markers. */
           let serverMessage: Message | null = null;
-          if (res.ok && myUserId) {
-            const [decrypted] = await decryptServerMessages([res.data.message], myUserId);
-            serverMessage = decrypted ?? null;
+          if (res.ok) {
+            const confirmed = toClientMessage(res.data.message);
+            /* This device already has the plaintext it just encrypted.
+               Avoid re-decrypting the server envelope here; if key sync is
+               mid-flight, that would falsely mark a delivered message as
+               failed. Polling will still refresh tick state later. */
+            serverMessage = {
+              ...confirmed,
+              body,
+              status: confirmed.status ?? "sent",
+            };
           }
           set((s) => ({
             conversations: s.conversations.map((c) =>

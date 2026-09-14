@@ -539,7 +539,7 @@ async function healWraps(
 ) {
   const now = Date.now();
   const last = healCooldown.get(conversationId) ?? 0;
-  if (now - last < 30_000) return;
+  if (now - last < 5_000) return;
   healCooldown.set(conversationId, now);
 
   const missing = state.members.filter((m) => m.publicKey && !m.hasKey);
