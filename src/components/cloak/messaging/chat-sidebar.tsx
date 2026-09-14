@@ -256,7 +256,7 @@ export function ChatSidebar({
       <button
         aria-label="New chat"
         onClick={() => setNewChatOpen(true)}
-        className="bg-cloak-gold/20 hover:bg-cloak-gold/25 fixed bottom-[calc(72px+env(safe-area-inset-bottom))] right-4 z-40 grid h-14 w-14 place-items-center rounded-full border border-cloak-gold/30 text-cloak-gold shadow-lg shadow-black/50 transition-transform active:scale-95 md:hidden"
+        className="cloak-light-shadowless bg-cloak-gold/20 hover:bg-cloak-gold/25 fixed bottom-[calc(72px+env(safe-area-inset-bottom))] right-4 z-40 grid h-14 w-14 place-items-center rounded-full border border-cloak-gold/30 text-cloak-gold shadow-lg shadow-black/50 transition-transform active:scale-95 md:hidden"
       >
         <PlusIcon size={22} />
       </button>

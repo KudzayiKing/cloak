@@ -124,6 +124,8 @@
   /* Chrome that is not a cloak-* token but still has to follow the theme. */
   --cloak-scroll-thumb: rgba(255, 255, 255, 0.14);
   --cloak-selection: rgba(214, 177, 94, 0.28);
+  --cloak-message-outgoing: #1d1a12;
+  --cloak-message-outgoing-border: rgba(214, 177, 94, 0.15);
 }
 
 /*
@@ -191,6 +193,8 @@
 
   --cloak-scroll-thumb: rgba(30, 27, 23, 0.18);
   --cloak-selection: rgba(185, 147, 67, 0.28);
+  --cloak-message-outgoing: #eadfc9;
+  --cloak-message-outgoing-border: rgba(185, 147, 67, 0.24);
 
   /* Tells the browser to render form controls, scrollbars and the canvas in
      light. Without this, native widgets stay dark inside a light page. */
@@ -324,6 +328,17 @@
 }
 .cloak-message-in {
   animation: cloak-message-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Outgoing chat bubbles use a theme token so light mode never pairs dark ink
+   with the dark brown bubble used by the default theme. */
+.cloak-bubble-out {
+  background: var(--cloak-message-outgoing);
+  border-color: var(--cloak-message-outgoing-border);
+}
+
+.light .cloak-light-shadowless {
+  box-shadow: none !important;
 }
 
 /* Gold shimmer for primary CTA hover — restrained */

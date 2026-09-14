@@ -123,7 +123,7 @@ export function MessageBubble({
         <div
           className={cn(
             "cloak-message-in flex max-w-[80%] items-center gap-3 rounded-2xl border border-dashed border-cloak-border-strong bg-cloak-surface px-3.5 py-3",
-            outgoing && "border-cloak-gold/20 bg-[#1D1A12]"
+            outgoing && "cloak-bubble-out"
           )}
         >
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-cloak-gold-soft text-cloak-gold">
@@ -186,7 +186,7 @@ export function MessageBubble({
         <div
           className={cn(
             "cloak-message-in flex max-w-[80%] items-center gap-3 rounded-2xl border border-cloak-border bg-cloak-surface px-3.5 py-3",
-            outgoing && "border-cloak-gold/20 bg-[#1D1A12]"
+            outgoing && "cloak-bubble-out"
           )}
         >
           <span className="grid h-8 w-8 place-items-center rounded-full bg-cloak-gold-soft text-cloak-gold">
@@ -234,7 +234,7 @@ export function MessageBubble({
             "cloak-message-in rounded-3xl border px-3.5 py-2.5",
             "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
             outgoing
-              ? "rounded-tr-lg border-cloak-gold/15 bg-[#1D1A12] text-cloak-text"
+              ? "cloak-bubble-out rounded-tr-lg text-cloak-text"
               : "rounded-tl-lg border-cloak-border bg-cloak-surface text-cloak-text"
           )}
         >
@@ -374,7 +374,7 @@ function AttachmentBubble({
       <div
         className={cn(
           "cloak-message-in max-w-[82%] rounded-2xl border p-2.5 md:max-w-[65%]",
-          outgoing ? "border-cloak-gold/20 bg-[#1D1A12]" : "border-cloak-border bg-cloak-surface"
+          outgoing ? "cloak-bubble-out" : "border-cloak-border bg-cloak-surface"
         )}
       >
         {kind === "image" && url ? (

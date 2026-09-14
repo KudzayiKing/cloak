@@ -36,15 +36,42 @@ export const CLOAK_THEME_COLORS: Record<CloakTheme, string> = {
   light: "#f4f0e8",
 };
 
+/** iOS standalone status-bar style per theme. */
+export const CLOAK_STATUS_BAR_STYLES: Record<CloakTheme, string> = {
+  dark: "black-translucent",
+  light: "default",
+};
+
 /** Swaps the class on <html>. Exactly one theme class is present at a time. */
 export function applyCloakTheme(theme: CloakTheme) {
   const root = document.documentElement;
   root.classList.toggle("dark", theme === "dark");
   root.classList.toggle("light", theme === "light");
-  /* Next writes a single dark value from `viewport.themeColor`; keep the
-     Android/iOS status bar in step with the theme the user actually chose. */
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", CLOAK_THEME_COLORS[theme]);
+  /* Keep Android/iOS browser chrome in step with the theme the user actually
+     chose. Next may emit multiple theme-color metas when the viewport uses
+     media descriptors, so update all of them. */
+  const themeColorMetas =
+    typeof document.querySelectorAll === "function"
+      ? Array.from(document.querySelectorAll('meta[name="theme-color"]'))
+      : [];
+
+  if (themeColorMetas.length > 0) {
+    themeColorMetas.forEach((meta) =>
+      meta.setAttribute("content", CLOAK_THEME_COLORS[theme])
+    );
+  } else {
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute("content", CLOAK_THEME_COLORS[theme]);
+    }
+  }
+
+  const appleStatus = document.querySelector(
+    'meta[name="apple-mobile-web-app-status-bar-style"]'
+  );
+  if (appleStatus) {
+    appleStatus.setAttribute("content", CLOAK_STATUS_BAR_STYLES[theme]);
+  }
 }
 
 /**
@@ -67,12 +94,18 @@ export function readStoredTheme(raw: string | null): CloakTheme {
 }
 
 /**
- * Runs before first paint, from a plain <script> in <head>. Deliberately
- * dependency-free and defensive — it must never throw, because an exception
- * here would leave the document unstyled.
+ * Runs before first paint, from a plain <script> before the app UI.
+ * Deliberately dependency-free and defensive — it must never throw, because an
+ * exception here would leave the document unstyled.
  */
 export const THEME_BOOTSTRAP_SCRIPT = `(function(){try{var r=localStorage.getItem(${JSON.stringify(
   THEME_STORAGE_KEY
-)});if(!r)return;var p=JSON.parse(r);var t=p&&p.state&&p.state.theme;if(t!=="light")return;var e=document.documentElement;e.classList.remove("dark");e.classList.add("light");var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",${JSON.stringify(
+)});var t="dark";if(r){var p=JSON.parse(r);if(p&&p.state&&p.state.theme==="light")t="light";}var e=document.documentElement;e.classList.remove(t==="light"?"dark":"light");e.classList.add(t);var c=t==="light"?${JSON.stringify(
   CLOAK_THEME_COLORS.light
+)}:${JSON.stringify(
+  CLOAK_THEME_COLORS.dark
+)};var a=document.querySelectorAll?document.querySelectorAll('meta[name="theme-color"]'):null;if(a&&a.length){a.forEach(function(m){m.setAttribute("content",c);});}else{var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",c);}var s=document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');if(s)s.setAttribute("content",t==="light"?${JSON.stringify(
+  CLOAK_STATUS_BAR_STYLES.light
+)}:${JSON.stringify(
+  CLOAK_STATUS_BAR_STYLES.dark
 )});}catch(e){}})();`;

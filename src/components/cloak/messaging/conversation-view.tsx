@@ -177,7 +177,7 @@ export function ConversationView({
   if (!conversation) {
     return (
       <div className="flex h-full min-h-0 flex-1 flex-col md:p-3">
-        <div className="flex flex-1 flex-col items-center justify-center border-0 bg-cloak-bg px-8 text-center md:rounded-3xl md:border md:border-cloak-border md:shadow-xl md:shadow-black/25">
+        <div className="cloak-light-shadowless flex flex-1 flex-col items-center justify-center border-0 bg-cloak-bg px-8 text-center md:rounded-3xl md:border md:border-cloak-border md:shadow-xl md:shadow-black/25">
         <span className="grid h-14 w-14 place-items-center rounded-2xl border border-cloak-border bg-cloak-surface text-cloak-gold">
           <KeyRoundIcon size={22} />
         </span>
@@ -259,7 +259,7 @@ export function ConversationView({
       {/* Fullscreen chat on mobile — no outer border, square header top and
           composer bottom edges (user feedback round 4). Desktop keeps the
           floating rounded card. */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-cloak-bg md:rounded-3xl md:border md:border-cloak-border md:shadow-xl md:shadow-black/25">
+      <div className="cloak-light-shadowless flex min-h-0 flex-1 flex-col overflow-hidden bg-cloak-bg md:rounded-3xl md:border md:border-cloak-border md:shadow-xl md:shadow-black/25">
       {/* Header */}
       <header className="flex items-center gap-2 border-b border-cloak-border bg-cloak-bg-elevated/60 px-3 py-2.5 md:px-4">
         <button
