@@ -194,8 +194,8 @@ export function MessageBubble({
           </span>
           <AudioLinesIcon size={40} className="text-cloak-text-muted" />
           <span className="text-[11px] text-cloak-text-muted">{message.voiceDurationSec ?? 0}:00</span>
+          <ReactionRow message={message} onReact={onReact} />
         </div>
-        <ReactionRow message={message} onReact={onReact} />
         {canReact && (
           <MessageActionSheet
             open={actionSheetOpen}
@@ -277,8 +277,8 @@ export function MessageBubble({
               )}
             </>
           )}
+          <ReactionRow message={message} onReact={onReact} />
         </div>
-        <ReactionRow message={message} onReact={onReact} />
         <div
           className={cn(
             "mt-1 flex items-center gap-1.5 px-1 text-[10px] text-cloak-text-muted",
@@ -417,6 +417,7 @@ function AttachmentBubble({
           >
             <DownloadIcon size={15} />
           </button>
+          <ReactionRow message={message} onReact={onReact} />
         </div>
         <div
           className={cn(
@@ -427,7 +428,6 @@ function AttachmentBubble({
           {formatTime(message.createdAt)}
           {outgoing && <DeliveryStatus status={message.status ?? "sent"} />}
         </div>
-        <ReactionRow message={message} onReact={onReact} />
         {onReact && (
           <MessageActionSheet
             open={actionSheetOpen}
@@ -469,7 +469,7 @@ function ReactionRow({
   const reactions = (message.reactions ?? []).filter((r) => r.count > 0);
   if (!reactions.length) return null;
   return (
-    <div className="mt-1 flex flex-wrap items-center gap-1 px-1">
+    <div className="mt-2 flex flex-wrap items-center gap-1.5">
       {reactions.map((reaction) => {
         const option = reactionById(reaction.emoji);
         if (!option) return null;
@@ -479,15 +479,13 @@ function ReactionRow({
             type="button"
             onClick={() => onReact?.(message.id, reaction.emoji)}
             className={cn(
-              "inline-flex h-6 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium transition-colors",
-              reaction.mine
-                ? "border-cloak-gold/40 bg-cloak-gold-soft text-cloak-gold-bright"
-                : "border-cloak-border bg-cloak-bg-elevated text-cloak-text-muted"
+              "inline-flex h-7 items-center gap-1 rounded-full px-0.5 text-[11px] font-medium text-cloak-text-muted transition-transform hover:scale-105 active:scale-95",
+              reaction.mine && "text-cloak-text"
             )}
             title={option.label}
             aria-label={`${reaction.count} ${option.label} reaction${reaction.count === 1 ? "" : "s"}`}
           >
-            <img src={option.src} alt="" className="h-4 w-4 object-contain" />
+            <img src={option.src} alt="" className="h-6 w-6 object-contain" />
             {reaction.count > 1 && <span>{reaction.count}</span>}
           </button>
         );

@@ -12,7 +12,7 @@
  *   received and never enriches it from any local store.
  */
 
-const VERSION = "cloak-shell-v19";
+const VERSION = "cloak-shell-v20";
 const SHELL_CACHE = `cloak-shell-${VERSION}`;
 const STATIC_CACHE = `cloak-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -25,6 +25,12 @@ self.addEventListener("install", (event) => {
       await self.skipWaiting();
     })()
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    event.waitUntil(self.skipWaiting());
+  }
 });
 
 self.addEventListener("activate", (event) => {

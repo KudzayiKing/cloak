@@ -26,14 +26,63 @@ export function PwaRegister() {
       return;
     }
 
+    let refreshing = false;
+
+    const activateWaitingWorker = (registration: ServiceWorkerRegistration) => {
+      registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+    };
+
+    const watchRegistration = (registration: ServiceWorkerRegistration) => {
+      activateWaitingWorker(registration);
+      registration.addEventListener("updatefound", () => {
+        const worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "installed" && navigator.serviceWorker.controller) {
+            activateWaitingWorker(registration);
+          }
+        });
+      });
+    };
+
+    const checkForUpdate = () => {
+      navigator.serviceWorker.getRegistration().then((registration) => {
+        if (!registration) return;
+        void registration.update().then(() => activateWaitingWorker(registration));
+      });
+    };
+
+    const onControllerChange = () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") checkForUpdate();
+    };
+
     const register = () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
+      navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).then((registration) => {
+        watchRegistration(registration);
+        void registration.update();
+      }).catch(() => {
         // Offline shell is progressive enhancement; ignore failures silently.
       });
     };
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", checkForUpdate);
+    const interval = window.setInterval(checkForUpdate, 60_000);
     if (document.readyState === "complete") register();
     else window.addEventListener("load", register, { once: true });
-    return () => window.removeEventListener("load", register);
+    return () => {
+      window.removeEventListener("load", register);
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("focus", checkForUpdate);
+      window.clearInterval(interval);
+    };
   }, []);
 
   return null;
