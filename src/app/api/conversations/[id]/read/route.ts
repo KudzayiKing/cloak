@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/cloak/server/auth";
-import { isParticipant } from "@/lib/cloak/server/conversations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,12 +14,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
   }
   const { id: conversationId } = await params;
-  if (!(await isParticipant(conversationId, user.id))) {
-    return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
-  }
-  await db.participation.updateMany({
-    where: { conversationId, userId: user.id },
+  const updated = await db.participation.updateMany({
+    where: { conversationId, userId: user.id, removedAt: null },
     data: { lastReadAt: new Date(), lastDeliveredAt: new Date() },
   });
+  if (updated.count === 0) {
+    return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
+  }
   return NextResponse.json({ ok: true });
 }

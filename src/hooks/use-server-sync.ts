@@ -17,6 +17,7 @@ import { useCloakStore } from "@/stores/cloak-store";
 import type { ServerConversation, ServerContact, ServerMessage } from "@/stores/cloak-store";
 
 const POLL_MS = 2500;
+const MAX_POLL_MS = 15000;
 
 export function useServerSync(enabled: boolean) {
   const activeIdRef = useRef<string | null>(null);
@@ -32,17 +33,46 @@ export function useServerSync(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
+    let timer: number | undefined;
+    let failureCount = 0;
+
+    const schedule = (delay = POLL_MS) => {
+      if (cancelled) return;
+      timer = window.setTimeout(() => void tick(), delay);
+    };
+
+    const backoffDelay = () =>
+      Math.min(MAX_POLL_MS, POLL_MS * 2 ** Math.min(failureCount, 3));
+
+    const finishTick = (ok: boolean) => {
+      failureCount = ok ? 0 : failureCount + 1;
+      schedule(ok ? POLL_MS : backoffDelay());
+    };
 
     const tick = async () => {
-      if (cancelled || document.visibilityState === "hidden") return;
+      if (cancelled) return;
+      if (document.visibilityState === "hidden") {
+        schedule(MAX_POLL_MS);
+        return;
+      }
       const store = useCloakStore.getState();
-      if (!store.auth.user) return;
+      if (!store.auth.user) {
+        schedule();
+        return;
+      }
 
       const activeId = activeIdRef.current;
+      let tickOk = true;
 
       const list = await fetch("/api/conversations", { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null);
+        .then((r) => {
+          if (!r.ok) tickOk = false;
+          return r.ok ? r.json() : null;
+        })
+        .catch(() => {
+          tickOk = false;
+          return null;
+        });
       if (cancelled) return;
       if (list?.ok) {
         await store.mergeConversationList(
@@ -52,13 +82,15 @@ export function useServerSync(enabled: boolean) {
         );
       }
 
-      /* E2EE key maintenance: provision/unwrap/heal at a gentle cadence
-         (cooldown-guarded inside the store action). */
-      void store.syncE2eeKeys();
-
       const current = useCloakStore.getState();
       const currentActiveId = current.activeConversationId;
-      if (!currentActiveId || !current.conversations.some((c) => c.id === currentActiveId)) return;
+      if (!currentActiveId || !current.conversations.some((c) => c.id === currentActiveId)) {
+        /* E2EE key maintenance is serialized with the polling loop so the
+           Supabase pooler is not hit by list/messages/keys in parallel. */
+        await store.syncE2eeKeys();
+        finishTick(tickOk);
+        return;
+      }
 
       /* Poll the newest window only (50) — older pages are pulled on
          demand by "load earlier messages" and survive polls via the
@@ -66,9 +98,19 @@ export function useServerSync(enabled: boolean) {
       const detail = await fetch(`/api/conversations/${currentActiveId}/messages?limit=50`, {
         cache: "no-store",
       })
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null);
-      if (cancelled || activeIdRef.current !== currentActiveId) return;
+        .then((r) => {
+          if (!r.ok) tickOk = false;
+          return r.ok ? r.json() : null;
+        })
+        .catch(() => {
+          tickOk = false;
+          return null;
+        });
+      if (cancelled) return;
+      if (activeIdRef.current !== currentActiveId) {
+        finishTick(tickOk);
+        return;
+      }
       if (detail?.ok) {
         const messages = detail.messages as ServerMessage[];
         await store.replaceServerMessages(currentActiveId, messages, detail.hasMore);
@@ -77,18 +119,21 @@ export function useServerSync(enabled: boolean) {
         const newest = messages[messages.length - 1];
         if (newest && newest.authorId !== "me" && newest.id !== lastIncomingRef.current) {
           lastIncomingRef.current = newest.id;
-          void fetch(`/api/conversations/${currentActiveId}/read`, { method: "POST" }).catch(
-            () => undefined
-          );
+          const read = await fetch(`/api/conversations/${currentActiveId}/read`, { method: "POST" })
+            .then((r) => r.ok)
+            .catch(() => false);
+          if (!read) tickOk = false;
         }
       }
+
+      await store.syncE2eeKeys();
+      finishTick(tickOk);
     };
 
     void tick();
-    const timer = window.setInterval(() => void tick(), POLL_MS);
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      if (timer !== undefined) window.clearTimeout(timer);
     };
   }, [enabled]);
 }

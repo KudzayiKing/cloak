@@ -27,15 +27,11 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
   }
   const { id: conversationId } = await params;
-  const mine = await db.participation.findUnique({
-    where: { conversationId_userId: { conversationId, userId: user.id } },
-  });
-  if (!mine || mine.removedAt) {
-    return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
-  }
-
-  const conv = await db.conversation.findUnique({
-    where: { id: conversationId },
+  const conv = await db.conversation.findFirst({
+    where: {
+      id: conversationId,
+      participations: { some: { userId: user.id, removedAt: null } },
+    },
     select: { keyVersion: true, keyVersionAt: true, participations: { include: { user: true } } },
   });
   if (!conv) {

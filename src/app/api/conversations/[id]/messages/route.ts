@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/cloak/server/auth";
-import { isParticipant, mapMessage, purgeExpiredMessages } from "@/lib/cloak/server/conversations";
+import { mapMessage, purgeExpiredMessages } from "@/lib/cloak/server/conversations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,10 +30,26 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
   }
   const { id: conversationId } = await params;
-  const mine = await db.participation.findUnique({
-    where: { conversationId_userId: { conversationId, userId: user.id } },
+  const conversation = await db.conversation.findFirst({
+    where: {
+      id: conversationId,
+      participations: { some: { userId: user.id, removedAt: null } },
+    },
+    select: {
+      isGroup: true,
+      participations: {
+        where: { removedAt: null },
+        select: {
+          userId: true,
+          lastReadAt: true,
+          lastDeliveredAt: true,
+          historyFrom: true,
+        },
+      },
+    },
   });
-  if (!mine || mine.removedAt) {
+  const mine = conversation?.participations.find((p) => p.userId === user.id);
+  if (!conversation || !mine) {
     return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
   }
 
@@ -79,16 +95,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     data: { lastDeliveredAt: new Date() },
   });
 
-  const isGroup = (await db.conversation.findUnique({
-    where: { id: conversationId },
-    select: { isGroup: true },
-  }))?.isGroup ?? false;
-
   /* 1:1 tick source; groups keep the honest "sent" state. */
-  const participations = await db.participation.findMany({
-    where: { conversationId, removedAt: null },
-  });
-  const peer = isGroup ? undefined : participations.find((p) => p.userId !== user.id);
+  const peer = conversation.isGroup
+    ? undefined
+    : conversation.participations.find((p) => p.userId !== user.id);
 
   return NextResponse.json({
     ok: true,
@@ -132,9 +142,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
   }
   const { id: conversationId } = await params;
-  if (!(await isParticipant(conversationId, user.id))) {
-    return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
-  }
   let parsed: z.infer<typeof sendSchema>;
   try {
     parsed = sendSchema.parse(await req.json());
@@ -144,36 +151,46 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   /* Ghost chats: message TTL is stamped from the conversation's current
      mode at send time. Changing the mode later only affects new messages. */
-  const convMode = await db.conversation.findUnique({
-    where: { id: conversationId },
-    select: { ghostSeconds: true },
-  });
-  const ghostSeconds = convMode?.ghostSeconds ?? null;
-
-  const created = await db.message.create({
-    data: {
-      conversationId,
-      authorId: user.id,
-      kind: parsed.kind,
-      body: parsed.body,
-      ...(ghostSeconds ? { expiresAt: new Date(Date.now() + ghostSeconds * 1000) } : {}),
+  const conversation = await db.conversation.findFirst({
+    where: {
+      id: conversationId,
+      participations: { some: { userId: user.id, removedAt: null } },
     },
-    include: { author: true },
+    select: {
+      ghostSeconds: true,
+      isGroup: true,
+      participations: {
+        where: { removedAt: null },
+        select: { userId: true, lastReadAt: true, lastDeliveredAt: true },
+      },
+    },
   });
-  await db.conversation.update({
-    where: { id: conversationId },
-    data: { updatedAt: new Date() },
-  });
+  if (!conversation) {
+    return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
+  }
+  const ghostSeconds = conversation.ghostSeconds ?? null;
 
-  const isGroup = (await db.conversation.findUnique({
-    where: { id: conversationId },
-    select: { isGroup: true },
-  }))?.isGroup ?? false;
-  const peer = isGroup
+  const [created] = await db.$transaction([
+    db.message.create({
+      data: {
+        conversationId,
+        authorId: user.id,
+        kind: parsed.kind,
+        body: parsed.body,
+        ...(ghostSeconds ? { expiresAt: new Date(Date.now() + ghostSeconds * 1000) } : {}),
+      },
+      include: { author: true },
+    }),
+    db.conversation.update({
+      where: { id: conversationId },
+      data: { updatedAt: new Date() },
+      select: { id: true },
+    }),
+  ]);
+
+  const peer = conversation.isGroup
     ? undefined
-    : await db.participation.findFirst({
-        where: { conversationId, removedAt: null, userId: { not: user.id } },
-      });
+    : conversation.participations.find((p) => p.userId !== user.id);
 
   return NextResponse.json({
     ok: true,

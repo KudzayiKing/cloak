@@ -954,7 +954,7 @@ export const useCloakStore = create<CloakState>()(
             const keep = c.messages.filter((m) => {
               if (serverIds.has(m.id)) return false; // fresh copy below
               if (m.expiresAt && m.expiresAt <= nowMs) return false;
-              if (m.status === "failed") return false; // pre-merge behavior
+              if (m.status === "failed") return true;
               return true;
             });
             const byId = new Map(keep.map((m) => [m.id, m]));
