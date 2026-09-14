@@ -1574,7 +1574,7 @@ export const useCloakStore = create<CloakState>()(
       },
 
       cloakMode: false,
-      chatFontSize: "medium",
+      chatFontSize: "large",
       sidebarCollapsed: false,
       translationLanguage: "en",
       forwardSecrecy: "off" as ForwardSecrecyWindow,

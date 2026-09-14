@@ -108,6 +108,7 @@ export function SignInScreen() {
                 placeholder="@your.id"
                 autoComplete="username"
                 autoCapitalize="none"
+                autoCorrect="off"
                 spellCheck={false}
                 className="border-cloak-border bg-cloak-bg text-[15px] text-cloak-text placeholder:text-cloak-text-muted"
               />
@@ -127,6 +128,9 @@ export function SignInScreen() {
                 }}
                 placeholder="••••••••••••"
                 autoComplete="current-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 className="border-cloak-border bg-cloak-bg text-[15px] text-cloak-text placeholder:text-cloak-text-muted"
               />
             </label>
