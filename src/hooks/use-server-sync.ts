@@ -56,26 +56,28 @@ export function useServerSync(enabled: boolean) {
          (cooldown-guarded inside the store action). */
       void store.syncE2eeKeys();
 
-      if (!activeId) return;
+      const current = useCloakStore.getState();
+      const currentActiveId = current.activeConversationId;
+      if (!currentActiveId || !current.conversations.some((c) => c.id === currentActiveId)) return;
 
       /* Poll the newest window only (50) — older pages are pulled on
          demand by "load earlier messages" and survive polls via the
          store's merge semantics. */
-      const detail = await fetch(`/api/conversations/${activeId}/messages?limit=50`, {
+      const detail = await fetch(`/api/conversations/${currentActiveId}/messages?limit=50`, {
         cache: "no-store",
       })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null);
-      if (cancelled || activeIdRef.current !== activeId) return;
+      if (cancelled || activeIdRef.current !== currentActiveId) return;
       if (detail?.ok) {
         const messages = detail.messages as ServerMessage[];
-        await store.replaceServerMessages(activeId, messages, detail.hasMore);
+        await store.replaceServerMessages(currentActiveId, messages, detail.hasMore);
 
         /* New incoming while the chat is open -> mark read right away. */
         const newest = messages[messages.length - 1];
         if (newest && newest.authorId !== "me" && newest.id !== lastIncomingRef.current) {
           lastIncomingRef.current = newest.id;
-          void fetch(`/api/conversations/${activeId}/read`, { method: "POST" }).catch(
+          void fetch(`/api/conversations/${currentActiveId}/read`, { method: "POST" }).catch(
             () => undefined
           );
         }

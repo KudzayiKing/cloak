@@ -12,7 +12,6 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { DEMO_CONTACTS, DEMO_CONVERSATIONS } from "@/lib/cloak/demo-data";
 import type {
   AIProcessingPreference,
   CircleDetail,
@@ -928,7 +927,14 @@ export const useCloakStore = create<CloakState>()(
               };
             }
           }
-          return { contacts, conversations: next };
+          return {
+            contacts,
+            conversations: next,
+            activeConversationId:
+              s.activeConversationId && next.some((c) => c.id === s.activeConversationId)
+                ? s.activeConversationId
+                : null,
+          };
         });
       },
       replaceServerMessages: async (conversationId, messages, hasMore) => {
@@ -1581,12 +1587,12 @@ export const useCloakStore = create<CloakState>()(
         return membershipService.redeemGuestPass(token);
       },
 
-      contacts: DEMO_CONTACTS,
-      conversations: DEMO_CONVERSATIONS,
+      contacts: [],
+      conversations: [],
       /* Trusted devices are a server registry (dagger codex §24) — no
          demo rows: an honest empty list until /api/security responds. */
       devices: [],
-      activeConversationId: "c-sarah",
+      activeConversationId: null,
       setActiveConversation: (id) => set({ activeConversationId: id }),
 
       chatFilters: [],
@@ -2001,10 +2007,6 @@ export const useCloakStore = create<CloakState>()(
         sidebarCollapsed: s.sidebarCollapsed,
         translationLanguage: s.translationLanguage,
         forwardSecrecy: s.forwardSecrecy,
-        /* Re-open the last conversation after a reload — messages are
-           server-side, so the thread rehydrates from the API (and the
-           list previews arrive instantly). */
-        activeConversationId: s.activeConversationId,
         /* Protection stores only a PIN hash and a credential id. */
         cloakGuard: s.cloakGuard,
         privacy: s.privacy,
