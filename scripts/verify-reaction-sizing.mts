@@ -77,8 +77,8 @@ const pickerEmoji = classAfter(sheet, "src={reaction.src}");
 check("chat reaction emoji found", chatEmoji.length > 0, true);
 check("picker reaction emoji found", pickerEmoji.length > 0, true);
 
-check("chat emoji is h-9", sizeOf(chatEmoji), "9");
-check("picker emoji is h-9", sizeOf(pickerEmoji), "9");
+check("chat emoji is h-7", sizeOf(chatEmoji), "7");
+check("picker emoji is h-7", sizeOf(pickerEmoji), "7");
 
 check(
   "chat and picker emoji use the identical class",
@@ -125,6 +125,7 @@ check(
 const strip = stripClass(sheet);
 check("picker strip scrolls horizontally", strip.includes("overflow-x-auto"), true);
 check("picker strip opts out of the scrollbar", strip.includes("cloak-scroll-hidden"), true);
+check("picker removes its shadow in light mode", sheet.includes("cloak-light-shadowless"), true);
 
 // A class that does not exist is a silent no-op — assert it is really defined.
 const block = css.match(/\.cloak-scroll-hidden\s*\{([^}]*)\}/)?.[1] ?? "";

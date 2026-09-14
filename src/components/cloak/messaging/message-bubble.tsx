@@ -485,7 +485,7 @@ function ReactionRow({
             title={option.label}
             aria-label={`${reaction.count} ${option.label} reaction${reaction.count === 1 ? "" : "s"}`}
           >
-            <img src={option.src} alt="" className="h-9 w-9 object-contain" />
+            <img src={option.src} alt="" className="h-7 w-7 object-contain" />
             {reaction.count > 1 && <span>{reaction.count}</span>}
           </button>
         );

@@ -74,7 +74,7 @@ export function MessageActionSheet({
         </DialogDescription>
 
         <div className="mb-3 -mx-1 cloak-scroll-hidden overflow-x-auto px-1">
-          <div className="inline-flex min-w-full items-center gap-1 rounded-full border border-cloak-border bg-cloak-bg/85 px-2 py-1.5 shadow-xl shadow-black/25">
+          <div className="cloak-light-shadowless inline-flex min-w-full items-center gap-1 rounded-full border border-cloak-border bg-cloak-bg/85 px-2 py-1.5 shadow-xl shadow-black/25">
             {CLOAK_REACTIONS.map((reaction) => (
               <button
                 key={reaction.id}
@@ -87,7 +87,7 @@ export function MessageActionSheet({
                 title={reaction.label}
                 aria-label={`React with ${reaction.label}`}
               >
-                <img src={reaction.src} alt="" className="h-9 w-9 object-contain" />
+                <img src={reaction.src} alt="" className="h-7 w-7 object-contain" />
               </button>
             ))}
           </div>
