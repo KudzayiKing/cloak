@@ -22,6 +22,7 @@ import type {
   DisappearingTimer,
   MemoryScope,
   Message,
+  MessageReactionSummary,
   MembershipEntitlement,
   MessageKind,
   PreviewVisibility,
@@ -158,6 +159,7 @@ export interface ServerMessage {
   authorName?: string;
   /** Ghost chats: epoch ms purge time; null when not ghost-timed. */
   expiresAt?: number | null;
+  reactions?: MessageReactionSummary[];
 }
 
 export interface ServerConversation {
@@ -292,6 +294,7 @@ function toClientMessage(m: ServerMessage): Message {
     authorName: m.authorName,
     expiresAt: m.expiresAt ?? undefined,
     disappearsAfter: m.expiresAt ? "custom" : undefined,
+    reactions: m.reactions ?? [],
   });
 }
 
@@ -322,6 +325,26 @@ function attachmentMessageFromEnvelope(
     attachmentMime: envelope.mime,
     attachmentStoredLocal: true,
   };
+}
+
+function toggleLocalReaction(
+  reactions: MessageReactionSummary[] | undefined,
+  emoji: string
+): MessageReactionSummary[] {
+  const next = (reactions ?? []).map((r) => ({ ...r }));
+  const existing = next.find((r) => r.emoji === emoji);
+  if (existing) {
+    if (existing.mine) {
+      existing.mine = false;
+      existing.count = Math.max(0, existing.count - 1);
+    } else {
+      existing.mine = true;
+      existing.count += 1;
+    }
+  } else {
+    next.push({ emoji, count: 1, mine: true });
+  }
+  return next.filter((r) => r.count > 0).sort((a, b) => b.count - a.count);
 }
 
 function toClientConversation(c: ServerConversation): Conversation {
@@ -675,6 +698,11 @@ interface CloakState {
   appendAIMessage: (conversationId: string, message: Message) => void;
   markConversationRead: (conversationId: string) => void;
   markViewOnceViewed: (conversationId: string, messageId: string) => void;
+  toggleMessageReaction: (
+    conversationId: string,
+    messageId: string,
+    emoji: string
+  ) => Promise<void>;
   unlockConversation: (conversationId: string) => void;
   /** Server-backed group AI permission (spec §64). Groups: owner only —
    *  enforced by the route. Returns the effective (§39) state. */
@@ -1918,9 +1946,45 @@ export const useCloakStore = create<CloakState>()(
                     m.id === messageId ? { ...m, viewed: true } : m
                   ),
                 }
-              : c
+                : c
           ),
         })),
+
+      toggleMessageReaction: async (conversationId, messageId, emoji) => {
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === conversationId
+              ? {
+                  ...c,
+                  messages: c.messages.map((m) =>
+                    m.id === messageId
+                      ? { ...m, reactions: toggleLocalReaction(m.reactions, emoji) }
+                      : m
+                  ),
+                }
+              : c
+          ),
+        }));
+
+        const res = await api<{ reactions: MessageReactionSummary[] }>(
+          `/api/conversations/${conversationId}/messages/${messageId}/reactions`,
+          { method: "POST", body: JSON.stringify({ emoji }) }
+        );
+        if (!res.ok) return;
+
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === conversationId
+              ? {
+                  ...c,
+                  messages: c.messages.map((m) =>
+                    m.id === messageId ? { ...m, reactions: res.data.reactions } : m
+                  ),
+                }
+              : c
+          ),
+        }));
+      },
 
       unlockConversation: (conversationId) =>
         set((s) => ({

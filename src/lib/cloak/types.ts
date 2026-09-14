@@ -215,6 +215,13 @@ export interface Message {
   voiceDurationSec?: number;
   /** For AI answers: where and how processing happened. */
   ai?: AIProcessingDetails;
+  reactions?: MessageReactionSummary[];
+}
+
+export interface MessageReactionSummary {
+  emoji: string;
+  count: number;
+  mine?: boolean;
 }
 
 export interface Conversation {

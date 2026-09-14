@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { CopyIcon, CheckIcon, EyeIcon } from "@animateicons/react/lucide";
 import { LanguagesIcon } from "lucide-react";
+import { CLOAK_REACTIONS } from "@/lib/cloak/reactions";
 
 export function MessageActionSheet({
   open,
@@ -24,6 +25,8 @@ export function MessageActionSheet({
   hasTranslation,
   showingOriginal,
   disabled,
+  onReact,
+  showTextActions,
   onTranslate,
   onToggleTranslation,
 }: {
@@ -34,6 +37,9 @@ export function MessageActionSheet({
   hasTranslation?: boolean;
   showingOriginal?: boolean;
   disabled?: boolean;
+  selectedReactions?: string[];
+  onReact?: (emoji: string) => void;
+  showTextActions?: boolean;
   onTranslate: () => void;
   onToggleTranslation?: () => void;
 }) {
@@ -67,44 +73,69 @@ export function MessageActionSheet({
           Translate this message on-device or copy its text.
         </DialogDescription>
 
-        {/* Quoted preview of the message being acted on */}
-        <p className="mb-3 line-clamp-2 rounded-xl border border-cloak-border bg-cloak-bg/60 px-3 py-2 text-[12px] leading-relaxed text-cloak-text-secondary">
-          {messagePreview}
-        </p>
-
-        <div className="flex flex-col gap-1.5">
-          {hasTranslation ? (
-            <SheetButton
-              onClick={() => {
-                onToggleTranslation?.();
-                onOpenChange(false);
-              }}
-              icon={<EyeIcon size={15} />}
-              label={showingOriginal ? "Show translation" : "Show original"}
-            />
-          ) : (
-            <SheetButton
-              gold
-              disabled={disabled}
-              onClick={() => {
-                onTranslate();
-                onOpenChange(false);
-              }}
-              icon={<LanguagesIcon size={15} />}
-              label={`Translate to ${targetLanguageName}`}
-            />
-          )}
-          <SheetButton
-            onClick={copy}
-            icon={copied ? <CheckIcon size={15} className="text-cloak-gold" /> : <CopyIcon size={15} />}
-            label={copied ? "Copied" : "Copy text"}
-          />
+        <div className="mb-3 -mx-1 overflow-x-auto px-1">
+          <div className="inline-flex min-w-full items-center gap-1 rounded-full border border-cloak-border bg-cloak-bg/85 px-2 py-1.5 shadow-xl shadow-black/25">
+            {CLOAK_REACTIONS.map((reaction) => (
+              <button
+                key={reaction.id}
+                type="button"
+                onClick={() => {
+                  onReact?.(reaction.id);
+                  onOpenChange(false);
+                }}
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors hover:bg-cloak-surface-hover active:scale-95"
+                title={reaction.label}
+                aria-label={`React with ${reaction.label}`}
+              >
+                <img src={reaction.src} alt="" className="h-7 w-7 object-contain" />
+              </button>
+            ))}
+          </div>
         </div>
 
-        <p className="mt-3 px-1 text-[10.5px] leading-relaxed text-cloak-text-muted">
-          Translation runs entirely on this device — the message text is never
-          uploaded.
-        </p>
+        {showTextActions !== false && messagePreview ? (
+          <p className="mb-3 line-clamp-2 rounded-xl border border-cloak-border bg-cloak-bg/60 px-3 py-2 text-[12px] leading-relaxed text-cloak-text-secondary">
+            {messagePreview}
+          </p>
+        ) : null}
+
+        {showTextActions !== false && (
+          <div className="flex flex-col gap-1.5">
+            {hasTranslation ? (
+              <SheetButton
+                onClick={() => {
+                  onToggleTranslation?.();
+                  onOpenChange(false);
+                }}
+                icon={<EyeIcon size={15} />}
+                label={showingOriginal ? "Show translation" : "Show original"}
+              />
+            ) : (
+              <SheetButton
+                gold
+                disabled={disabled}
+                onClick={() => {
+                  onTranslate();
+                  onOpenChange(false);
+                }}
+                icon={<LanguagesIcon size={15} />}
+                label={`Translate to ${targetLanguageName}`}
+              />
+            )}
+            <SheetButton
+              onClick={copy}
+              icon={copied ? <CheckIcon size={15} className="text-cloak-gold" /> : <CopyIcon size={15} />}
+              label={copied ? "Copied" : "Copy text"}
+            />
+          </div>
+        )}
+
+        {showTextActions !== false && (
+          <p className="mt-3 px-1 text-[10.5px] leading-relaxed text-cloak-text-muted">
+            Translation runs entirely on this device — the message text is never
+            uploaded.
+          </p>
+        )}
       </DialogContent>
     </Dialog>
   );

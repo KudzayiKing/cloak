@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/cloak/utils";
 import { getLocalAttachment } from "@/lib/cloak/attachment-storage";
+import { reactionById } from "@/lib/cloak/reactions";
 import type { Message } from "@/lib/cloak/types";
 import { useCloakStore } from "@/stores/cloak-store";
 import { useTranslationStore, type MessageTranslation } from "@/stores/translation-store";
@@ -37,17 +38,22 @@ import { CloakMark } from "@/components/cloak/brand/CloakLogo";
 export function MessageBubble({
   message,
   showAuthor,
+  authorInitials,
+  showAvatar,
   cloakMode,
   onDownloadModel,
+  onReact,
 }: {
   message: Message;
   showAuthor?: string;
+  authorInitials?: string;
+  showAvatar?: boolean;
   cloakMode: boolean;
   onDownloadModel?: () => void;
+  onReact?: (messageId: string, emoji: string) => void;
 }) {
   /* Long-press translation (user request) — hooks run unconditionally at
-     the top; only the TEXT branch attaches the handlers and renders the
-     action sheet. */
+     the top; text, media, and voice branches attach them where appropriate. */
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const translationLanguage = useCloakStore((s) => s.translationLanguage);
   const translation = useTranslationStore((s) => s.entries[message.id]);
@@ -61,6 +67,8 @@ export function MessageBubble({
   const outgoing = message.authorId === "me";
   const cloakRedacted = cloakMode && !outgoing;
   const translatable = message.body.trim().length > 0 && !cloakRedacted;
+  const canReact = Boolean(onReact) && !message.bodyLocked && message.kind !== "system" && message.kind !== "ai";
+  const actionPreview = message.fileName ?? message.body;
 
   /* System / security events */
   if (message.kind === "system") {
@@ -108,7 +116,10 @@ export function MessageBubble({
   /* View-once */
   if (message.kind === "view-once") {
     return (
-      <div className={cn("flex", outgoing ? "justify-end" : "justify-start")}>
+      <div
+        {...(canReact ? longPressHandlers : {})}
+        className={cn("flex", outgoing ? "justify-end" : "justify-start")}
+      >
         <div
           className={cn(
             "cloak-message-in flex max-w-[80%] items-center gap-3 rounded-2xl border border-dashed border-cloak-border-strong bg-cloak-surface px-3.5 py-3",
@@ -125,6 +136,18 @@ export function MessageBubble({
             </p>
           </div>
         </div>
+        {canReact && (
+          <MessageActionSheet
+            open={actionSheetOpen}
+            onOpenChange={setActionSheetOpen}
+            messagePreview={message.fileName ?? "View-once media"}
+            targetLanguageName={targetLanguage.name}
+            hasTranslation={false}
+            showTextActions={false}
+            onTranslate={() => undefined}
+            onReact={(emoji) => onReact?.(message.id, emoji)}
+          />
+        )}
       </div>
     );
   }
@@ -132,21 +155,34 @@ export function MessageBubble({
   /* File */
   if (message.kind === "file") {
     return (
-      <AttachmentBubble message={message} outgoing={outgoing} kind="file" />
+      <AttachmentBubble
+        message={message}
+        outgoing={outgoing}
+        kind="file"
+        onReact={onReact}
+      />
     );
   }
 
   /* Image */
   if (message.kind === "image") {
     return (
-      <AttachmentBubble message={message} outgoing={outgoing} kind="image" />
+      <AttachmentBubble
+        message={message}
+        outgoing={outgoing}
+        kind="image"
+        onReact={onReact}
+      />
     );
   }
 
   /* Voice note shell */
   if (message.kind === "voice") {
     return (
-      <div className={cn("flex", outgoing ? "justify-end" : "justify-start")}>
+      <div
+        {...(canReact ? longPressHandlers : {})}
+        className={cn("flex", outgoing ? "justify-end" : "justify-start")}
+      >
         <div
           className={cn(
             "cloak-message-in flex max-w-[80%] items-center gap-3 rounded-2xl border border-cloak-border bg-cloak-surface px-3.5 py-3",
@@ -159,6 +195,19 @@ export function MessageBubble({
           <AudioLinesIcon size={40} className="text-cloak-text-muted" />
           <span className="text-[11px] text-cloak-text-muted">{message.voiceDurationSec ?? 0}:00</span>
         </div>
+        <ReactionRow message={message} onReact={onReact} />
+        {canReact && (
+          <MessageActionSheet
+            open={actionSheetOpen}
+            onOpenChange={setActionSheetOpen}
+            messagePreview="Voice note"
+            targetLanguageName={targetLanguage.name}
+            hasTranslation={false}
+            showTextActions={false}
+            onTranslate={() => undefined}
+            onReact={(emoji) => onReact?.(message.id, emoji)}
+          />
+        )}
       </div>
     );
   }
@@ -171,13 +220,16 @@ export function MessageBubble({
     translation && translation.status !== "error" && !showOriginal;
 
   return (
-    <div className={cn("flex", outgoing ? "justify-end" : "justify-start")}>
+    <div className={cn("flex", outgoing ? "justify-end" : "justify-start", !outgoing && authorInitials && "items-end gap-2")}>
+      {!outgoing && authorInitials && (
+        <AuthorAvatar initials={authorInitials} visible={Boolean(showAvatar)} />
+      )}
       <div className={cn("max-w-[85%] md:max-w-[70%]")}>
         {showAuthor && !outgoing && (
           <p className="mb-1 pl-1 text-[11px] font-medium text-cloak-text-muted">{showAuthor}</p>
         )}
         <div
-          {...(translatable ? longPressHandlers : {})}
+          {...(translatable || canReact ? longPressHandlers : {})}
           className={cn(
             "cloak-message-in rounded-3xl border px-3.5 py-2.5",
             "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
@@ -226,6 +278,7 @@ export function MessageBubble({
             </>
           )}
         </div>
+        <ReactionRow message={message} onReact={onReact} />
         <div
           className={cn(
             "mt-1 flex items-center gap-1.5 px-1 text-[10px] text-cloak-text-muted",
@@ -239,16 +292,17 @@ export function MessageBubble({
           {outgoing && <DeliveryStatus status={message.status ?? "sent"} />}
         </div>
 
-        {translatable && (
+        {(translatable || canReact) && (
           <MessageActionSheet
             open={actionSheetOpen}
             onOpenChange={setActionSheetOpen}
-            messagePreview={message.body}
+            messagePreview={actionPreview}
             targetLanguageName={targetLanguage.name}
             hasTranslation={translation?.status === "done"}
             showingOriginal={Boolean(showOriginal)}
             onTranslate={() => translateMessage(message.id, message.body, translationLanguage)}
             onToggleTranslation={() => toggleShowOriginal(message.id)}
+            onReact={(emoji) => onReact?.(message.id, emoji)}
           />
         )}
       </div>
@@ -260,13 +314,18 @@ function AttachmentBubble({
   message,
   outgoing,
   kind,
+  onReact,
 }: {
   message: Message;
   outgoing: boolean;
   kind: "file" | "image";
+  onReact?: (messageId: string, emoji: string) => void;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [available, setAvailable] = useState<boolean | null>(null);
+  const [actionSheetOpen, setActionSheetOpen] = useState(false);
+  const openActionSheet = useCallback(() => setActionSheetOpen(true), []);
+  const { longPressHandlers } = useLongPress(openActionSheet);
 
   useEffect(() => {
     let cancelled = false;
@@ -308,7 +367,10 @@ function AttachmentBubble({
   };
 
   return (
-    <div className={cn("flex", outgoing ? "justify-end" : "justify-start")}>
+    <div
+      {...(onReact ? longPressHandlers : {})}
+      className={cn("flex", outgoing ? "justify-end" : "justify-start")}
+    >
       <div
         className={cn(
           "cloak-message-in max-w-[82%] rounded-2xl border p-2.5 md:max-w-[65%]",
@@ -365,7 +427,71 @@ function AttachmentBubble({
           {formatTime(message.createdAt)}
           {outgoing && <DeliveryStatus status={message.status ?? "sent"} />}
         </div>
+        <ReactionRow message={message} onReact={onReact} />
+        {onReact && (
+          <MessageActionSheet
+            open={actionSheetOpen}
+            onOpenChange={setActionSheetOpen}
+            messagePreview={name}
+            targetLanguageName=""
+            hasTranslation={false}
+            showTextActions={false}
+            onTranslate={() => undefined}
+            onReact={(emoji) => onReact(message.id, emoji)}
+          />
+        )}
       </div>
+    </div>
+  );
+}
+
+function AuthorAvatar({ initials, visible }: { initials: string; visible: boolean }) {
+  return (
+    <span
+      className={cn(
+        "mb-5 grid h-7 w-7 shrink-0 place-items-center rounded-full border border-cloak-border bg-cloak-surface text-[10px] font-semibold text-cloak-text-secondary",
+        !visible && "invisible"
+      )}
+      aria-hidden={!visible}
+    >
+      {initials}
+    </span>
+  );
+}
+
+function ReactionRow({
+  message,
+  onReact,
+}: {
+  message: Message;
+  onReact?: (messageId: string, emoji: string) => void;
+}) {
+  const reactions = (message.reactions ?? []).filter((r) => r.count > 0);
+  if (!reactions.length) return null;
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1 px-1">
+      {reactions.map((reaction) => {
+        const option = reactionById(reaction.emoji);
+        if (!option) return null;
+        return (
+          <button
+            key={reaction.emoji}
+            type="button"
+            onClick={() => onReact?.(message.id, reaction.emoji)}
+            className={cn(
+              "inline-flex h-6 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium transition-colors",
+              reaction.mine
+                ? "border-cloak-gold/40 bg-cloak-gold-soft text-cloak-gold-bright"
+                : "border-cloak-border bg-cloak-bg-elevated text-cloak-text-muted"
+            )}
+            title={option.label}
+            aria-label={`${reaction.count} ${option.label} reaction${reaction.count === 1 ? "" : "s"}`}
+          >
+            <img src={option.src} alt="" className="h-4 w-4 object-contain" />
+            {reaction.count > 1 && <span>{reaction.count}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }

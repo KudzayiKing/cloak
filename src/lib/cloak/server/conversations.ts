@@ -37,6 +37,7 @@ export interface ServerMessagePayload {
   authorName?: string;
   /** Ghost chats: epoch ms when the server will purge this message. */
   expiresAt?: number | null;
+  reactions?: { emoji: string; count: number; mine?: boolean }[];
 }
 
 export interface ServerConversationPayload {
@@ -101,6 +102,7 @@ type MessageRow = {
   createdAt: Date;
   expiresAt?: Date | null;
   author?: { displayName: string } | null;
+  reactions?: { emoji: string; userId: string }[];
 };
 
 type ConvRow = {
@@ -139,6 +141,17 @@ export function mapMessage(
     else if (peerLastDeliveredAt && peerLastDeliveredAt.getTime() >= createdAtMs) status = "delivered";
     else status = "sent";
   }
+  const reactionCounts = new Map<string, { emoji: string; count: number; mine?: boolean }>();
+  for (const reaction of m.reactions ?? []) {
+    const summary = reactionCounts.get(reaction.emoji) ?? {
+      emoji: reaction.emoji,
+      count: 0,
+      mine: false,
+    };
+    summary.count += 1;
+    if (reaction.userId === viewerId) summary.mine = true;
+    reactionCounts.set(reaction.emoji, summary);
+  }
   return {
     id: m.id,
     conversationId: m.conversationId,
@@ -149,6 +162,7 @@ export function mapMessage(
     status,
     authorName: m.author?.displayName ?? undefined,
     expiresAt: m.expiresAt ? m.expiresAt.getTime() : null,
+    reactions: [...reactionCounts.values()].sort((a, b) => b.count - a.count),
   };
 }
 
@@ -248,7 +262,7 @@ export async function loadConversationsForUser(userId: string) {
         where: { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
         orderBy: { createdAt: "desc" as const },
         take: 1,
-        include: { author: true },
+        include: { author: true, reactions: { select: { emoji: true, userId: true } } },
       },
     },
     orderBy: { updatedAt: "desc" as const },
@@ -307,7 +321,7 @@ export async function loadConversationDetail(convId: string, viewerId: string) {
         where: mine.historyFrom ? { createdAt: { gte: mine.historyFrom } } : undefined,
         orderBy: { createdAt: "desc" as const },
         take: MESSAGE_HISTORY_CAP,
-        include: { author: true },
+        include: { author: true, reactions: { select: { emoji: true, userId: true } } },
       },
     },
   });

@@ -44,6 +44,7 @@ model User {
   sessions           Session[]
   participations     Participation[]
   messages           Message[]
+  messageReactions   MessageReaction[]
   joinRequests       GroupJoinRequest[]
   keyWraps           ConversationKeyWrap[]
   paymentRequests    PaymentRequest[]
@@ -203,9 +204,24 @@ model Message {
   createdAt      DateTime     @default(now())
   // Ghost chats: when this passes, the message is purged on next access.
   expiresAt      DateTime?
+  reactions      MessageReaction[]
 
   @@index([conversationId, createdAt])
   @@index([expiresAt])
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@index([userId])
 }
 
 // E2EE key distribution: a conversation's symmetric key, wrapped for ONE

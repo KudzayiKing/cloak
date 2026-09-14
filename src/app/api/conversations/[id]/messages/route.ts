@@ -84,7 +84,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     where: { conversationId, ...(createdAt ? { createdAt } : {}) },
     orderBy: { createdAt: "desc" },
     take: limit + 1,
-    include: { author: true },
+    include: { author: true, reactions: { select: { emoji: true, userId: true } } },
   });
   const hasMore = rows.length > limit;
   const messages = rows.slice(0, limit).reverse(); // window, ascending
@@ -179,7 +179,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         body: parsed.body,
         ...(ghostSeconds ? { expiresAt: new Date(Date.now() + ghostSeconds * 1000) } : {}),
       },
-      include: { author: true },
+      include: { author: true, reactions: { select: { emoji: true, userId: true } } },
     }),
     db.conversation.update({
       where: { id: conversationId },

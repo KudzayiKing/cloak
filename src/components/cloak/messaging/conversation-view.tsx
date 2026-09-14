@@ -51,6 +51,7 @@ export function ConversationView({
   const aiSettings = useCloakStore((s) => s.ai);
   const sendMessage = useCloakStore((s) => s.sendMessage);
   const sendAttachment = useCloakStore((s) => s.sendAttachment);
+  const toggleMessageReaction = useCloakStore((s) => s.toggleMessageReaction);
   const appendAIMessage = useCloakStore((s) => s.appendAIMessage);
   const markConversationRead = useCloakStore((s) => s.markConversationRead);
   const markViewOnceViewed = useCloakStore((s) => s.markViewOnceViewed);
@@ -376,22 +377,40 @@ export function ConversationView({
                 </span>
               </div>
             )}
-            {conversation.messages.map((m) => (
-              <MessageBubble
-                key={m.id}
-                message={m}
-                showAuthor={
-                  conversation.isGroup &&
-                  m.authorId !== "me" &&
-                  m.kind !== "system" &&
-                  m.authorId !== "cloak"
-                    ? m.authorName ?? "Member"
-                    : undefined
-                }
-                cloakMode={cloakMode}
-                onDownloadModel={() => navigate("/app/settings/ai")}
-              />
-            ))}
+            {conversation.messages.map((m, index) => {
+              const groupIncoming =
+                conversation.isGroup &&
+                m.authorId !== "me" &&
+                m.kind !== "system" &&
+                m.authorId !== "cloak";
+              const previous = conversation.messages[index - 1];
+              const next = conversation.messages[index + 1];
+              const sameAsPrevious =
+                groupIncoming &&
+                previous?.authorId === m.authorId &&
+                previous.kind !== "system" &&
+                previous.authorId !== "cloak";
+              const sameAsNext =
+                groupIncoming &&
+                next?.authorId === m.authorId &&
+                next.kind !== "system" &&
+                next.authorId !== "cloak";
+              const authorName = m.authorName ?? "Member";
+              return (
+                <MessageBubble
+                  key={m.id}
+                  message={m}
+                  showAuthor={groupIncoming && !sameAsPrevious ? authorName : undefined}
+                  authorInitials={groupIncoming ? initialsOf(authorName) : undefined}
+                  showAvatar={Boolean(groupIncoming && !sameAsNext)}
+                  cloakMode={cloakMode}
+                  onDownloadModel={() => navigate("/app/settings/ai")}
+                  onReact={(messageId, emoji) =>
+                    void toggleMessageReaction(conversation.id, messageId, emoji)
+                  }
+                />
+              );
+            })}
             {/* Cloak is answering inline (user feedback: AI lives in every chat) */}
             {cloakPending && (
               <div className="cloak-message-in flex justify-start">
