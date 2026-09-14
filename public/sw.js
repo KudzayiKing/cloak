@@ -12,7 +12,7 @@
  *   received and never enriches it from any local store.
  */
 
-const VERSION = "cloak-shell-v20";
+const VERSION = "cloak-shell-v21";
 const SHELL_CACHE = `cloak-shell-${VERSION}`;
 const STATIC_CACHE = `cloak-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -43,6 +43,20 @@ self.addEventListener("activate", (event) => {
           .map((k) => caches.delete(k))
       );
       await self.clients.claim();
+      const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      await Promise.all(
+        clientList.map(async (client) => {
+          if ("navigate" in client && client.url) {
+            try {
+              await client.navigate(client.url);
+            } catch {
+              client.postMessage({ type: "CLOAK_SW_UPDATED" });
+            }
+          } else {
+            client.postMessage({ type: "CLOAK_SW_UPDATED" });
+          }
+        })
+      );
     })()
   );
 });

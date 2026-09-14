@@ -58,6 +58,13 @@ export function PwaRegister() {
       window.location.reload();
     };
 
+    const onWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type !== "CLOAK_SW_UPDATED") return;
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    };
+
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") checkForUpdate();
     };
@@ -71,6 +78,7 @@ export function PwaRegister() {
       });
     };
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    navigator.serviceWorker.addEventListener("message", onWorkerMessage);
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("focus", checkForUpdate);
     const interval = window.setInterval(checkForUpdate, 60_000);
@@ -79,6 +87,7 @@ export function PwaRegister() {
     return () => {
       window.removeEventListener("load", register);
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      navigator.serviceWorker.removeEventListener("message", onWorkerMessage);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("focus", checkForUpdate);
       window.clearInterval(interval);

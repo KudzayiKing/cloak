@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { useHashRoute } from "@/hooks/use-hash-route";
 import { SplashScreen } from "@/components/cloak/brand/splash-screen";
 import { DaggerOverlay } from "@/components/cloak/security/dagger";
+import { PullToRefresh } from "@/components/cloak/pwa/pull-to-refresh";
 import { installDaggerBroadcast } from "@/lib/cloak/dagger";
 import { CloakApp } from "./cloak-app";
 
@@ -22,6 +23,7 @@ export function CloakRoot() {
     <>
       <SplashScreen />
       <CloakApp route={route} />
+      <PullToRefresh />
       {/* Dagger lock/completion overlay — above everything, covers all
           sensitive UI the instant execution starts (codex §6). */}
       <DaggerOverlay />
