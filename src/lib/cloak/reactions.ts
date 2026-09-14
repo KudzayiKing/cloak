@@ -4,7 +4,7 @@ export interface CloakReactionOption {
   src: string;
 }
 
-const REACTION_ASSET_VERSION = "2026-09-salute";
+const REACTION_ASSET_VERSION = "2026-09-reactions-v4";
 
 function reactionAsset(file: string): string {
   return `/reactions/${file}.webp?v=${REACTION_ASSET_VERSION}`;
@@ -16,7 +16,6 @@ export const CLOAK_REACTIONS: CloakReactionOption[] = [
   { id: "laugh", label: "Laugh", src: reactionAsset("laugh") },
   { id: "eyes", label: "Watching", src: reactionAsset("eyes") },
   { id: "secure", label: "Secure", src: reactionAsset("secure") },
-  { id: "salute", label: "Salute", src: reactionAsset("salute") },
   { id: "thinking", label: "Thinking", src: reactionAsset("thinking") },
   { id: "fire", label: "Fire", src: reactionAsset("fire") },
   { id: "ok", label: "OK", src: reactionAsset("ok") },
