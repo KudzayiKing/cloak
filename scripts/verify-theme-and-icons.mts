@@ -370,6 +370,23 @@ check(
   const sync = stripComments(read("src/components/cloak/theme/theme-sync.tsx"));
   check("ThemeSync subscribes rather than reading on mount", /useCloakStore\.subscribe/.test(sync), true);
 
+  const shell = stripComments(read("src/components/cloak/navigation/app-shell.tsx"));
+  check(
+    "mobile chrome paints the status-bar safe area",
+    /h-\[env\(safe-area-inset-top\)\][^"]*bg-cloak-bg-elevated/.test(shell),
+    true
+  );
+  check(
+    "mobile chrome paints the gesture-bar safe area",
+    /h-\[env\(safe-area-inset-bottom\)\][^"]*bg-cloak-bg/.test(shell),
+    true
+  );
+  check(
+    "mobile bottom nav wrapper also carries the gesture-bar theme background",
+    /className="[^"]*fixed inset-x-0 bottom-0[^"]*bg-cloak-bg/.test(shell),
+    true
+  );
+
   const settings = stripComments(read("src/components/cloak/settings/settings-page.tsx"));
   check("Settings exposes a theme choice", /setTheme\(choice\.id\)/.test(settings), true);
   check(

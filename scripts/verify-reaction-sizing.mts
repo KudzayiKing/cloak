@@ -19,8 +19,9 @@
  * Run: node_modules/.bin/tsx scripts/verify-reaction-sizing.mts
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { CLOAK_REACTIONS } from "../src/lib/cloak/reactions";
 
 /* ---------- helpers ---------- */
 
@@ -145,6 +146,18 @@ check(
 );
 // The hidden variant must not disable scrolling itself.
 check("picker strip is not overflow-hidden", strip.includes("overflow-hidden"), false);
+
+/* ---------- 4. the registered image assets exist and are cache-busted ------ */
+
+for (const reaction of CLOAK_REACTIONS) {
+  const [path, query = ""] = reaction.src.split("?");
+  check(`${reaction.id} carries the reaction asset version`, query.startsWith("v="), true);
+  check(
+    `${reaction.id} points at a public reaction asset`,
+    existsSync(join(root, "public", path.replace(/^\//, ""))),
+    true
+  );
+}
 
 /* ---------- report ---------- */
 

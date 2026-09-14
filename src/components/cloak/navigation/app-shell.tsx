@@ -338,6 +338,13 @@ export function AppShell({
       {/* Main column — min-h-0 lets it shrink inside the h-dvh root so
           the page itself never scrolls on mobile */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-cloak-bg">
+        {mobileChrome && (
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[env(safe-area-inset-top)] bg-cloak-bg-elevated md:hidden"
+          />
+        )}
+
         {/* Mobile header — fixed glass overlay (homepage glassmorphism,
             user feedback round 13). Content scrolls beneath it; each page's
             scroll container clears it with pt-14. Owner de-clutter round:
@@ -409,7 +416,7 @@ export function AppShell({
       {mobileChrome && (
         <nav
           aria-label="Primary"
-          className="fixed inset-x-0 bottom-0 z-40 md:hidden"
+          className="fixed inset-x-0 bottom-0 z-40 bg-cloak-bg md:hidden"
         >
           <div className="grid grid-cols-4 border-t border-cloak-border bg-cloak-bg-elevated backdrop-blur-xl supports-[backdrop-filter]:bg-cloak-bg-elevated/70">
             {MOBILE_NAV.map((item) => (
