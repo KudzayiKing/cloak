@@ -77,7 +77,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    // No theme class is hardcoded on <html>: the inline bootstrap script
+    // applies the stored choice before first paint and ThemeSync re-applies it
+    // on mount, so a hardcoded class would be redundant and could let a layout
+    // re-render wipe an imperatively-added .light.
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${cloakSerif.variable} antialiased bg-background text-foreground`}
       >

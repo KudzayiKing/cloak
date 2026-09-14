@@ -40,7 +40,7 @@ import {
   type DaggerConfiguration,
 } from "@/lib/cloak/dagger";
 import { MODEL_MANIFEST } from "@/lib/cloak/config";
-import { DEFAULT_CLOAK_THEME, type CloakTheme } from "@/lib/cloak/theme";
+import { DEFAULT_CLOAK_THEME, applyCloakTheme, type CloakTheme } from "@/lib/cloak/theme";
 import {
   parseAttachmentEnvelope,
   saveLocalAttachment,
@@ -1648,7 +1648,14 @@ export const useCloakStore = create<CloakState>()(
       setCloakMode: (on) => set({ cloakMode: on }),
       toggleCloakMode: () => set((s) => ({ cloakMode: !s.cloakMode })),
       setChatFontSize: (size) => set({ chatFontSize: size }),
-      setTheme: (theme) => set({ theme }),
+      /* Apply the theme to <html> synchronously, not only via the ThemeSync
+         subscription. This guarantees picking Light/Dark in Settings takes
+         effect on the very same tick regardless of subscription timing, and it
+         is idempotent with the bootstrap script and ThemeSync's mount apply. */
+      setTheme: (theme) => {
+        set({ theme });
+        if (typeof document !== "undefined") applyCloakTheme(theme);
+      },
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
       setTranslationLanguage: (code) => set({ translationLanguage: code }),
       setForwardSecrecy: (window) => {
@@ -2328,6 +2335,13 @@ export const useCloakStore = create<CloakState>()(
     }
   )
 );
+
+/* TEMP-theme-repro: expose the store in dev so an e2e can drive setTheme
+   without auth. Removed after the repro. */
+if (process.env.NODE_ENV !== "production") {
+  (globalThis as unknown as { __cloakStore?: typeof useCloakStore }).__cloakStore =
+    useCloakStore;
+}
 
 /* Convenience selector: the active conversation object. */
 export function useActiveConversation(): Conversation | null {

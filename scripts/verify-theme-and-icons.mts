@@ -351,7 +351,15 @@ check(
   const layout = stripComments(read("src/app/layout.tsx"));
   check("the layout inlines the bootstrap script", /THEME_BOOTSTRAP_SCRIPT/.test(layout), true);
   check("the layout mounts ThemeSync", /<ThemeSync \/>/.test(layout), true);
-  check("the layout still ships the dark class for SSR", /className="dark"/.test(layout), true);
+  /* The layout must NOT hardcode a theme class on <html>: the inline bootstrap
+     script applies the stored choice before paint and ThemeSync re-applies it on
+     mount. A hardcoded class would let a layout re-render wipe an imperatively
+     added `.light`. */
+  check(
+    "the layout does not hardcode a theme class (bootstrap/ThemeSync own it)",
+    !/className="(dark|light)"/.test(layout),
+    true
+  );
 
   const store = stripComments(read("src/stores/cloak-store.ts"));
   check("the store declares a theme field", /theme:\s*CloakTheme/.test(store), true);

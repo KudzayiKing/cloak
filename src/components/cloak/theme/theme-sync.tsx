@@ -18,6 +18,10 @@ import { applyCloakTheme } from "@/lib/cloak/theme";
  */
 export function ThemeSync() {
   useEffect(() => {
+    /* Re-apply on mount in case the class got out of sync (e.g. a layout
+       re-render reset it, or the bootstrap script had not run yet). Idempotent
+       with applyCloakTheme and with the inline bootstrap script. */
+    applyCloakTheme(useCloakStore.getState().theme);
     return useCloakStore.subscribe((state, previous) => {
       if (state.theme === previous.theme) return;
       applyCloakTheme(state.theme);
