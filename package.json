@@ -13,7 +13,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
-    "test": "tsx scripts/membership-tests.mts && tsx scripts/verify-pull-to-refresh.mts && tsx scripts/verify-reaction-sizing.mts",
+    "test": "tsx scripts/membership-tests.mts && tsx scripts/verify-pull-to-refresh.mts && tsx scripts/verify-reaction-sizing.mts && tsx scripts/verify-pwa-update.mts",
     "test:device-binding": "node scripts/verify-multi-account-fix.mjs"
   },
   "dependencies": {

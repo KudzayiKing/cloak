@@ -1,10 +1,25 @@
 "use client";
 
 import { useEffect } from "react";
+import { markUpdateAvailable, updatePhase } from "@/lib/cloak/pwa-update";
 
 /*
  * Registers the Cloak service worker (offline shell, static cache).
  * Caching policy lives in public/sw.js — it never caches message data or API traffic.
+ *
+ * Update flow (user request: "a modal at the bottom asking users to refresh if
+ * there is an update"):
+ *
+ *   1. A newly deployed worker installs and then WAITS — sw.js no longer calls
+ *      self.skipWaiting(), so the app keeps running the bundle it loaded.
+ *   2. We publish that fact through the update store; PwaUpdatePrompt shows the
+ *      bottom card.
+ *   3. Only the user's tap hands over (SKIP_WAITING), and only the resulting
+ *      controllerchange reloads the page.
+ *
+ * The previous behaviour — activate the new worker immediately and reload every
+ * open window — landed mid-interaction, typically right after sign-in, and read
+ * as "the app throws me back out".
  *
  * Development: the SW is unregistered and caches are cleared so Turbopack
  * hot updates are never served from the static cache.
@@ -26,20 +41,32 @@ export function PwaRegister() {
       return;
     }
 
-    let refreshing = false;
-
-    const activateWaitingWorker = (registration: ServiceWorkerRegistration) => {
-      registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+    /** A worker is waiting and this page is already controlled — an update. */
+    const publishIfWaiting = (registration: ServiceWorkerRegistration) => {
+      if (registration.waiting && navigator.serviceWorker.controller) {
+        markUpdateAvailable(registration);
+      }
     };
 
     const watchRegistration = (registration: ServiceWorkerRegistration) => {
-      activateWaitingWorker(registration);
+      /* A worker may already be waiting from an earlier visit — the user tapped
+         "Later" and reopened the app. That is still a pending update, and
+         `updatefound` will never fire for it, so check explicitly. */
+      publishIfWaiting(registration);
+
       registration.addEventListener("updatefound", () => {
         const worker = registration.installing;
         if (!worker) return;
         worker.addEventListener("statechange", () => {
-          if (worker.state === "installed" && navigator.serviceWorker.controller) {
-            activateWaitingWorker(registration);
+          if (worker.state !== "installed") return;
+          if (navigator.serviceWorker.controller) {
+            /* An update is staged. Wait for the user. */
+            publishIfWaiting(registration);
+          } else {
+            /* First ever install on this device: there is no incumbent worker
+               to protect, so take over now and let clients.claim() adopt the
+               page. Prompting here would be noise. */
+            registration.waiting?.postMessage({ type: "SKIP_WAITING" });
           }
         });
       });
@@ -48,41 +75,16 @@ export function PwaRegister() {
     const checkForUpdate = () => {
       navigator.serviceWorker.getRegistration().then((registration) => {
         if (!registration) return;
-        void registration.update().then(() => activateWaitingWorker(registration));
+        void registration.update().then(() => publishIfWaiting(registration));
       });
     };
 
-    /* A worker update must never yank the app out from under someone who is
-     * mid-typing — signing in on a phone is exactly when a freshly deployed
-     * bundle tends to activate. Defer until the field is released, then take
-     * the update. Bounded so we cannot defer forever. */
-    const canReloadNow = () => {
-      if (document.visibilityState !== "visible") return false;
-      const active = document.activeElement;
-      return !(
-        active instanceof HTMLInputElement ||
-        active instanceof HTMLTextAreaElement ||
-        (active instanceof HTMLElement && active.isContentEditable)
-      );
-    };
-
-    const reloadForUpdate = () => {
-      if (refreshing) return;
-      if (canReloadNow()) {
-        refreshing = true;
-        window.location.reload();
-        return;
-      }
-      window.setTimeout(reloadForUpdate, 2000);
-    };
-
+    /* Reload ONLY for a handover the user asked for. A spontaneous
+       controllerchange — clients.claim() on a first install, or a worker
+       activating after every other tab closed — must never yank the page. */
     const onControllerChange = () => {
-      reloadForUpdate();
-    };
-
-    const onWorkerMessage = (event: MessageEvent) => {
-      if (event.data?.type !== "CLOAK_SW_UPDATED") return;
-      reloadForUpdate();
+      if (updatePhase() !== "applying") return;
+      window.location.reload();
     };
 
     const onVisibilityChange = () => {
@@ -98,7 +100,6 @@ export function PwaRegister() {
       });
     };
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
-    navigator.serviceWorker.addEventListener("message", onWorkerMessage);
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("focus", checkForUpdate);
     const interval = window.setInterval(checkForUpdate, 60_000);
@@ -107,7 +108,6 @@ export function PwaRegister() {
     return () => {
       window.removeEventListener("load", register);
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
-      navigator.serviceWorker.removeEventListener("message", onWorkerMessage);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("focus", checkForUpdate);
       window.clearInterval(interval);

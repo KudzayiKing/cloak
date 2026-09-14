@@ -12,7 +12,7 @@
  *   received and never enriches it from any local store.
  */
 
-const VERSION = "cloak-shell-v23";
+const VERSION = "cloak-shell-v24";
 const SHELL_CACHE = `cloak-shell-${VERSION}`;
 const STATIC_CACHE = `cloak-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -22,7 +22,18 @@ self.addEventListener("install", (event) => {
     (async () => {
       const cache = await caches.open(SHELL_CACHE);
       await cache.addAll([OFFLINE_URL, "/icons/icon.svg"]);
-      await self.skipWaiting();
+      /* Deliberately NO self.skipWaiting() here.
+       *
+       * A new worker must park in `waiting` so the app keeps running the bundle
+       * it already loaded. PwaRegister notices the waiting worker and shows the
+       * bottom "refresh" prompt; the SKIP_WAITING message handled below is sent
+       * only when the user taps Refresh.
+       *
+       * Calling skipWaiting() at install time activated the new worker the
+       * moment it was fetched and force-reloaded every open window — which in a
+       * standalone PWA lands mid-interaction (typically right after sign-in,
+       * when a freshly deployed bundle has just activated) and reads as "the
+       * app throws me back out". */
     })()
   );
 });
@@ -43,18 +54,13 @@ self.addEventListener("activate", (event) => {
           .map((k) => caches.delete(k))
       );
       await self.clients.claim();
-      /* Signal only — never force a navigation.
+      /* No postMessage nudge here any more.
        *
-       * This used to call `client.navigate(client.url)` on every open window,
-       * which force-reloaded the app the moment a new worker activated. In a
-       * standalone PWA that lands mid-interaction (typically right after
-       * sign-in, when the freshly deployed bundle has just activated) and
-       * reads as "the app throws me back out". The page decides for itself
-       * when to reload — PwaRegister reloads once on the update message. */
-      const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      for (const client of clientList) {
-        client.postMessage({ type: "CLOAK_SW_UPDATED" });
-      }
+       * The page detects a staged update from the registration itself
+       * (updatefound -> installed -> waiting), which is both earlier and more
+       * precise than waiting for activate to fire. By the time activate runs,
+       * either the user consented to the handover or every client had closed —
+       * in both cases "please refresh" would be wrong. */
     })()
   );
 });

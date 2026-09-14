@@ -155,6 +155,16 @@ export function AppShell({
     };
   }, [cloakMode]);
 
+  /* Publish the bottom nav's height so the update prompt can dock above it.
+     Inside a conversation the mobile chrome is hidden, so the prompt drops to
+     the safe-area edge instead of floating in empty space. Desktop ignores the
+     value entirely (globals.css overrides the offset at md). */
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--cloak-bottom-nav-h", mobileChrome ? "56px" : "0px");
+    return () => root.style.setProperty("--cloak-bottom-nav-h", "0px");
+  }, [mobileChrome]);
+
   return (
     <div className="flex h-dvh min-h-dvh flex-col overflow-x-hidden bg-cloak-bg md:flex-row">
       {/* Desktop nav rail — collapsible (user feedback round 14).

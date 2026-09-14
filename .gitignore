@@ -21,6 +21,7 @@ node_modules
 !/scripts/verify-pull-to-refresh.mts
 !/scripts/verify-multi-account-fix.mjs
 !/scripts/verify-reaction-sizing.mts
+!/scripts/verify-pwa-update.mts
 
 # next.js
 /.next/
