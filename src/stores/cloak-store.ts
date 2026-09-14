@@ -2221,6 +2221,17 @@ export const useCloakStore = create<CloakState>()(
     {
       name: "cloak-local-state",
       storage: createJSONStorage(() => localStorage),
+      version: 2,
+      migrate: (persistedState, version) => {
+        if (!persistedState || typeof persistedState !== "object") return persistedState;
+        if (version < 2) {
+          return {
+            ...(persistedState as Partial<CloakState>),
+            chatFontSize: "large",
+          };
+        }
+        return persistedState;
+      },
       // Only user controls persist — never message payloads or memory content.
       partialize: (s) => ({
         cloakMode: s.cloakMode,
