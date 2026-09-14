@@ -208,6 +208,10 @@ export interface Message {
   bodyLockedReason?: "missing" | "expired";
   fileName?: string;
   fileSizeBytes?: number;
+  /** Device-local attachment blob id (IndexedDB / origin storage). */
+  attachmentId?: string;
+  attachmentMime?: string;
+  attachmentStoredLocal?: boolean;
   voiceDurationSec?: number;
   /** For AI answers: where and how processing happened. */
   ai?: AIProcessingDetails;

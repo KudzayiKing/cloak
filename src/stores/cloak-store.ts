@@ -40,6 +40,11 @@ import {
 } from "@/lib/cloak/dagger";
 import { MODEL_MANIFEST } from "@/lib/cloak/config";
 import {
+  parseAttachmentEnvelope,
+  saveLocalAttachment,
+  type AttachmentEnvelope,
+} from "@/lib/cloak/attachment-storage";
+import {
   applyForwardSecrecy,
   decryptBody,
   encryptBody,
@@ -276,7 +281,7 @@ function relativeTime(iso: string): string {
 }
 
 function toClientMessage(m: ServerMessage): Message {
-  return {
+  return hydrateAttachmentMessage({
     id: m.id,
     conversationId: m.conversationId,
     authorId: m.authorId,
@@ -287,6 +292,35 @@ function toClientMessage(m: ServerMessage): Message {
     authorName: m.authorName,
     expiresAt: m.expiresAt ?? undefined,
     disappearsAfter: m.expiresAt ? "custom" : undefined,
+  });
+}
+
+function hydrateAttachmentMessage(message: Message): Message {
+  const envelope = parseAttachmentEnvelope(message.body);
+  if (!envelope) return message;
+  return {
+    ...message,
+    body: "",
+    fileName: envelope.name,
+    fileSizeBytes: envelope.size,
+    attachmentId: envelope.attachmentId,
+    attachmentMime: envelope.mime,
+    attachmentStoredLocal: message.authorId === "me",
+  };
+}
+
+function attachmentMessageFromEnvelope(
+  base: Omit<Message, "body" | "fileName" | "fileSizeBytes" | "attachmentId" | "attachmentMime">,
+  envelope: AttachmentEnvelope
+): Message {
+  return {
+    ...base,
+    body: "",
+    fileName: envelope.name,
+    fileSizeBytes: envelope.size,
+    attachmentId: envelope.attachmentId,
+    attachmentMime: envelope.mime,
+    attachmentStoredLocal: true,
   };
 }
 
@@ -343,7 +377,7 @@ async function decryptServerMessages(
           bodyLocked: true,
           bodyLockedReason: result.reason ?? "missing",
         };
-      return { ...base, body: result.text ?? base.body };
+      return hydrateAttachmentMessage({ ...base, body: result.text ?? base.body });
     })
   );
 }
@@ -629,6 +663,10 @@ interface CloakState {
 
   /* Messaging */
   sendMessage: (conversationId: string, body: string, kind?: Message["kind"]) => string;
+  sendAttachment: (
+    conversationId: string,
+    file: File
+  ) => Promise<{ ok: true; messageId: string } | { ok: false; error: string }>;
   updateMessageStatus: (
     conversationId: string,
     messageId: string,
@@ -1732,6 +1770,108 @@ export const useCloakStore = create<CloakState>()(
           }));
         })();
         return id;
+      },
+
+      sendAttachment: async (conversationId, file) => {
+        if (!file || file.size <= 0) return { ok: false, error: "empty_file" };
+        const kind: MessageKind = file.type.startsWith("image/") ? "image" : "file";
+        let saved: Awaited<ReturnType<typeof saveLocalAttachment>>;
+        try {
+          saved = await saveLocalAttachment(file, conversationId);
+        } catch {
+          return { ok: false, error: "storage_unavailable" };
+        }
+
+        const id = nextLocalId("m");
+        const plaintext = JSON.stringify(saved.envelope);
+        const message = attachmentMessageFromEnvelope(
+          {
+            id,
+            conversationId,
+            authorId: "me",
+            kind,
+            createdAt: Date.now(),
+            status: "sending",
+          },
+          saved.envelope
+        );
+
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === conversationId ? { ...c, messages: [...c.messages, message] } : c
+          ),
+        }));
+
+        void (async () => {
+          const myUserId = get().auth.user?.id;
+          let encrypted: string | null = null;
+          if (myUserId) {
+            await syncConversationKeys(conversationId, myUserId);
+            let readyKey = await waitForConversationKey(conversationId, 2500);
+            if (!readyKey) {
+              await syncConversationKeys(conversationId, myUserId);
+              readyKey = await waitForConversationKey(conversationId, 1500);
+            }
+            const fs = get().forwardSecrecy;
+            if (fs !== "off") {
+              const windowMs = FS_WINDOW_MS[fs];
+              if (windowMs) await maybeRotateForAge(conversationId, myUserId, windowMs / 2);
+            }
+            encrypted = await encryptBody(conversationId, plaintext, kind, myUserId);
+          }
+
+          if (!encrypted) {
+            set((s) => ({
+              conversations: s.conversations.map((c) =>
+                c.id !== conversationId
+                  ? c
+                  : {
+                      ...c,
+                      messages: c.messages.map((m) =>
+                        m.id === id ? { ...m, status: "failed" as const } : m
+                      ),
+                    }
+              ),
+            }));
+            return;
+          }
+
+          const res = await api<{ message: ServerMessage }>(
+            `/api/conversations/${conversationId}/messages`,
+            { method: "POST", body: JSON.stringify({ body: encrypted, kind }) }
+          );
+
+          let serverMessage: Message | null = null;
+          if (res.ok) {
+            const confirmed = toClientMessage(res.data.message);
+            serverMessage = {
+              ...confirmed,
+              ...message,
+              id: confirmed.id,
+              createdAt: confirmed.createdAt,
+              status: confirmed.status ?? "sent",
+            };
+          }
+
+          set((s) => ({
+            conversations: s.conversations.map((c) =>
+              c.id !== conversationId
+                ? c
+                : {
+                    ...c,
+                    messages: c.messages.map((m) =>
+                      m.id === id
+                        ? serverMessage
+                          ? serverMessage
+                          : { ...m, status: "failed" as const }
+                        : m
+                    ),
+                  }
+            ),
+          }));
+        })();
+
+        return { ok: true, messageId: id };
       },
 
       updateMessageStatus: (conversationId, messageId, status) =>

@@ -50,6 +50,7 @@ export function ConversationView({
   const chatFontSize = useCloakStore((s) => s.chatFontSize);
   const aiSettings = useCloakStore((s) => s.ai);
   const sendMessage = useCloakStore((s) => s.sendMessage);
+  const sendAttachment = useCloakStore((s) => s.sendAttachment);
   const appendAIMessage = useCloakStore((s) => s.appendAIMessage);
   const markConversationRead = useCloakStore((s) => s.markConversationRead);
   const markViewOnceViewed = useCloakStore((s) => s.markViewOnceViewed);
@@ -245,6 +246,13 @@ export function ConversationView({
     }
   };
 
+  const handleAttach = async (files: File[]) => {
+    if (!conversation || isLocked) return;
+    for (const file of files) {
+      await sendAttachment(conversation.id, file);
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-cloak-bg md:p-3">
       {/* Fullscreen chat on mobile — no outer border, square header top and
@@ -414,8 +422,9 @@ export function ConversationView({
           <MessageComposer
             key={conversation.id}
             onSend={handleSend}
+            onAttach={handleAttach}
             ghost={conversation.ghost}
-            disabled={false}
+            disabled={isLocked}
           />
         </>
       )}

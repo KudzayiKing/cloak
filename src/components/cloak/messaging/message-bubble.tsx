@@ -6,9 +6,10 @@
  * accent only. Interactive processing badge for AI answers (spec §19).
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/cloak/utils";
+import { getLocalAttachment } from "@/lib/cloak/attachment-storage";
 import type { Message } from "@/lib/cloak/types";
 import { useCloakStore } from "@/stores/cloak-store";
 import { useTranslationStore, type MessageTranslation } from "@/stores/translation-store";
@@ -20,6 +21,8 @@ import {
   CheckCheckIcon,
   EyeOffIcon,
   FileTextIcon,
+  DownloadIcon,
+  ImageIcon,
   AudioLinesIcon,
   PlayIcon,
   CpuIcon,
@@ -129,17 +132,14 @@ export function MessageBubble({
   /* File */
   if (message.kind === "file") {
     return (
-      <div className={cn("flex", outgoing ? "justify-end" : "justify-start")}>
-        <div className="cloak-message-in flex max-w-[80%] items-center gap-3 rounded-2xl border border-cloak-border bg-cloak-surface px-3.5 py-3">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-cloak-surface-hover text-cloak-text-secondary">
-            <FileTextIcon size={16} />
-          </span>
-          <div>
-            <p className="text-[13px] font-medium text-cloak-text">{message.fileName}</p>
-            <p className="text-[11px] text-cloak-text-muted">{(message.fileSizeBytes ?? 0) / 1000} KB</p>
-          </div>
-        </div>
-      </div>
+      <AttachmentBubble message={message} outgoing={outgoing} kind="file" />
+    );
+  }
+
+  /* Image */
+  if (message.kind === "image") {
+    return (
+      <AttachmentBubble message={message} outgoing={outgoing} kind="image" />
     );
   }
 
@@ -254,6 +254,126 @@ export function MessageBubble({
       </div>
     </div>
   );
+}
+
+function AttachmentBubble({
+  message,
+  outgoing,
+  kind,
+}: {
+  message: Message;
+  outgoing: boolean;
+  kind: "file" | "image";
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [available, setAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    async function load() {
+      if (!message.attachmentId) {
+        setAvailable(false);
+        return;
+      }
+      const record = await getLocalAttachment(message.attachmentId).catch(() => null);
+      if (cancelled) return;
+      if (!record) {
+        setAvailable(false);
+        setUrl(null);
+        return;
+      }
+      objectUrl = URL.createObjectURL(record.blob);
+      setUrl(objectUrl);
+      setAvailable(true);
+    }
+    void load();
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [message.attachmentId]);
+
+  const name = message.fileName ?? (kind === "image" ? "Photo" : "Attachment");
+  const size = formatBytes(message.fileSizeBytes ?? 0);
+  const canOpen = Boolean(url);
+
+  const openAttachment = () => {
+    if (!url) return;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.rel = "noopener";
+    a.click();
+  };
+
+  return (
+    <div className={cn("flex", outgoing ? "justify-end" : "justify-start")}>
+      <div
+        className={cn(
+          "cloak-message-in max-w-[82%] rounded-2xl border p-2.5 md:max-w-[65%]",
+          outgoing ? "border-cloak-gold/20 bg-[#1D1A12]" : "border-cloak-border bg-cloak-surface"
+        )}
+      >
+        {kind === "image" && url ? (
+          <button
+            type="button"
+            onClick={openAttachment}
+            className="mb-2 block overflow-hidden rounded-xl border border-cloak-border bg-black/20"
+            title="Open photo"
+          >
+            <img src={url} alt={name} className="max-h-64 w-full object-cover" />
+          </button>
+        ) : null}
+
+        <div className="flex items-center gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-cloak-surface-hover text-cloak-text-secondary">
+            {kind === "image" ? <ImageIcon size={16} /> : <FileTextIcon size={16} />}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-medium text-cloak-text">{name}</p>
+            <p className="text-[11px] text-cloak-text-muted">
+              {size}
+              {available === null
+                ? " · checking device storage"
+                : available
+                  ? " · saved on this device"
+                  : " · stored on sender device"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={openAttachment}
+            disabled={!canOpen}
+            aria-label={canOpen ? `Download ${name}` : `${name} is not stored on this device`}
+            className={cn(
+              "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors",
+              canOpen
+                ? "text-cloak-gold hover:bg-cloak-gold-soft"
+                : "cursor-not-allowed text-cloak-text-muted/45"
+            )}
+          >
+            <DownloadIcon size={15} />
+          </button>
+        </div>
+        <div
+          className={cn(
+            "mt-1.5 flex items-center gap-1.5 px-1 text-[10px] text-cloak-text-muted",
+            outgoing ? "justify-end" : "justify-start"
+          )}
+        >
+          {formatTime(message.createdAt)}
+          {outgoing && <DeliveryStatus status={message.status ?? "sent"} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
 }
 
 /*

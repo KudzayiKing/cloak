@@ -17,15 +17,18 @@ import {
 
 export function MessageComposer({
   onSend,
+  onAttach,
   disabled,
   ghost,
 }: {
   onSend: (body: string) => void;
+  onAttach?: (files: File[]) => void;
   disabled?: boolean;
   ghost?: boolean;
 }) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const invoked = value.trim().toLowerCase().startsWith(ORCHESTRATOR_TRIGGER.toLowerCase());
 
   const submit = () => {
@@ -64,11 +67,27 @@ export function MessageComposer({
       >
         <button
           aria-label="Attach a file"
+          type="button"
+          disabled={disabled}
+          onClick={() => fileInputRef.current?.click()}
           className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-cloak-text-secondary transition-colors hover:bg-cloak-surface-hover hover:text-cloak-text"
           title="Attachments arrive with the secure transport layer"
         >
           <PaperclipIcon size={17} />
         </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = Array.from(e.currentTarget.files ?? []);
+            e.currentTarget.value = "";
+            if (!files.length || disabled) return;
+            onAttach?.(files);
+          }}
+        />
 
         <textarea
           ref={textareaRef}
