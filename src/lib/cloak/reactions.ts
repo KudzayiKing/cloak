@@ -4,7 +4,7 @@ export interface CloakReactionOption {
   src: string;
 }
 
-const REACTION_ASSET_VERSION = "2026-09-new-set";
+const REACTION_ASSET_VERSION = "2026-09-salute";
 
 function reactionAsset(file: string): string {
   return `/reactions/${file}.webp?v=${REACTION_ASSET_VERSION}`;
