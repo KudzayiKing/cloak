@@ -479,13 +479,13 @@ function ReactionRow({
             type="button"
             onClick={() => onReact?.(message.id, reaction.emoji)}
             className={cn(
-              "inline-flex h-7 items-center gap-1 rounded-full px-0.5 text-[11px] font-medium text-cloak-text-muted transition-transform hover:scale-105 active:scale-95",
+              "inline-flex h-9 items-center gap-1 rounded-full px-0.5 text-[12px] font-medium text-cloak-text-muted transition-transform hover:scale-105 active:scale-95",
               reaction.mine && "text-cloak-text"
             )}
             title={option.label}
             aria-label={`${reaction.count} ${option.label} reaction${reaction.count === 1 ? "" : "s"}`}
           >
-            <img src={option.src} alt="" className="h-7 w-7 object-contain" />
+            <img src={option.src} alt="" className="h-9 w-9 object-contain" />
             {reaction.count > 1 && <span>{reaction.count}</span>}
           </button>
         );

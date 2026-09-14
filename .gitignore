@@ -20,6 +20,7 @@ node_modules
 # Regression tests worth keeping (the rest of /scripts is scratch).
 !/scripts/verify-pull-to-refresh.mts
 !/scripts/verify-multi-account-fix.mjs
+!/scripts/verify-reaction-sizing.mts
 
 # next.js
 /.next/

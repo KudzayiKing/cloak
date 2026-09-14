@@ -73,7 +73,7 @@ export function MessageActionSheet({
           Translate this message on-device or copy its text.
         </DialogDescription>
 
-        <div className="mb-3 -mx-1 overflow-x-auto px-1">
+        <div className="mb-3 -mx-1 cloak-scroll-hidden overflow-x-auto px-1">
           <div className="inline-flex min-w-full items-center gap-1 rounded-full border border-cloak-border bg-cloak-bg/85 px-2 py-1.5 shadow-xl shadow-black/25">
             {CLOAK_REACTIONS.map((reaction) => (
               <button
@@ -83,11 +83,11 @@ export function MessageActionSheet({
                   onReact?.(reaction.id);
                   onOpenChange(false);
                 }}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors hover:bg-cloak-surface-hover active:scale-95"
+                className="grid h-12 w-12 shrink-0 place-items-center rounded-full transition-colors hover:bg-cloak-surface-hover active:scale-95"
                 title={reaction.label}
                 aria-label={`React with ${reaction.label}`}
               >
-                <img src={reaction.src} alt="" className="h-7 w-7 object-contain" />
+                <img src={reaction.src} alt="" className="h-9 w-9 object-contain" />
               </button>
             ))}
           </div>

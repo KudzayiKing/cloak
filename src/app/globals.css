@@ -162,6 +162,21 @@
   background: transparent;
 }
 
+/*
+ * Same scroll behaviour, no visible rail — for short horizontal strips
+ * (reaction pickers) where a scrollbar reads as clutter and the strip
+ * itself already implies swipeability.
+ */
+.cloak-scroll-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.cloak-scroll-hidden::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 /* Wordmark — EB Garamond, weight 600, set as "Cloak" (user requirement) */
 .cloak-wordmark {
   font-family: var(--font-cloak-serif), "EB Garamond", Georgia, serif;
