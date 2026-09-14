@@ -50,15 +50,39 @@ export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-async function canBindDeviceToUser(userId: string, deviceId: string): Promise<boolean> {
+/**
+ * One INSTALL (deviceId) may be shared by more than one Cloak ID — a phone
+ * PWA where the owner tests two admin accounts is the normal case, not an
+ * attack. The registry therefore tracks which account the install is
+ * CURRENTLY enrolled for, and allows the row to move between accounts when
+ * the caller proves it holds this install's credential.
+ *
+ * Rules, in order:
+ *   1. a revoked install is never re-enrolled (Dagger / manual revoke wins);
+ *   2. an unknown deviceId is always free to enrol;
+ *   3. the account already owning the row may always re-bind;
+ *   4. a DIFFERENT account may take the row over only by presenting the raw
+ *      device token that hashes to the stored one — i.e. the same browser
+ *      install, not a third party replaying a guessed deviceId.
+ */
+async function canBindDeviceToUser(
+  userId: string,
+  deviceId: string,
+  deviceToken?: string
+): Promise<boolean> {
   const revoked = await db.deviceRevocation
     .findUnique({ where: { deviceId } })
     .catch(() => null);
   if (revoked) return false;
   const existing = await db.device
-    .findUnique({ where: { id: deviceId }, select: { userId: true } })
+    .findUnique({ where: { id: deviceId }, select: { userId: true, tokenHash: true } })
     .catch(() => null);
-  return !existing || existing.userId === userId;
+  if (!existing) return true;
+  if (existing.userId === userId) return true;
+  if (!deviceToken) return false;
+  const provided = Buffer.from(hashToken(deviceToken));
+  const stored = Buffer.from(existing.tokenHash);
+  return provided.length === stored.length && timingSafeEqual(provided, stored);
 }
 
 async function refreshDeviceCredential(
@@ -67,13 +91,28 @@ async function refreshDeviceCredential(
   deviceName?: string,
   deviceToken?: string
 ): Promise<boolean> {
-  if (!(await canBindDeviceToUser(userId, deviceId))) return false;
+  if (!(await canBindDeviceToUser(userId, deviceId, deviceToken))) return false;
+  /* No credential supplied (legacy client): keep the existing registry row
+   * untouched rather than clobbering its hash with an empty one. */
   if (!deviceToken) return true;
+  /* `userId` moves with the sign-in so the registry always names the account
+   * the install is enrolled for, and Remote Dagger / device listings resolve
+   * against the account that is actually using it. */
   await db.device.upsert({
     where: { id: deviceId },
-    update: { tokenHash: hashToken(deviceToken), name: deviceName, lastSeenAt: new Date() },
+    update: {
+      userId,
+      tokenHash: hashToken(deviceToken),
+      name: deviceName,
+      lastSeenAt: new Date(),
+    },
     create: { id: deviceId, userId, name: deviceName, tokenHash: hashToken(deviceToken) },
-  }).catch(() => undefined);
+  }).catch((err) => {
+    /* A token-hash collision (the same credential already enrolled under a
+     * different deviceId) must not fail the sign-in — the session simply
+     * binds without a registry row. */
+    console.error("[auth] device upsert failed:", err);
+  });
   return true;
 }
 
@@ -242,8 +281,14 @@ export interface ServerDevice {
 }
 
 /** Trusted-devices list (dagger codex §24): active sessions grouped by
- *  bound deviceId. Legacy sessions without a binding surface as their own
- *  un-manageable entry so the count stays honest. */
+ *  bound deviceId.
+ *
+ *  Sessions created before the registry existed (no deviceId) are collapsed
+ *  into ONE row rather than one-per-session. They are real, live credentials
+ *  the owner should be able to see and kill, but they are not devices —
+ *  listing five identical "Unrecognized device" rows is noise, and each one
+ *  used to be unrevocable. The row's id is `legacy-<userId>`; the revoke
+ *  route deletes every unbound session for that user. */
 export async function listDevices(req: NextRequest): Promise<ServerDevice[]> {
   const session = await sessionFromRequest(req);
   if (!session) return [];
@@ -278,15 +323,22 @@ export async function listDevices(req: NextRequest): Promise<ServerDevice[]> {
     lastActive: d.lastActive.toISOString(),
     current: deviceId === session.deviceId,
   }));
-  unbound.forEach((u, i) =>
+  if (unbound.length > 0) {
+    const newest = unbound.reduce((a, b) =>
+      a.lastActive.getTime() >= b.lastActive.getTime() ? a : b
+    );
+    const oldest = unbound.reduce((a, b) => (a.addedAt.getTime() <= b.addedAt.getTime() ? a : b));
     devices.push({
-      deviceId: `legacy-${session.id}-${i}`,
-      name: "Unrecognized device",
-      addedAt: u.addedAt.toISOString(),
-      lastActive: u.lastActive.toISOString(),
+      deviceId: `legacy-${session.userId}`,
+      name:
+        unbound.length === 1
+          ? "Session from before device tracking"
+          : `Sessions from before device tracking (${unbound.length})`,
+      addedAt: oldest.addedAt.toISOString(),
+      lastActive: newest.lastActive.toISOString(),
       current: false,
-    })
-  );
+    });
+  }
   return devices;
 }
 

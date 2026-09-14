@@ -530,7 +530,11 @@ export function DevicesPage() {
                 Loading the device registry…
               </Surface>
             )}
-            {devices.map((d) => (
+            {devices.map((d) => {
+              /* A session predating device tracking has no device to wipe, so
+                 it can be revoked but not daggered. */
+              const isLegacy = d.id.startsWith("legacy-");
+              return (
               <Surface key={d.id} className="p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3.5">
@@ -550,12 +554,24 @@ export function DevicesPage() {
                         <span>Added: {d.addedAt}</span>
                         <span>Last active: {d.lastActive}</span>
                       </div>
+                      {isLegacy && (
+                        <p className="mt-2 max-w-sm text-[11.5px] leading-relaxed text-cloak-text-muted">
+                          Signed in before this device was enrolled. Revoke it
+                          to sign that session out, then sign in again to
+                          enroll the device properly.
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2.5">
-                    <span className="inline-flex items-center gap-1.5 text-[11.5px] text-cloak-success">
-                      <CircleCheckIcon size={12} />
-                      Trusted
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 text-[11.5px]",
+                        isLegacy ? "text-cloak-text-muted" : "text-cloak-success"
+                      )}
+                    >
+                      {!isLegacy && <CircleCheckIcon size={12} />}
+                      {isLegacy ? "Unenrolled" : "Trusted"}
                     </span>
                     {d.current ? (
                       <Button
@@ -577,21 +593,24 @@ export function DevicesPage() {
                         >
                           Revoke
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-cloak-danger/30 text-cloak-danger hover:bg-cloak-danger/10 hover:text-cloak-danger"
-                          disabled={busy}
-                          onClick={() => setPendingDagger(d.id)}
-                        >
-                          Dagger Device
-                        </Button>
+                        {!isLegacy && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-cloak-danger/30 text-cloak-danger hover:bg-cloak-danger/10 hover:text-cloak-danger"
+                            disabled={busy}
+                            onClick={() => setPendingDagger(d.id)}
+                          >
+                            Dagger Device
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
               </Surface>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-6 flex items-start gap-2 text-[12px] leading-relaxed text-cloak-text-muted">

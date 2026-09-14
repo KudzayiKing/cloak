@@ -17,6 +17,9 @@ node_modules
 /scripts/*
 !/scripts/
 !/scripts/membership-tests.mts
+# Regression tests worth keeping (the rest of /scripts is scratch).
+!/scripts/verify-pull-to-refresh.mts
+!/scripts/verify-multi-account-fix.mjs
 
 # next.js
 /.next/
@@ -70,3 +73,6 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# assistant working notes (local only, not project source)
+/.workbuddy-ai/

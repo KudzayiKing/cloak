@@ -13,7 +13,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
-    "test": "tsx scripts/membership-tests.mts"
+    "test": "tsx scripts/membership-tests.mts && tsx scripts/verify-pull-to-refresh.mts",
+    "test:device-binding": "node scripts/verify-multi-account-fix.mjs"
   },
   "dependencies": {
     "@animateicons/react": "^0.5.0",

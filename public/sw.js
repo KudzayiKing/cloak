@@ -12,7 +12,7 @@
  *   received and never enriches it from any local store.
  */
 
-const VERSION = "cloak-shell-v22";
+const VERSION = "cloak-shell-v23";
 const SHELL_CACHE = `cloak-shell-${VERSION}`;
 const STATIC_CACHE = `cloak-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -43,20 +43,18 @@ self.addEventListener("activate", (event) => {
           .map((k) => caches.delete(k))
       );
       await self.clients.claim();
+      /* Signal only — never force a navigation.
+       *
+       * This used to call `client.navigate(client.url)` on every open window,
+       * which force-reloaded the app the moment a new worker activated. In a
+       * standalone PWA that lands mid-interaction (typically right after
+       * sign-in, when the freshly deployed bundle has just activated) and
+       * reads as "the app throws me back out". The page decides for itself
+       * when to reload — PwaRegister reloads once on the update message. */
       const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      await Promise.all(
-        clientList.map(async (client) => {
-          if ("navigate" in client && client.url) {
-            try {
-              await client.navigate(client.url);
-            } catch {
-              client.postMessage({ type: "CLOAK_SW_UPDATED" });
-            }
-          } else {
-            client.postMessage({ type: "CLOAK_SW_UPDATED" });
-          }
-        })
-      );
+      for (const client of clientList) {
+        client.postMessage({ type: "CLOAK_SW_UPDATED" });
+      }
     })()
   );
 });

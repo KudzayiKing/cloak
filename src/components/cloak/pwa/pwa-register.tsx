@@ -52,17 +52,37 @@ export function PwaRegister() {
       });
     };
 
-    const onControllerChange = () => {
+    /* A worker update must never yank the app out from under someone who is
+     * mid-typing — signing in on a phone is exactly when a freshly deployed
+     * bundle tends to activate. Defer until the field is released, then take
+     * the update. Bounded so we cannot defer forever. */
+    const canReloadNow = () => {
+      if (document.visibilityState !== "visible") return false;
+      const active = document.activeElement;
+      return !(
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+      );
+    };
+
+    const reloadForUpdate = () => {
       if (refreshing) return;
-      refreshing = true;
-      window.location.reload();
+      if (canReloadNow()) {
+        refreshing = true;
+        window.location.reload();
+        return;
+      }
+      window.setTimeout(reloadForUpdate, 2000);
+    };
+
+    const onControllerChange = () => {
+      reloadForUpdate();
     };
 
     const onWorkerMessage = (event: MessageEvent) => {
       if (event.data?.type !== "CLOAK_SW_UPDATED") return;
-      if (refreshing) return;
-      refreshing = true;
-      window.location.reload();
+      reloadForUpdate();
     };
 
     const onVisibilityChange = () => {

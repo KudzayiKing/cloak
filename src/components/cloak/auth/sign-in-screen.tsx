@@ -22,15 +22,21 @@ const ERROR_COPY: Record<string, string> = {
   bad_handle: "Cloak IDs are 3-24 characters using letters, numbers, and underscores.",
   bad_password: "Passphrases are 8-256 characters.",
   handle_taken: "That Cloak ID is already taken. Choose another, or sign in.",
-  network: "Cloak could not reach the server. Check your connection.",
+  network: "Cloak could not reach the server. Check your connection, then try again.",
+  timeout: "The server took too long to answer. Try again.",
   server_error: "Something went wrong on our side. Try again.",
 };
+
+/* Credential failures must clear the passphrase; transport failures must not
+   — retyping a passphrase on a phone keyboard is the worst part of a retry. */
+const RETRY_KEEPS_INPUT = new Set(["network", "timeout", "server_error", "rate_limited"]);
 
 export function SignInScreen() {
   const signIn = useCloakStore((s) => s.signIn);
   const [handle, setHandle] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const passwordRef = useRef<HTMLInputElement>(null);
 
@@ -39,17 +45,31 @@ export function SignInScreen() {
     if (busy) return;
     const trimmed = handle.trim();
     if (!trimmed || !password) {
+      setErrorCode("bad_request");
       setError(ERROR_COPY.bad_request);
       return;
     }
     setBusy(true);
     setError(null);
-    const res = await signIn(trimmed, password);
+    setErrorCode(null);
+    /* The store bounds every request it makes, but a rejected promise here
+       must still release the button — a stuck "Sign in" is indistinguishable
+       from a broken app. */
+    let res: Awaited<ReturnType<typeof signIn>>;
+    try {
+      res = await signIn(trimmed, password);
+    } catch {
+      res = { ok: false, error: "server_error" };
+    }
     setBusy(false);
     if (res.ok) {
       navigate("/app/messages");
-    } else {
-      setError(ERROR_COPY[res.error] ?? ERROR_COPY.server_error);
+      return;
+    }
+    const code = res.error ?? "server_error";
+    setErrorCode(code);
+    setError(ERROR_COPY[code] ?? ERROR_COPY.server_error);
+    if (!RETRY_KEEPS_INPUT.has(code)) {
       setPassword("");
       passwordRef.current?.focus();
     }
@@ -141,7 +161,19 @@ export function SignInScreen() {
                 className="flex items-start gap-1.5 rounded-lg border border-cloak-danger/25 bg-cloak-danger/5 px-3 py-2.5 text-[12.5px] leading-relaxed text-cloak-danger"
               >
                 <TriangleAlertIcon size={13} className="mt-0.5 shrink-0" />
-                {error}
+                <span>
+                  {error}
+                  {/* Transport/server failures stay diagnosable instead of
+                      being flattened into one vague sentence. */}
+                  {(errorCode === "network" ||
+                    errorCode === "timeout" ||
+                    errorCode === "server_error") && (
+                    <span className="mt-1 block text-[11.5px] text-cloak-danger/70">
+                      Nothing was charged to your account. Check that this
+                      device can reach {typeof window !== "undefined" ? window.location.host : "the server"}.
+                    </span>
+                  )}
+                </span>
               </div>
             )}
 
@@ -151,8 +183,15 @@ export function SignInScreen() {
               className="bg-cloak-gold/20 hover:bg-cloak-gold/25 h-12 w-full border border-cloak-gold/30 text-[15px] font-medium text-cloak-gold hover:text-cloak-gold"
             >
               {busy && <LoaderCircleIcon size={15} className="mr-2 animate-spin" />}
-              Sign in
+              {busy ? "Signing in…" : "Sign in"}
             </Button>
+
+            {busy && (
+              <p className="text-center text-[11.5px] text-cloak-text-muted">
+                Preparing this device&apos;s encryption keys can take a few
+                seconds the first time.
+              </p>
+            )}
           </form>
 
           <p className="mt-5 text-center text-[12.5px] text-cloak-text-secondary">

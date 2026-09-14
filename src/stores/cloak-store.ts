@@ -232,12 +232,52 @@ export interface GroupInviteRecord {
 interface ApiOk<T> { ok: true; data: T }
 type ApiResult<T> = ApiOk<T> | { ok: false; status: number; error?: string };
 
+/* Every request is bounded. A phone on a flaky mobile network (or a server
+ * mid-restart) must fail loudly in seconds, never leave a button spinning
+ * until the OS-level TCP timeout. */
+const API_TIMEOUT_MS = 20_000;
+
+/** Ceiling on E2EE identity provisioning during sign-in. Generous enough for
+ *  600k-iteration PBKDF2 on a slow phone, short enough that a stall cannot
+ *  read as "sign-in is broken". */
+const IDENTITY_PROVISION_TIMEOUT_MS = 12_000;
+
+/** AbortSignal.timeout is missing on iOS Safari < 16 — never let its absence
+ *  break a request. */
+function timeoutSignal(ms: number): AbortSignal | undefined {
+  try {
+    return typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+      ? AbortSignal.timeout(ms)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Resolve to `undefined` instead of hanging when `promise` overruns `ms`. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined> {
+  return new Promise<T | undefined>((resolve) => {
+    const timer = window.setTimeout(() => resolve(undefined), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        window.clearTimeout(timer);
+        resolve(undefined);
+      }
+    );
+  });
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
   try {
     const res = await fetch(path, {
       ...init,
       headers: init?.body ? { "Content-Type": "application/json" } : undefined,
       cache: "no-store",
+      signal: init?.signal ?? timeoutSignal(API_TIMEOUT_MS),
     });
     const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok || json.ok !== true) {
@@ -248,8 +288,9 @@ async function api<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
       };
     }
     return { ok: true, data: json as T };
-  } catch {
-    return { ok: false, status: 0, error: "network" };
+  } catch (err) {
+    const timedOut = err instanceof DOMException && err.name === "TimeoutError";
+    return { ok: false, status: 0, error: timedOut ? "timeout" : "network" };
   }
 }
 
@@ -441,7 +482,7 @@ interface CloakState {
   signIn: (
     handle: string,
     password: string
-  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  ) => Promise<{ ok: true } | { ok: false; error: string; status?: number }>;
   /** Create an account (optionally redeeming a Reserve guest invitation
    *  atomically) and sign in — mirrors signIn's post-auth pipeline. */
   register: (
@@ -836,26 +877,38 @@ export const useCloakStore = create<CloakState>()(
           }),
         });
         if (!res.ok) {
-          return { ok: false as const, error: res.error ?? "server_error" };
+          return { ok: false as const, error: res.error ?? "server_error", status: res.status };
         }
         const { user, membership } = res.data;
-        /* E2EE: sign-in has the passphrase — provision the identity on
-           first use (uploads the public key + wrapped backup) or restore
-           it from the backup on a NEW device. */
-        const identityStatus = await ensureIdentity(user.id, password);
+        /* Open the gate the moment the session exists. Everything after this
+           point is enrichment (E2EE keys, chat hydration, push) and must
+           never be able to hold a signed-in user on the sign-in screen. */
         set((s) => ({
           auth: { user, checked: true },
           membership: membership ?? s.membership,
-          identityStatus,
         }));
+        /* E2EE: sign-in has the passphrase — provision the identity on
+           first use (uploads the public key + wrapped backup) or restore
+           it from the backup on a NEW device. BOUNDED: PBKDF2 at 600k
+           iterations plus a key fetch is seconds of work on a phone, and a
+           stalled request must not become an infinite spinner. If it does
+           not land in time the sync loop re-runs key maintenance anyway. */
+        const identityStatus = await withTimeout(
+          ensureIdentity(user.id, password),
+          IDENTITY_PROVISION_TIMEOUT_MS
+        );
+        if (identityStatus) set({ identityStatus });
         /* Reserve members: hydrate the pass registry for this session. */
         if (membership?.membership === "reserve") void get().fetchGuestPasses();
-        const convs = api<{
+        const list = await api<{
           contacts: ServerContact[];
           conversations: ServerConversation[];
         }>("/api/conversations");
-        const list = await convs;
-        if (list.ok) await get().hydrateServerData(list.data.contacts, list.data.conversations);
+        if (list.ok) {
+          await get()
+            .hydrateServerData(list.data.contacts, list.data.conversations)
+            .catch(() => undefined);
+        }
         void get().fetchInbox();
         void get().fetchPrivacySettings();
         void get().fetchBlockedUsers();
@@ -883,24 +936,32 @@ export const useCloakStore = create<CloakState>()(
           }),
         });
         if (!res.ok) {
-          return { ok: false as const, error: res.error ?? "server_error" };
+          return { ok: false as const, error: res.error ?? "server_error", status: res.status };
         }
         const { user, membership } = res.data;
-        /* Registration has the passphrase — provision the E2EE identity on
-           first use (public key + wrapped backup upload). */
-        const identityStatus = await ensureIdentity(user.id, password);
+        /* Same contract as signIn: the session opens the gate immediately,
+           and identity provisioning is bounded enrichment. */
         set((s) => ({
           auth: { user, checked: true },
           membership: membership ?? s.membership,
-          identityStatus,
         }));
+        /* Registration has the passphrase — provision the E2EE identity on
+           first use (public key + wrapped backup upload). */
+        const identityStatus = await withTimeout(
+          ensureIdentity(user.id, password),
+          IDENTITY_PROVISION_TIMEOUT_MS
+        );
+        if (identityStatus) set({ identityStatus });
         if (membership?.membership === "reserve") void get().fetchGuestPasses();
-        const convs = api<{
+        const list = await api<{
           contacts: ServerContact[];
           conversations: ServerConversation[];
         }>("/api/conversations");
-        const list = await convs;
-        if (list.ok) await get().hydrateServerData(list.data.contacts, list.data.conversations);
+        if (list.ok) {
+          await get()
+            .hydrateServerData(list.data.contacts, list.data.conversations)
+            .catch(() => undefined);
+        }
         void get().fetchInbox();
         void get().fetchPrivacySettings();
         void get().fetchBlockedUsers();
