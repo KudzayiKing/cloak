@@ -110,10 +110,14 @@ export function SplashScreen() {
         phase === "fading" ? "pointer-events-none opacity-0" : "opacity-100"
       )}
     >
-      <CloakLogoImage size={96} className="cloak-message-in" />
-      <span className="cloak-wordmark cloak-message-in mt-5 text-3xl text-cloak-text">
-        <CipherWordmark text={WORDMARK} />
-      </span>
+      <div className="flex w-full flex-col items-center text-center">
+        <span className="cloak-message-in grid h-24 w-24 place-items-center">
+          <CloakLogoImage size={96} className="block -translate-x-1" />
+        </span>
+        <span className="cloak-wordmark cloak-message-in mt-5 block leading-none text-3xl text-cloak-text">
+          <CipherWordmark text={WORDMARK} />
+        </span>
+      </div>
     </div>
   );
 }
