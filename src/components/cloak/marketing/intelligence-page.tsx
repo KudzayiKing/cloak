@@ -52,7 +52,7 @@ const FAQS = [
   },
   {
     q: "What if my device cannot run local inference?",
-    a: "Messaging works normally, and Cloak Intelligence states precisely why local inference is unavailable — WebGPU, storage, or installation. Cloud is only ever an explicit choice.",
+    a: "Messaging works normally, and Cloaq Intelligence states precisely why local inference is unavailable — WebGPU, storage, or installation. Cloud is only ever an explicit choice.",
   },
   {
     q: "How do I know where an answer was processed?",
@@ -76,7 +76,7 @@ export function IntelligencePage() {
         <Container className="relative">
           <div className="mx-auto max-w-3xl text-center">
             <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.22em] text-cloak-gold">
-              Cloak Intelligence
+              Cloaq Intelligence
             </p>
             <h1 className="cloak-display text-balance text-4xl font-medium leading-tight text-cloak-text md:text-5xl">
               Intelligence that lives where your conversations live.
@@ -105,7 +105,7 @@ export function IntelligencePage() {
         <Container>
           <SectionHeading
             eyebrow="Pipeline"
-            title="Cloak AI is not your memory."
+            title="Cloaq AI is not your memory."
             lead="Four layers with separate responsibilities keep the assistant precise and private — the model reasons, it does not rummage. It is deliberately not a chatbot bolted onto a messenger."
           />
           <div className="grid gap-4 md:grid-cols-2">
@@ -144,7 +144,7 @@ export function IntelligencePage() {
                 },
                 {
                   title: "Ask before cloud processing",
-                  body: "Cloak requests your consent first, and labels the answer with the route it used.",
+                  body: "Cloaq requests your consent first, and labels the answer with the route it used.",
                 },
                 {
                   title: "Allow cloud",

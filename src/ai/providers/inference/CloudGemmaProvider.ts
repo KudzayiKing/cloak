@@ -21,7 +21,7 @@ export class CloudGemmaProvider implements InferenceProvider {
 
   async generate(request: GenerationRequest): Promise<GenerationResult> {
     throw new Error(
-      "Cloud fallback is not configured. Cloak remains fully usable with local-only processing."
+      "Cloud fallback is not configured. Cloaq remains fully usable with local-only processing."
     );
   }
 }

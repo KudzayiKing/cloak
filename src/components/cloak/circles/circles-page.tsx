@@ -258,7 +258,7 @@ export function CirclesPage() {
             <div className="mb-5 rounded-2xl border border-cloak-border bg-cloak-surface/50 px-5 py-4 text-[13px] leading-relaxed text-cloak-text-secondary">
               Circles organize people who are already Cloak members.{" "}
               {membership === "private"
-                ? "Cloak Private members can be invited into Circles; creating one is part of Cloak Reserve and the managed tiers."
+                ? "Cloaq Private members can be invited into Circles; creating one is part of Cloaq Reserve and the managed tiers."
                 : "Become a member to create or join a Circle."}
             </div>
           )}

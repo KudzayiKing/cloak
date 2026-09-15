@@ -3,7 +3,7 @@
 /*
  * ConversationView (spec §18) — header, message area, composer.
  * Handles locked conversations, Ghost Chat surface treatment,
- * Cloak Mode, and the @Cloak orchestration pipeline.
+ * Cloaq Mode, and the @Cloak orchestration pipeline.
  */
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
@@ -313,7 +313,7 @@ export function ConversationView({
           <p className="mt-5 text-base font-medium text-cloak-text">This conversation is locked</p>
           <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-cloak-text-muted">
             Unlock to read the message history. Locked chats stay hidden in
-            Cloak Mode and app switchers where the platform allows.
+            Cloaq Mode and app switchers where the platform allows.
           </p>
           <Button
             className="bg-cloak-gold/20 hover:bg-cloak-gold/25 mt-6 border border-cloak-gold/30 text-cloak-gold hover:text-cloak-gold"
@@ -411,7 +411,7 @@ export function ConversationView({
                 />
               );
             })}
-            {/* Cloak is answering inline (user feedback: AI lives in every chat) */}
+            {/* Cloaq is answering inline (user feedback: AI lives in every chat) */}
             {cloakPending && (
               <div className="cloak-message-in flex justify-start">
                 <div className="inline-flex items-center gap-2.5 rounded-3xl rounded-bl-lg border border-cloak-gold/25 bg-cloak-gold-soft/30 px-4 py-2.5">
@@ -419,7 +419,7 @@ export function ConversationView({
                     <CloakMark size={14} />
                   </span>
                   <span className="text-[12px] text-cloak-text-secondary">
-                    Cloak is thinking
+                    Cloaq is thinking
                   </span>
                   <span className="flex items-end gap-0.5 pb-0.5">
                     <span className="cloak-typing-dot h-1 w-1 rounded-full bg-cloak-gold-bright" />

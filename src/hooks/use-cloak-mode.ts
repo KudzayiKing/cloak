@@ -1,12 +1,12 @@
 "use client";
 
 /*
- * useCloakMode (spec §23) — reusable hook over the global Cloak Mode state.
+ * useCloakMode (spec §23) — reusable hook over the global Cloaq Mode state.
  * Transitions are immediate and restrained; no OS-level protections are
  * claimed beyond what the PWA controls.
  *
  * useCloakModeSwitch (user feedback round 4) — guard-aware switching:
- * turning Cloak Mode ON is always immediate; turning it OFF requires PIN or
+ * turning Cloaq Mode ON is always immediate; turning it OFF requires PIN or
  * biometric verification when the user configured protection in Settings.
  */
 
@@ -27,7 +27,7 @@ export function useCloakModeSwitch() {
   const guard = useCloakStore((s) => s.cloakGuard);
   const openCloakGate = useCloakStore((s) => s.openCloakGate);
 
-  /** Ask to turn Cloak Mode off — gated when protection is configured. */
+  /** Ask to turn Cloaq Mode off — gated when protection is configured. */
   const turnOff = useCallback(() => {
     if (guard.pinHash || guard.credentialId) {
       openCloakGate("cloak-off", (verified) => {

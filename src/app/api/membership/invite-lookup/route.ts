@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     found: true,
     status: invite.status, // pending | redeemed | expired | revoked
-    inviterName: owner?.owner.displayName ?? "A Cloak Reserve member",
+    inviterName: owner?.owner.displayName ?? "A Cloaq Reserve member",
     method: invite.method,
     expiresAt: invite.expiresAt.toISOString(),
   });

@@ -439,7 +439,7 @@ await test("checkout can start before sign-up and account creation is payment-ga
   assert.ok(registerRoute.includes("paymentClaimToken"), "registration must consume the payment claim");
   assert.ok(registerRoute.includes("membership_required"), "unpaid registration must be blocked");
   assert.ok(!signInScreen.includes("Create account"), "sign-in screen must not offer unpaid sign-up");
-  assert.ok(checkoutDialog.includes("Create Cloak ID"), "checkout must collect Cloak ID after payment");
+  assert.ok(checkoutDialog.includes("Create Cloaq ID"), "checkout must collect Cloaq ID after payment");
   assert.ok(checkoutDialog.includes("Install PWA"), "post-payment onboarding must prompt PWA installation");
 });
 

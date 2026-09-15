@@ -4,12 +4,12 @@ import { db } from "@/lib/db";
 /*
  * Web Push transport (spec §62) — the out-of-app layer for structural
  * events, delivered by the push service to the OS notification surface
- * (lock screen / notification shade) while Cloak is closed.
+ * (lock screen / notification shade) while Cloaq is closed.
  *
  * Discipline (mirrors notify.ts and the §63 audit rule):
  * - STRUCTURAL copy only. The server is E2EE-blind: it never sees message
  *   content, so a push can never leak it. Sender names and previews are a
- *   device-side Cloak Mode decision the server cannot evaluate — pushes
+ *   device-side Cloaq Mode decision the server cannot evaluate — pushes
  *   carry exactly the title/body the in-app inbox stores, which is
  *   membership/role/policy copy by construction.
  * - Failure posture: a push failure NEVER throws into the caller and

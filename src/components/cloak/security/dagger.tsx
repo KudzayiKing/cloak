@@ -75,7 +75,7 @@ export function DaggerButton({ variant }: { variant: "rail" | "header" }) {
     );
   }
 
-  /* Desktop rail — sits directly between Cloak Mode and Settings (§2). */
+  /* Desktop rail — sits directly between Cloaq Mode and Settings (§2). */
   return (
     <button
       type="button"
@@ -149,7 +149,7 @@ function HoldToDagger({ holdMs, onComplete }: { holdMs: number; onComplete: () =
   return (
     <button
       type="button"
-      aria-label="Hold to Dagger — hold for three seconds to destroy this device's Cloak keys and data"
+      aria-label="Hold to Dagger — hold for three seconds to destroy this device's Cloaq keys and data"
       data-pressed={holding}
       onPointerDown={(e) => {
         e.preventDefault();
@@ -224,11 +224,11 @@ export function DaggerDialogHost() {
         <DialogHeader>
           <DialogTitle className="text-lg">Dagger this device</DialogTitle>
           <DialogDescription className="text-cloak-text-secondary">
-            This will destroy Cloak&apos;s local keys, private data and device
+            This will destroy Cloaq&apos;s local keys, private data and device
             authorization on this device.
             <br />
             <br />
-            Your Cloak account and other trusted devices will remain active.
+            Your Cloaq account and other trusted devices will remain active.
             <br />
             <br />
             This cannot be undone on this device.
@@ -306,8 +306,8 @@ export function DaggerOverlay() {
         {result?.serverRevocation === "complete" ? " revoked." : " queued for revocation."}
       </p>
       <p className="mt-4 max-w-md text-[11.5px] leading-relaxed text-cloak-text-muted">
-        Dagger removes Cloak-controlled local data and device authorization.
-        Operating-system or browser artifacts outside Cloak&apos;s control may
+        Dagger removes Cloaq-controlled local data and device authorization.
+        Operating-system or browser artifacts outside Cloaq&apos;s control may
         remain.
       </p>
       <button

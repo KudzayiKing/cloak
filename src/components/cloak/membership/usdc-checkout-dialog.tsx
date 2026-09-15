@@ -12,7 +12,7 @@
  * (§16 Option B, embedded in the Solana Pay URI), and the expiry (§15).
  * The QR encodes the full Solana Pay URI so a scanning wallet pre-fills
  * amount + token + reference. Wallet connection is never required (§18);
- * the paying wallet never becomes a Cloak identity (§6). Verification
+ * the paying wallet never becomes a Cloaq identity (§6). Verification
  * posts the tx signature with the request id to /api/payments/verify,
  * which settles the claim + entitlement server-side.
  *
@@ -63,8 +63,8 @@ import {
 } from "@/lib/cloak/payments";
 
 const PLAN_TITLES: Record<IndividualMembershipSku, string> = {
-  private: "Cloak Private",
-  reserve: "Cloak Reserve",
+  private: "Cloaq Private",
+  reserve: "Cloaq Reserve",
 };
 
 interface PaymentRequestPayload {
@@ -164,7 +164,7 @@ function CheckoutBody({
         };
         if (cancelled) return;
         if (!res.ok || !json.ok || !json.request) {
-          setLoadError(json.message ?? "Cloak could not open a payment request. Try again.");
+          setLoadError(json.message ?? "Cloaq could not open a payment request. Try again.");
           setPhase("problem");
           return;
         }
@@ -173,7 +173,7 @@ function CheckoutBody({
         setPhase("details");
       } catch {
         if (!cancelled) {
-          setLoadError("Cloak could not reach the payment service. Try again.");
+          setLoadError("Cloaq could not reach the payment service. Try again.");
           setPhase("problem");
         }
       }
@@ -260,7 +260,7 @@ function CheckoutBody({
       setOutcome({
         status: "network_error",
         message:
-          "Cloak could not reach the verification service. Your payment may still confirm — try again.",
+          "Cloaq could not reach the verification service. Your payment may still confirm — try again.",
       });
       setPhase("problem");
     }
@@ -273,7 +273,7 @@ function CheckoutBody({
     event.preventDefault();
     if (!claimToken || accountBusy) return;
     if (!handle.trim() || password.length < 8) {
-      setAccountError("Choose a Cloak ID and a passphrase of at least 8 characters.");
+      setAccountError("Choose a Cloaq ID and a passphrase of at least 8 characters.");
       return;
     }
     setAccountBusy(true);
@@ -286,9 +286,9 @@ function CheckoutBody({
       return;
     }
     const copy: Record<string, string> = {
-      bad_handle: "Cloak IDs are 3-24 characters using letters, numbers, and underscores.",
+      bad_handle: "Cloaq IDs are 3-24 characters using letters, numbers, and underscores.",
       bad_password: "Passphrases are 8-256 characters.",
-      handle_taken: "That Cloak ID is already taken. Choose another, or sign in.",
+      handle_taken: "That Cloaq ID is already taken. Choose another, or sign in.",
       payment_claim_invalid: "That payment setup link is invalid, expired, or already used.",
       membership_required: "Payment verification is required before account creation.",
       rate_limited: "Too many attempts. Wait a few minutes and try again.",
@@ -317,7 +317,7 @@ function CheckoutBody({
             Payment confirmed
           </div>
           <p className="mt-1.5 text-[13px] leading-relaxed text-cloak-text-secondary">
-            {accountCreated ? "Your Cloak ID is ready." : `${title} is ready.`}
+            {accountCreated ? "Your Cloaq ID is ready." : `${title} is ready.`}
           </p>
         </div>
         <dl className="space-y-2.5 rounded-lg border border-cloak-border bg-cloak-surface px-4 py-4 text-[13px]">
@@ -356,14 +356,14 @@ function CheckoutBody({
           </a>
         )}
         <p className="text-[11.5px] leading-relaxed text-cloak-text-muted">
-          Your payment wallet is not your Cloak identity. Use your Cloak ID and
+          Your payment wallet is not your Cloaq identity. Use your Cloaq ID and
           passphrase whenever you sign in on a trusted device.
         </p>
         {accountCreated && (
           <div className="rounded-lg border border-cloak-border bg-cloak-surface p-3.5">
-            <p className="text-[12.5px] font-medium text-cloak-text">Install Cloak</p>
+            <p className="text-[12.5px] font-medium text-cloak-text">Install Cloaq</p>
             <p className="mt-1 text-[12px] leading-relaxed text-cloak-text-secondary">
-              Add Cloak to your device before opening the chat app.
+              Add Cloaq to your device before opening the chat app.
             </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <InstallPWAButton
@@ -380,7 +380,7 @@ function CheckoutBody({
                   window.location.hash = "#/app/messages";
                 }}
               >
-                Open Cloak
+                Open Cloaq
               </Button>
             </div>
           </div>
@@ -392,7 +392,7 @@ function CheckoutBody({
             if (authUser) window.location.hash = "#/app/messages";
           }}
         >
-          {accountCreated ? "Done" : authUser ? "Open Cloak" : "Done"}
+          {accountCreated ? "Done" : authUser ? "Open Cloaq" : "Done"}
         </Button>
       </div>
     );
@@ -407,14 +407,14 @@ function CheckoutBody({
             Payment confirmed
           </div>
           <p className="mt-1.5 text-[13px] leading-relaxed text-cloak-text-secondary">
-            Create your Cloak ID and passphrase to activate {title}.
+            Create your Cloaq ID and passphrase to activate {title}.
           </p>
         </div>
 
         <form onSubmit={createAccount} className="space-y-3.5">
           <label className="block">
             <span className="mb-1.5 block text-[12px] font-medium text-cloak-text-secondary">
-              Cloak ID
+              Cloaq ID
             </span>
             <Input
               value={handle}
@@ -480,7 +480,7 @@ function CheckoutBody({
             ) : (
               <KeyRoundIcon size={15} className="mr-1.5" />
             )}
-            Create Cloak ID
+            Create Cloaq ID
           </Button>
         </form>
       </div>
@@ -527,7 +527,7 @@ function CheckoutBody({
           {request?.payQrDataUrl ? (
             <img
               src={request.payQrDataUrl}
-              alt={`Payment QR for ${amountDisplay} USDC to the Cloak treasury on Solana`}
+              alt={`Payment QR for ${amountDisplay} USDC to the Cloaq treasury on Solana`}
               width={168}
               height={168}
               className="h-[168px] w-[168px]"

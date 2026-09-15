@@ -1,13 +1,13 @@
 /*
- * Cloak membership model — types, capabilities, and the guest-pass state
+ * Cloaq membership model — types, capabilities, and the guest-pass state
  * machine (pricing & membership update spec §1, §7-§13, §35-§36, §53-§54).
  *
  * This module is intentionally dependency-free and side-effect-free so the
  * entitlement rules and pass invariants can be unit-tested in isolation.
  *
  * Core product rules encoded here:
- *   - Reserve includes 10 Cloak Private guest passes; each grants ONE recipient
- *     a REAL Cloak Private lifetime membership — never a limited account.
+ *   - Reserve includes 10 Cloaq Private guest passes; each grants ONE recipient
+ *     a REAL Cloaq Private lifetime membership — never a limited account.
  *   - Redeemed = permanently consumed. Never recycled, never reclaimed.
  *   - A pass returns to the allocation only if it expires or is revoked
  *     BEFORE redemption (backend policy; encoded here as the default policy).

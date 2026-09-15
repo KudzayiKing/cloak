@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 /*
  * POST /api/membership/invite-redeem — consume a pending invitation and
- * grant the recipient a REAL Cloak Private membership (spec §8, §10):
+ * grant the recipient a REAL Cloaq Private membership (spec §8, §10):
  * single-use, permanently consumed, never recycled. Recipient rules:
  * never silently waste a pass (an existing membership blocks redemption
  * WITHOUT consuming the pass), never downgrade Reserve, never double-grant.

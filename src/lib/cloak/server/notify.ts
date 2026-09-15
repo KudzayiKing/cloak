@@ -12,7 +12,7 @@ import { sendPushToUser } from "./push";
  * - In-app row (UserNotification) — rendered by the notifications centre.
  * - Web Push (PushSubscription) — OS notification surface while the app
  *   is closed. Same structural copy; the server is E2EE-blind so push
- *   can never leak message content, and device-side Cloak Mode stays a
+ *   can never leak message content, and device-side Cloaq Mode stays a
  *   device-side decision.
  *
  * Failure posture: notifyUser NEVER throws into its caller. A broken

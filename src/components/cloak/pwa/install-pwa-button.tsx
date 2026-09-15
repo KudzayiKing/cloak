@@ -23,7 +23,7 @@ export function InstallPWAButton({
   size = "default",
   variant = "default",
   className,
-  label = "Install Cloak",
+  label = "Install Cloaq",
 }: {
   size?: "default" | "lg" | "sm";
   variant?: "default" | "outline" | "gold";
@@ -77,9 +77,9 @@ export function InstallPWAButton({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="border-cloak-border bg-cloak-bg-elevated text-cloak-text sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="cloak-display text-xl">Install Cloak</DialogTitle>
+            <DialogTitle className="cloak-display text-xl">Install Cloaq</DialogTitle>
             <DialogDescription className="text-cloak-text-secondary">
-              Cloak installs as an app and runs full-screen, independent of a
+              Cloaq installs as an app and runs full-screen, independent of a
               browser tab.
             </DialogDescription>
           </DialogHeader>
@@ -94,12 +94,12 @@ export function InstallPWAButton({
             {support === "manual-desktop" && (
               <ol className="list-inside list-decimal space-y-2 text-cloak-text-secondary">
                 <li>Look for the install icon in the browser address bar.</li>
-                <li>Select “Install Cloak” and confirm.</li>
+                <li>Select “Install Cloaq” and confirm.</li>
               </ol>
             )}
             {support === "unknown" && (
               <p className="text-cloak-text-secondary">
-                Open Cloak in your device browser and use the browser’s install
+                Open Cloaq in your device browser and use the browser’s install
                 option to add it to your home screen.
               </p>
             )}

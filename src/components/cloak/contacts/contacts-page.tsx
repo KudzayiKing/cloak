@@ -1,8 +1,8 @@
 "use client";
 
 /*
- * ContactsPage (spec §25) — Cloak IDs first, phone numbers never primary.
- * Add by Cloak ID, QR entry, invite concept, verification, blocking.
+ * ContactsPage (spec §25) — Cloaq IDs first, phone numbers never primary.
+ * Add by Cloaq ID, QR entry, invite concept, verification, blocking.
  */
 
 import { useEffect, useState } from "react";
@@ -81,7 +81,7 @@ export function ContactsPage() {
   const addContact = async () => {
     const handle = addHandle.trim();
     if (!handle) {
-      setAddError("Enter a Cloak ID.");
+      setAddError("Enter a Cloaq ID.");
       return;
     }
     setAddBusy(true);
@@ -89,7 +89,7 @@ export function ContactsPage() {
     try {
       const id = await useCloakStore.getState().openServerConversation(handle);
       if (!id) {
-        setAddError("No account with that Cloak ID was found.");
+        setAddError("No account with that Cloaq ID was found.");
         return;
       }
       setActiveConversation(id);
@@ -112,7 +112,7 @@ export function ContactsPage() {
             <div>
               <h1 className="cloak-display text-2xl font-medium text-cloak-text">Contacts</h1>
               <p className="mt-1 text-[13px] text-cloak-text-muted">
-                People reach you by Cloak ID — never by phone number.
+                People reach you by Cloaq ID — never by phone number.
               </p>
             </div>
             <button
@@ -129,7 +129,7 @@ export function ContactsPage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name or Cloak ID"
+              placeholder="Search by name or Cloaq ID"
               className="w-full bg-transparent text-[13.5px] text-cloak-text outline-none placeholder:text-cloak-text-muted"
             />
           </label>
@@ -139,7 +139,7 @@ export function ContactsPage() {
               <UserRoundXIcon size={22} className="mx-auto text-cloak-text-muted" />
               <p className="mt-3 text-sm text-cloak-text-secondary">No matching contacts.</p>
               <p className="mt-1 text-xs text-cloak-text-muted">
-                Add someone by their Cloak ID or scan their QR code.
+                Add someone by their Cloaq ID or scan their QR code.
               </p>
             </div>
           ) : (
@@ -235,7 +235,7 @@ export function ContactsPage() {
           <DialogHeader>
             <DialogTitle className="cloak-display text-xl">Add a contact</DialogTitle>
             <DialogDescription className="text-cloak-text-secondary">
-              Enter a Cloak ID or scan a verification QR code in person.
+              Enter a Cloaq ID or scan a verification QR code in person.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -255,7 +255,7 @@ export function ContactsPage() {
             </div>
             <label className="block">
               <span className="mb-1.5 block text-[12px] font-medium text-cloak-text-secondary">
-                Cloak ID
+                Cloaq ID
               </span>
               <Input
                 value={addHandle}
@@ -282,7 +282,7 @@ export function ContactsPage() {
               {addBusy ? "Opening..." : "Add contact"}
             </Button>
             <p className="text-center text-[11px] text-cloak-text-muted">
-              Requests reveal only your Cloak ID — never your phone number.
+              Requests reveal only your Cloaq ID — never your phone number.
             </p>
           </div>
         </RiseDialogContent>
@@ -368,7 +368,7 @@ export function ContactsPage() {
 }
 
 /* ---------- Reserve invite panel (pricing & membership update spec §11) ----------
- * Reserve members manage Cloak Private passes from Membership settings.
+ * Reserve members manage Cloaq Private passes from Membership settings.
  * Other tiers see the concept honestly — no fake invite creation. */
 
 function ReserveInvitePanel() {
@@ -386,12 +386,12 @@ function ReserveInvitePanel() {
         </span>
         <div className="flex-1">
           <p className="text-sm font-medium text-cloak-text">
-            {isReserve ? "Private passes" : "Inviting people to Cloak"}
+            {isReserve ? "Private passes" : "Inviting people to Cloaq"}
           </p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-cloak-text-secondary">
             {isReserve
-              ? `Your Reserve membership includes passes that grant full Cloak Private membership. ${available} available.`
-              : "Cloak Reserve includes passes that grant full Cloak Private membership to the people you trust."}
+              ? `Your Reserve membership includes passes that grant full Cloaq Private membership. ${available} available.`
+              : "Cloaq Reserve includes passes that grant full Cloaq Private membership to the people you trust."}
           </p>
         </div>
         <Button

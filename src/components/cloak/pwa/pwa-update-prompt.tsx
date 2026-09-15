@@ -48,7 +48,7 @@ export function PwaUpdatePrompt() {
 
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-medium text-cloak-text">
-          A new version of Cloak is ready
+          A new version of Cloaq is ready
         </p>
         <p className="mt-0.5 text-[11.5px] leading-relaxed text-cloak-text-muted">
           Refresh to load the latest fixes. Your messages stay on this device.

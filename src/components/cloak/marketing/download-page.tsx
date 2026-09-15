@@ -29,10 +29,10 @@ export function DownloadPage() {
               Install
             </p>
             <h1 className="cloak-display text-balance text-4xl font-medium leading-tight text-cloak-text md:text-5xl">
-              Cloak belongs on your device.
+              Cloaq belongs on your device.
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-cloak-text-secondary md:text-lg">
-              Install Cloak as an app on the platforms it supports. It opens
+              Install Cloaq as an app on the platforms it supports. It opens
               full-screen, keeps the same dark discipline, and never turns your
               home screen into a notification billboard.
             </p>
@@ -81,7 +81,7 @@ export function DownloadPage() {
                 ))}
               </ul>
               <p className="mt-5 text-xs leading-relaxed text-cloak-text-muted">
-                Installation is optional — Cloak remains fully usable in the
+                Installation is optional — Cloaq remains fully usable in the
                 browser. Local model artifacts are stored per device and never
                 downloaded without your explicit action.
               </p>

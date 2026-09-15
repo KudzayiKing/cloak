@@ -53,7 +53,7 @@ const PRINCIPLES = [
   {
     icon: CloudOffIcon,
     title: "No silent cloud",
-    body: "Cloud processing is off by default. If you ever allow it, Cloak asks first and labels the answer. There is no configuration in which Cloak uploads context quietly.",
+    body: "Cloud processing is off by default. If you ever allow it, Cloaq asks first and labels the answer. There is no configuration in which Cloaq uploads context quietly.",
   },
   {
     icon: MonitorSmartphoneIcon,
@@ -72,23 +72,23 @@ const PRINCIPLES = [
   },
 ];
 
-/* Threat model (review spec §30) — exposures Cloak is designed to reduce. */
+/* Threat model (review spec §30) — exposures Cloaq is designed to reduce. */
 const THREAT_REDUCTIONS = [
   { title: "Service-provider message access", body: "Conversation content is end-to-end encrypted; the relay cannot read it." },
   { title: "Cloud AI prompt retention", body: "AI retrieval and reasoning run locally; prompts are not sent to cloud models by default." },
-  { title: "Public phone-number identity", body: "People reach you by Cloak ID — there is no public phone-number identity." },
-  { title: "Casual device observation", body: "Cloak Mode reduces previews, sender details, and activity indicators." },
+  { title: "Public phone-number identity", body: "People reach you by Cloaq ID — there is no public phone-number identity." },
+  { title: "Casual device observation", body: "Cloaq Mode reduces previews, sender details, and activity indicators." },
   { title: "Uncontrolled group membership", body: "Groups and Circles are invite-only with controlled membership and no open invitation links." },
   { title: "Stale trusted devices", body: "Every authorized device is visible and revocable in one step." },
-  { title: "Message retention beyond user intent", body: "Ghost Chats are configured to disappear from Cloak on the timer you choose." },
+  { title: "Message retention beyond user intent", body: "Ghost Chats are configured to disappear from Cloaq on the timer you choose." },
 ];
 
 /* Threat model limitations (review spec §30) — stated plainly. */
 const THREAT_LIMITS = [
-  "Cloak cannot protect a conversation if an authorized device is already compromised.",
-  "Cloak cannot prevent another participant from photographing their screen.",
+  "Cloaq cannot protect a conversation if an authorized device is already compromised.",
+  "Cloaq cannot prevent another participant from photographing their screen.",
   "A PWA cannot guarantee every OS-level anti-capture control.",
-  "Blockchain settlement is public. Cloak does not claim payment anonymity.",
+  "Blockchain settlement is public. Cloaq does not claim payment anonymity.",
 ];
 
 const AUDIT_STATUS_COPY: Record<
@@ -98,12 +98,12 @@ const AUDIT_STATUS_COPY: Record<
   not_started: {
     label: "Independent security assessment",
     state: "Not started",
-    body: "No independent assessment has been commissioned yet. Cloak does not claim independent verification.",
+    body: "No independent assessment has been commissioned yet. Cloaq does not claim independent verification.",
   },
   planned: {
     label: "Independent security assessment",
     state: "Planned",
-    body: "An independent assessment of the cryptographic protocol layer and application security is planned before wide-scale marketing. Cloak does not claim independent verification until a report exists.",
+    body: "An independent assessment of the cryptographic protocol layer and application security is planned before wide-scale marketing. Cloaq does not claim independent verification until a report exists.",
   },
   in_progress: {
     label: "Independent security assessment",
@@ -136,7 +136,7 @@ export function SecurityPage() {
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-cloak-text-secondary md:text-lg">
               No absolute guarantees, no theater. A precise description of what
-              Cloak protects, how it is built, and where the honest limits sit.
+              Cloaq protects, how it is built, and where the honest limits sit.
             </p>
             <nav aria-label="Security sections" className="mt-7 flex flex-wrap items-center justify-center gap-2">
               {[
@@ -164,7 +164,7 @@ export function SecurityPage() {
       {/* Principles */}
       <section className="pb-20 md:pb-24">
         <Container>
-          <SectionHeading eyebrow="Principles" title="How Cloak is built." />
+          <SectionHeading eyebrow="Principles" title="How Cloaq is built." />
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {PRINCIPLES.map((p) => (
               <Surface key={p.title} hover className="p-6">
@@ -184,7 +184,7 @@ export function SecurityPage() {
         <Container>
           <SectionHeading
             eyebrow="Threat model"
-            title="What Cloak is designed to reduce."
+            title="What Cloaq is designed to reduce."
             lead="A threat model states exposures honestly — including the ones that remain."
           />
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -202,7 +202,7 @@ export function SecurityPage() {
           <div className="mx-auto mt-8 max-w-4xl rounded-xl border border-cloak-warning/25 bg-cloak-warning/5 p-6">
             <h3 className="flex items-center gap-2.5 text-base font-medium text-cloak-text">
               <TriangleAlertIcon size={17} className="text-cloak-warning" />
-              What Cloak cannot protect against
+              What Cloaq cannot protect against
             </h3>
             <ul className="mt-4 grid gap-2.5 md:grid-cols-2">
               {THREAT_LIMITS.map((limit) => (
@@ -240,7 +240,7 @@ export function SecurityPage() {
                 <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">
                   Identity keys are generated on your device when your account
                   is created. Your private key is wrapped with your passphrase
-                  for backup — Cloak cannot recover it for you.
+                  for backup — Cloaq cannot recover it for you.
                 </p>
               </Surface>
               <Surface className="p-6">
@@ -270,7 +270,7 @@ export function SecurityPage() {
             <SectionHeading
               eyebrow="Dagger"
               title="Emergency device control."
-              lead="Dagger destroys local Cloak keys first, then removes application-controlled sensitive data and revokes the device."
+              lead="Dagger destroys local Cloaq keys first, then removes application-controlled sensitive data and revokes the device."
             />
             <div className="grid gap-4 md:grid-cols-2">
               <Surface className="p-6">
@@ -279,7 +279,7 @@ export function SecurityPage() {
                   Keys first.
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">
-                  Cloak&apos;s Dagger flow is designed to invalidate the
+                  Cloaq&apos;s Dagger flow is designed to invalidate the
                   cryptographic material required to use local encrypted data
                   before slower storage cleanup runs. Keys go first — always.
                 </p>
@@ -294,10 +294,10 @@ export function SecurityPage() {
               </Surface>
             </div>
             <p className="mx-auto mt-7 max-w-2xl text-center text-[12px] leading-relaxed text-cloak-text-muted">
-              Dagger removes Cloak-controlled local data and device
+              Dagger removes Cloaq-controlled local data and device
               authorization. It does not delete your account or membership, and
               it cannot remove operating-system or browser artifacts outside
-              Cloak&apos;s control.
+              Cloaq&apos;s control.
             </p>
           </div>
         </Container>
@@ -348,7 +348,7 @@ export function SecurityPage() {
               </Surface>
             </div>
             <p className="mt-6 rounded-lg border border-cloak-border bg-cloak-surface/60 px-5 py-3.5 text-[12.5px] leading-relaxed text-cloak-text-secondary">
-              Status — private groups and Cloak Circles are live in member
+              Status — private groups and Cloaq Circles are live in member
               accounts: server-enforced membership and roles, least-privilege
               invite links that grant only the groups you select, circle
               security policies, archiving, and a private activity log.
@@ -364,7 +364,7 @@ export function SecurityPage() {
         <Container>
           <div className="mx-auto max-w-4xl">
             <SectionHeading
-              eyebrow="Cloak Intelligence"
+              eyebrow="Cloaq Intelligence"
               title="What stays local, and when cloud can occur."
             />
             <div className="grid gap-4 md:grid-cols-2">
@@ -377,7 +377,7 @@ export function SecurityPage() {
                   Memory, retrieval, and reasoning run on your device. The
                   model does not search your entire message history — only the
                   small context permitted for the request is selected. AI
-                  prompt context is not sent to a cloud model when Cloak is
+                  prompt context is not sent to a cloud model when Cloaq is
                   operating on the local path.
                 </p>
               </Surface>
@@ -456,7 +456,7 @@ export function SecurityPage() {
               <ul className="mt-4 space-y-2 text-sm leading-relaxed text-cloak-text-secondary">
                 <li className="flex gap-2.5">
                   <ShieldCheckIcon size={14} className="mt-1 shrink-0 text-cloak-success" />
-                  Scope: the public website and the Cloak application.
+                  Scope: the public website and the Cloaq application.
                 </li>
                 <li className="flex gap-2.5">
                   <ShieldCheckIcon size={14} className="mt-1 shrink-0 text-cloak-success" />
@@ -492,7 +492,7 @@ export function SecurityPage() {
                 "No analytics SDKs, session replay, or fingerprinting — including in the app.",
                 "Message content is end-to-end encrypted; attachments never touch the server.",
                 "AI prompts and local memory stay on your device unless you explicitly allow cloud processing.",
-                "Payment verification is separated from your Cloak identity.",
+                "Payment verification is separated from your Cloaq identity.",
                 "Marketing analytics, if ever used, stay isolated from application telemetry and never capture messages, prompts, tokens, or payment details.",
               ].map((item) => (
                 <div key={item} className="flex items-start gap-2.5 rounded-lg border border-cloak-border bg-cloak-surface/50 px-4 py-3.5">
@@ -516,10 +516,10 @@ export function SecurityPage() {
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 rounded-xl border border-cloak-border bg-cloak-surface/50 px-6 py-8 text-center sm:flex-row sm:justify-between sm:text-left">
             <div>
               <h2 className="cloak-display text-xl font-medium text-cloak-text">
-                Evaluating Cloak for an organization?
+                Evaluating Cloaq for an organization?
               </h2>
               <p className="mt-1.5 text-sm text-cloak-text-secondary">
-                Request a private briefing with the Cloak team.
+                Request a private briefing with the Cloaq team.
               </p>
             </div>
             <Button

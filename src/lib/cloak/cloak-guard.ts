@@ -1,7 +1,7 @@
 /*
- * Cloak Mode protection (user feedback round 4).
+ * Cloaq Mode protection (user feedback round 4).
  *
- * Turning Cloak Mode OFF can require verification: a device PIN or the
+ * Turning Cloaq Mode OFF can require verification: a device PIN or the
  * platform biometric authenticator (WebAuthn user verification — Face ID,
  * Touch ID, Windows Hello). Turning it ON never requires verification.
  *
@@ -10,7 +10,7 @@
  * - Biometric enrollment stores only the credential ID; the private key
  *   never leaves the device authenticator. Verification is a local
  *   WebAuthn get() assertion with userVerification: "required".
- * - This is deliberately client-side: Cloak Mode is a device-local
+ * - This is deliberately client-side: Cloaq Mode is a device-local
  *   privacy control, not an identity system.
  */
 
@@ -75,7 +75,7 @@ export type BiometricEnrollResult =
   | { ok: true; credentialId: string }
   | { ok: false; error: string };
 
-/** Register a platform credential for Cloak Mode verification. */
+/** Register a platform credential for Cloaq Mode verification. */
 export async function enrollBiometric(): Promise<BiometricEnrollResult> {
   try {
     if (typeof window === "undefined" || !window.isSecureContext) {
@@ -90,7 +90,7 @@ export async function enrollBiometric(): Promise<BiometricEnrollResult> {
     const credential = (await navigator.credentials.create({
       publicKey: {
         challenge: randomBytes(32),
-        rp: { name: "Cloak" },
+        rp: { name: "Cloaq" },
         user: {
           id: randomBytes(16),
           name: "cloak-local-user",

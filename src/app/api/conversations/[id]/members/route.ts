@@ -23,7 +23,7 @@ type Params = { params: Promise<{ id: string }> };
 /**
  * Group membership surface.
  * GET    -> members + my role (+ pending join requests for admins/owner)
- * POST   -> add members by Cloak ID (invite permission required)
+ * POST   -> add members by Cloaq ID (invite permission required)
  */
 export async function GET(req: NextRequest, { params }: Params) {
   const user = await getSessionUser(req);

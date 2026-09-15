@@ -17,6 +17,7 @@ export type CloakMembership =
 export type MembershipOrigin =
   | "direct_usdc"
   | "reserve_guest_pass"
+  | "founding_adviser"
   | "bank_transfer"
   | "invoice"
   | "contract"
@@ -81,7 +82,7 @@ export interface IssueGuestPassInput {
   passId?: string;
   recipient?: GuestPassRecipient;
   /** Delivery hint for the pass record — the token itself is never stored here.
-   *  Only secure link + QR exist: a pre-payment guest cannot have a Cloak ID. */
+   *  Only secure link + QR exist: a pre-payment guest cannot have a Cloaq ID. */
   method?: "secure_link" | "qr";
 }
 
@@ -133,7 +134,7 @@ export type ContactVerification = "verified" | "unverified" | "pending";
 export interface Contact {
   id: string;
   name: string;
-  /** Cloak ID — the primary identity. Phone numbers are never primary. */
+  /** Cloaq ID — the primary identity. Phone numbers are never primary. */
   cloakId: string;
   verification: ContactVerification;
   avatarInitials: string;
@@ -257,7 +258,7 @@ export interface Conversation {
    *  "none" hides pre-join history from members added later, "all"
    *  shares it. Drives key rotation vs. re-wrap on member adds. */
   historyPolicy?: "none" | "all";
-  /** Cloak Circle association (circles spec §53): set when this group
+  /** Cloaq Circle association (circles spec §53): set when this group
    *  belongs to a Circle. Shown in the group header + details panel. */
   circleId?: string;
   circleName?: string;
@@ -314,7 +315,7 @@ export interface ModelArtifact {
 
 export type PreviewVisibility = "name-and-message" | "name-only" | "off";
 
-/* ---------- Cloak Circles (groups & circles spec §23-§68) ----------
+/* ---------- Cloaq Circles (groups & circles spec §23-§68) ----------
  * Mirror payloads of /api/circles — the server is authoritative (§80);
  * these types only describe what the client may display. */
 

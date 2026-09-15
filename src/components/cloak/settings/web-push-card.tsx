@@ -17,7 +17,7 @@ import { disablePush, enablePush, getPushState, type PushState } from "@/lib/clo
 
 const REASONS: Record<string, string> = {
   "permission-denied": "Permission was denied. Allow notifications for this site in your browser settings, then try again.",
-  "ios-needs-install": "On iPhone and iPad, notifications require Cloak to be installed. Open the Share menu and choose “Add to Home Screen” first.",
+  "ios-needs-install": "On iPhone and iPad, notifications require Cloaq to be installed. Open the Share menu and choose “Add to Home Screen” first.",
   insecure: "Notifications need a secure connection.",
   unsupported: "This browser does not support web notifications.",
   "no-sw": "The app shell is still loading \u2014 try again in a moment.",
@@ -29,8 +29,8 @@ const REASONS: Record<string, string> = {
 function statusLine(state: PushState): { title: string; detail: string } {
   if (state.support === "ios-needs-install") {
     return {
-      title: "Install Cloak to enable notifications",
-      detail: "Add Cloak to your Home Screen (Share → Add to Home Screen), then open it from there to turn notifications on.",
+      title: "Install Cloaq to enable notifications",
+      detail: "Add Cloaq to your Home Screen (Share → Add to Home Screen), then open it from there to turn notifications on.",
     };
   }
   if (state.support === "insecure") {
@@ -42,7 +42,7 @@ function statusLine(state: PushState): { title: string; detail: string } {
   if (state.subscribed) {
     return {
       title: "Notifications are on for this device",
-      detail: "Membership, role and policy events appear on this device even when Cloak is closed.",
+      detail: "Membership, role and policy events appear on this device even when Cloaq is closed.",
     };
   }
   if (state.permission === "denied") {
@@ -52,7 +52,7 @@ function statusLine(state: PushState): { title: string; detail: string } {
     };
   }
   return {
-    title: "Get notified when Cloak is closed",
+    title: "Get notified when Cloaq is closed",
     detail: "Adds, removals, role and policy changes, join requests \u2014 delivered to this device's notification area.",
   };
 }

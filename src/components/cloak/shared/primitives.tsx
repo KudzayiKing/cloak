@@ -52,7 +52,7 @@ export function Surface({
 }
 
 export function PrimaryCTA({
-  children = "Open Cloak",
+  children = "Open Cloaq",
   to = "/app/messages",
   size = "default",
   className,

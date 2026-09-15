@@ -157,14 +157,14 @@ export function ConversationSecurityPanel({
         <section>
           <h3 className="mb-3 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-cloak-text-muted">
             <SparklesIcon size={13} className="text-cloak-gold" />
-            Cloak Intelligence access
+            Cloaq Intelligence access
           </h3>
           <div className="space-y-3 rounded-xl border border-cloak-border bg-cloak-bg/50 p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-[13px] text-cloak-text">This conversation</p>
                 <p className="mt-0.5 text-[11px] leading-relaxed text-cloak-text-muted">
-                  Allow Cloak Intelligence to use this chat for retrieval.
+                  Allow Cloaq Intelligence to use this chat for retrieval.
                   {isGroup ? " Groups: the owner decides." : ""}
                 </p>
               </div>
@@ -644,7 +644,7 @@ function GroupMembersSection({ conversationId }: { conversationId: string }) {
             placeholder="@handle to add"
             autoCapitalize="none"
             spellCheck={false}
-            aria-label="Add member by Cloak ID"
+            aria-label="Add member by Cloaq ID"
             className="h-9 w-full rounded-lg border border-cloak-border bg-cloak-bg px-3 text-[12.5px] text-cloak-text outline-none placeholder:text-cloak-text-muted focus:border-cloak-gold/40"
           />
           <button

@@ -107,7 +107,7 @@ export function IntelligencePage() {
                   <SparklesIcon size={17} />
                 </span>
                 <div>
-                  <h1 className="text-base font-semibold text-cloak-text">Cloak Intelligence</h1>
+                  <h1 className="text-base font-semibold text-cloak-text">Cloaq Intelligence</h1>
                   <p className="text-[11.5px] text-cloak-text-muted">
                     Private assistant workspace · local-first
                   </p>
@@ -158,7 +158,7 @@ export function IntelligencePage() {
                   <SparklesIcon size={20} />
                 </span>
                 <p className="mt-4 text-sm font-medium text-cloak-text">
-                  Cloak Intelligence is disabled.
+                  Cloaq Intelligence is disabled.
                 </p>
                 <p className="mt-1.5 text-[13px] leading-relaxed text-cloak-text-muted">
                   Messaging works normally without it. Re-enable it from the
@@ -169,7 +169,7 @@ export function IntelligencePage() {
                   size="sm"
                   onClick={() => setAI({ enabled: true })}
                 >
-                  Enable Cloak Intelligence
+                  Enable Cloaq Intelligence
                 </Button>
               </div>
             ) : session.length === 0 ? (
@@ -178,7 +178,7 @@ export function IntelligencePage() {
                   <CloakMark size={20} />
                 </span>
                 <p className="mt-4 text-base font-medium text-cloak-text">
-                  Ask about what Cloak already knows.
+                  Ask about what Cloaq already knows.
                 </p>
                 <p className="mt-1.5 text-[13px] leading-relaxed text-cloak-text-muted">
                   Questions are answered from local memory where possible —
@@ -224,8 +224,8 @@ export function IntelligencePage() {
                     void ask();
                   }
                 }}
-                placeholder={disabled ? "Cloak Intelligence is disabled" : "Ask about your conversations, people, or decisions"}
-                aria-label="Ask Cloak Intelligence"
+                placeholder={disabled ? "Cloaq Intelligence is disabled" : "Ask about your conversations, people, or decisions"}
+                aria-label="Ask Cloaq Intelligence"
                 className="cloak-scroll max-h-[120px] w-full resize-none bg-transparent py-1.5 text-[13.5px] text-cloak-text outline-none placeholder:text-cloak-text-muted"
                 disabled={disabled || busy}
               />
@@ -259,7 +259,7 @@ export function IntelligencePage() {
             </h2>
             <div className="space-y-3 rounded-xl border border-cloak-border bg-cloak-bg/50 p-4">
               <ToggleRow
-                label="Cloak Intelligence"
+                label="Cloaq Intelligence"
                 note="Master switch for local intelligence"
                 checked={aiSettings.enabled}
                 onChange={(v) => setAI({ enabled: v })}
@@ -307,7 +307,7 @@ export function IntelligencePage() {
               className="flex w-full items-center gap-2.5 rounded-xl border border-cloak-danger/25 bg-cloak-danger/5 p-3.5 text-left text-[13px] text-cloak-danger transition-colors hover:bg-cloak-danger/10"
             >
               <TriangleAlertIcon size={14} />
-              Disable Cloak Intelligence
+              Disable Cloaq Intelligence
             </button>
           </section>
         </aside>
@@ -336,7 +336,7 @@ function SessionCard({ entry }: { entry: SessionEntry }) {
         ) : entry.state === "local-unavailable" ? (
           <p className="text-[13px] leading-relaxed text-cloak-text-secondary">
             Local reasoning is not installed on this device yet. Install the
-            local model in the panel to answer this locally — Cloak will not
+            local model in the panel to answer this locally — Cloaq will not
             send it anywhere without your explicit consent.
           </p>
         ) : (

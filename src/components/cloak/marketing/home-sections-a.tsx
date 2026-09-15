@@ -2,8 +2,8 @@
 
 /*
  * Home sections (review spec §5, §11-§14, §16, §44-§45):
- * trust strip, audience, Groups & Circles, Cloak Mode demo,
- * condensed Cloak Intelligence.
+ * trust strip, audience, Groups & Circles, Cloaq Mode demo,
+ * condensed Cloaq Intelligence.
  *
  * Copy rules (review spec §80/§81): short, precise, calm, technically
  * defensible. No absolute security claims, no "Communities"/discovery
@@ -86,8 +86,8 @@ const AUDIENCES = [
 const PRODUCT_CONCEPTS = [
   { icon: MessageCircleIcon, title: "Private messaging" },
   { icon: UsersIcon, title: "Private groups" },
-  { icon: UsersRoundIcon, title: "Cloak Circles" },
-  { icon: UserRoundCheckIcon, title: "Cloak IDs" },
+  { icon: UsersRoundIcon, title: "Cloaq Circles" },
+  { icon: UserRoundCheckIcon, title: "Cloaq IDs" },
   { icon: MonitorSmartphoneIcon, title: "Trusted devices" },
   { icon: TimerIcon, title: "Disappearing conversations" },
 ];
@@ -97,9 +97,9 @@ export function AudienceSection() {
     <section className="py-20 md:py-28">
       <Container>
         <SectionHeading
-          eyebrow="Who Cloak is for"
+          eyebrow="Who Cloaq is for"
           title="Built for conversations where exposure has consequences."
-          lead="Cloak is a deliberate choice for people whose communications carry real professional, legal, or personal stakes — not a status symbol."
+          lead="Cloaq is a deliberate choice for people whose communications carry real professional, legal, or personal stakes — not a status symbol."
         />
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {AUDIENCES.map((a) => (
@@ -159,7 +159,7 @@ export function GroupsCirclesSection() {
             />
             <p className="-mt-6 mb-8 max-w-xl text-sm leading-relaxed text-cloak-text-secondary md:text-base">
               A person can belong to a Circle without automatically seeing
-              every group inside it. Cloak organizes trust — it does not create
+              every group inside it. Cloaq organizes trust — it does not create
               a public social network.
             </p>
             <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5 sm:max-w-md">
@@ -219,7 +219,7 @@ export function GroupsCirclesSection() {
   );
 }
 
-/* D. Cloak Mode — interactive demo (review spec §44, §45) ------------------ */
+/* D. Cloaq Mode — interactive demo (review spec §44, §45) ------------------ */
 
 const CLOAK_MODE_BEHAVIORS: { label: string; demo: ReactNode }[] = [
   {
@@ -254,7 +254,7 @@ const CLOAK_MODE_BEHAVIORS: { label: string; demo: ReactNode }[] = [
     demo: (
       <div className="flex items-center gap-2 text-sm text-cloak-text-secondary">
         <LockIcon size={14} className="text-cloak-gold" />
-        Board pack — locked in Cloak Mode
+        Board pack — locked in Cloaq Mode
       </div>
     ),
   },
@@ -272,9 +272,9 @@ export function CloakModeSection() {
           <div>
             <SectionHeading
               align="left"
-              eyebrow="Cloak Mode"
+              eyebrow="Cloaq Mode"
               title="Reduce exposure. One control."
-              lead="When someone else can see your screen, Cloak should reveal less. One control reduces notification details, hides activity information, and locks selected conversations."
+              lead="When someone else can see your screen, Cloaq should reveal less. One control reduces notification details, hides activity information, and locks selected conversations."
             />
             <ul className="mb-8 flex flex-wrap gap-2">
               {CLOAK_MODE_SCENARIOS.map((scenario) => (
@@ -307,7 +307,7 @@ export function CloakModeSection() {
               </span>
               <span className="text-left">
                 <span className="block text-sm font-medium text-cloak-text">
-                  Cloak Mode {enabled ? "on" : "off"}
+                  Cloaq Mode {enabled ? "on" : "off"}
                 </span>
                 <span className="block text-xs text-cloak-text-muted">
                   Try it — the demo panel responds instantly.
@@ -330,7 +330,7 @@ export function CloakModeSection() {
                 )}
               >
                 <ShieldUserIcon size={12} />
-                {enabled ? "Cloak Mode active" : "Standard"}
+                {enabled ? "Cloaq Mode active" : "Standard"}
               </span>
             </div>
             <ul className="space-y-3">
@@ -357,22 +357,22 @@ export function CloakModeSection() {
 }
 
 /* D2. Dagger — emergency device control (codex §35-§37).
-   Sits AFTER Cloak Mode and BEFORE Cloak Intelligence:
-   Cloak Mode = reduce exposure while using the device.
+   Sits AFTER Cloaq Mode and BEFORE Cloaq Intelligence:
+   Cloaq Mode = reduce exposure while using the device.
    Dagger = end trust in the device. */
 
 const DAGGER_FEATURES = [
   {
     title: "Destroy local keys",
-    body: "Cloak removes the keys required to use local encrypted data.",
+    body: "Cloaq removes the keys required to use local encrypted data.",
   },
   {
     title: "Clear private local data",
-    body: "Messages, AI memory, indexes and Cloak-controlled sensitive caches are cleared.",
+    body: "Messages, AI memory, indexes and Cloaq-controlled sensitive caches are cleared.",
   },
   {
     title: "Revoke the device",
-    body: "The device loses access to your Cloak account.",
+    body: "The device loses access to your Cloaq account.",
   },
 ];
 
@@ -386,7 +386,7 @@ export function DaggerSection() {
               align="left"
               eyebrow="Dagger"
               title="When you stop trusting the device."
-              lead="Dagger is Cloak's emergency device control. Activate it to destroy local Cloak keys, clear sensitive local data and revoke the device from your account. Your other trusted devices and Cloak membership remain active."
+              lead="Dagger is Cloaq's emergency device control. Activate it to destroy local Cloaq keys, clear sensitive local data and revoke the device from your account. Your other trusted devices and Cloaq membership remain active."
             />
             <ul className="mb-8 space-y-3">
               {DAGGER_FEATURES.map((f) => (
@@ -435,7 +435,7 @@ export function DaggerSection() {
                 </span>
               </div>
               <div className="mt-3.5 space-y-1.5 text-[12px] text-cloak-text-secondary">
-                <p>Destroy local Cloak data</p>
+                <p>Destroy local Cloaq data</p>
                 <p>Revoke device</p>
               </div>
             </div>
@@ -443,9 +443,9 @@ export function DaggerSection() {
               Hold to Dagger
             </div>
             <p className="mt-4 text-[11px] leading-relaxed text-cloak-text-muted">
-              Dagger removes Cloak-controlled local data and device
+              Dagger removes Cloaq-controlled local data and device
               authorization. Operating-system or browser artifacts outside
-              Cloak&apos;s control may remain.
+              Cloaq&apos;s control may remain.
             </p>
           </Surface>
         </div>
@@ -454,7 +454,7 @@ export function DaggerSection() {
   );
 }
 
-/* E. Cloak Intelligence — condensed (review spec §16-§19) ------------------ */
+/* E. Cloaq Intelligence — condensed (review spec §16-§19) ------------------ */
 
 const INTELLIGENCE_STAGES = [
   {
@@ -463,11 +463,11 @@ const INTELLIGENCE_STAGES = [
   },
   {
     title: "Reason locally",
-    body: "Cloak Intelligence runs on the device where supported.",
+    body: "Cloaq Intelligence runs on the device where supported.",
   },
   {
     title: "Show the boundary",
-    body: "Cloak tells you whether processing stayed local.",
+    body: "Cloaq tells you whether processing stayed local.",
   },
 ];
 
@@ -476,9 +476,9 @@ export function IntelligenceSection() {
     <section className="border-y border-cloak-border bg-cloak-bg-elevated/40 py-20 md:py-28">
       <Container>
         <SectionHeading
-          eyebrow="Cloak Intelligence"
+          eyebrow="Cloaq Intelligence"
           title="Your AI should not need your conversations in the cloud."
-          lead="The model does not search your entire message history. Cloak retrieves only the context permitted for the request."
+          lead="The model does not search your entire message history. Cloaq retrieves only the context permitted for the request."
         />
 
         {/* Three stages */}
@@ -513,7 +513,7 @@ export function IntelligenceSection() {
               onClick={() => navigate("/intelligence")}
               className="inline-flex items-center gap-2 rounded-lg border border-cloak-border-strong bg-cloak-surface px-5 py-3 text-sm font-medium text-cloak-text transition-colors hover:bg-cloak-surface-hover"
             >
-              Explore Cloak Intelligence
+              Explore Cloaq Intelligence
               <ChevronRightIcon size={15} className="text-cloak-gold" />
             </button>
           </div>

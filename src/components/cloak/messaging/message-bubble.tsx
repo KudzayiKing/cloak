@@ -214,7 +214,7 @@ export function MessageBubble({
 
   /* Text — long-press opens the action sheet (Translate / Copy, user
      request). A running or finished translation renders inline with a
-     "Show original" toggle; Cloak Mode redaction never gets translated
+     "Show original" toggle; Cloaq Mode redaction never gets translated
      (that would defeat the redaction). */
   const translationActive =
     translation && translation.status !== "error" && !showOriginal;
@@ -624,7 +624,7 @@ function AIMessage({
               <CloakMark size={12} />
             </span>
             <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cloak-gold">
-              Cloak Intelligence
+              Cloaq Intelligence
             </span>
           </div>
 
@@ -639,7 +639,7 @@ function AIMessage({
                   onClick={onDownloadModel}
                   className="rounded-full border border-cloak-gold/30 bg-cloak-gold-soft px-3 py-1.5 text-[12px] font-medium text-cloak-gold-bright transition-colors hover:bg-cloak-gold-soft/70"
                 >
-                  Set up in Cloak Intelligence
+                  Set up in Cloaq Intelligence
                 </button>
               </div>
             </div>

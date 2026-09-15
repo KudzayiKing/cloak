@@ -98,7 +98,7 @@ export function MessageComposer({
             autoGrow(e.target);
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Message or @Cloak"
+          placeholder={`Message or ${ORCHESTRATOR_TRIGGER}`}
           aria-label="Message"
           className="cloak-scroll max-h-[140px] min-h-[36px] w-full resize-none bg-transparent py-2 text-[13.5px] leading-relaxed text-cloak-text outline-none placeholder:text-cloak-text-muted"
         />
@@ -106,7 +106,7 @@ export function MessageComposer({
         {invoked && (
           <span className="mb-2 hidden shrink-0 items-center gap-1 rounded-full border border-cloak-gold/30 bg-cloak-gold-soft px-2 py-1 text-[10px] font-medium text-cloak-gold-bright sm:inline-flex">
             <SparklesIcon size={10} />
-            Cloak Intelligence
+            Cloaq Intelligence
           </span>
         )}
 

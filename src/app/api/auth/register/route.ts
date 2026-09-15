@@ -18,6 +18,11 @@ import {
   hashInviteTokenServer,
   lazyExpireInvites,
 } from "@/lib/cloak/server/membership-server";
+import {
+  getAdviserInvitationByToken,
+  redeemAdviserInvitationInTransaction,
+  invitationError,
+} from "@/lib/cloak/server/adviser-invitations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +31,7 @@ export const dynamic = "force-dynamic";
  * POST /api/auth/register — account creation (pricing spec §9, §41-§43).
  *
  * Access model: account creation is membership-gated. A new user can create
- * a Cloak ID only after a verified USDC payment claim or a valid Reserve
+ * a Cloaq ID only after a verified USDC payment claim or a valid Reserve
  * guest invitation. The wallet never becomes the identity; the setup token
  * is one-time and hash-stored.
  */
@@ -36,6 +41,8 @@ interface RegisterBody {
   password?: string;
   displayName?: string;
   inviteToken?: string;
+  adviserInviteToken?: string;
+  email?: string;
   paymentClaimToken?: string;
   // Dagger device registry binding (dagger codex §16)
   deviceId?: string;
@@ -60,7 +67,7 @@ export async function POST(req: NextRequest) {
     body = {};
   }
 
-  /* Cloak IDs: stored without "@", lowercase, 3-24 chars of a-z/0-9/_ —
+  /* Cloaq IDs: stored without "@", lowercase, 3-24 chars of a-z/0-9/_ —
    * same normalization the login route applies when looking up. */
   const rawHandle = (body.handle ?? "").trim().replace(/^@+/, "").toLowerCase();
   const password = body.password ?? "";
@@ -78,7 +85,7 @@ export async function POST(req: NextRequest) {
   const existing = await db.user.findUnique({ where: { handle: rawHandle }, select: { id: true } });
   if (existing) {
     return NextResponse.json(
-      { ok: false, error: "handle_taken", message: "That Cloak ID is already taken." },
+      { ok: false, error: "handle_taken", message: "That Cloaq ID is already taken." },
       { status: 409 }
     );
   }
@@ -86,8 +93,10 @@ export async function POST(req: NextRequest) {
   /* Invitation (optional): validated BEFORE the account exists; a race on
    * redemption inside the transaction is reported honestly. */
   const inviteToken = (body.inviteToken ?? "").trim() || null;
+  const adviserInviteToken = (body.adviserInviteToken ?? "").trim() || null;
   const paymentClaimToken = (body.paymentClaimToken ?? "").trim() || null;
-  if (inviteToken && paymentClaimToken) {
+  const setupMethodCount = [inviteToken, adviserInviteToken, paymentClaimToken].filter(Boolean).length;
+  if (setupMethodCount > 1) {
     return NextResponse.json(
       { ok: false, error: "bad_request", message: "Use one account setup method at a time." },
       { status: 400 }
@@ -95,6 +104,7 @@ export async function POST(req: NextRequest) {
   }
 
   let invite: { id: string; passId: string } | null = null;
+  let adviserInvite: { token: string } | null = null;
   let paymentClaim: { id: string; membership: string } | null = null;
   if (inviteToken) {
     await lazyExpireInvites();
@@ -104,6 +114,12 @@ export async function POST(req: NextRequest) {
     });
     if (found && found.status === "pending" && found.pass.status === "issued") {
       invite = { id: found.id, passId: found.passId };
+    }
+  }
+  if (adviserInviteToken) {
+    const found = await getAdviserInvitationByToken(adviserInviteToken);
+    if (found.found && found.status === "pending") {
+      adviserInvite = { token: adviserInviteToken };
     }
   }
   if (paymentClaimToken) {
@@ -128,13 +144,19 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (!invite && !paymentClaim) {
+  if (!invite && !adviserInvite && !paymentClaim) {
     return NextResponse.json(
       {
         ok: false,
-        error: paymentClaimToken ? "payment_claim_invalid" : "membership_required",
+        error: paymentClaimToken
+          ? "payment_claim_invalid"
+          : adviserInviteToken
+            ? "adviser_invite_invalid"
+            : "membership_required",
         message: paymentClaimToken
           ? "That payment setup link is invalid or expired."
+          : adviserInviteToken
+            ? "That adviser invitation is invalid or expired."
           : "Create an account after payment verification or with a valid invitation.",
       },
       { status: 403 }
@@ -151,6 +173,8 @@ export async function POST(req: NextRequest) {
         select: {
           id: true,
           handle: true,
+          email: true,
+          emailVerifiedAt: true,
           displayName: true,
           about: true,
           membershipTier: true,
@@ -169,6 +193,13 @@ export async function POST(req: NextRequest) {
           data: { status: "redeemed", redeemedByUserId: user.id, redeemedAt: new Date() },
         });
         await grantMembership(txDb, user.id, "private", "reserve_guest_pass");
+      }
+      if (adviserInvite) {
+        await redeemAdviserInvitationInTransaction(txDb, {
+          token: adviserInvite.token,
+          userId: user.id,
+          email: body.email,
+        });
       }
       if (paymentClaim) {
         const updated = await txDb.membershipClaim.updateMany({
@@ -197,6 +228,8 @@ export async function POST(req: NextRequest) {
         select: {
           id: true,
           handle: true,
+          email: true,
+          emailVerifiedAt: true,
           displayName: true,
           about: true,
           membershipTier: true,
@@ -231,6 +264,13 @@ export async function POST(req: NextRequest) {
         { status: 409 }
       );
     }
+    const adviserError = invitationError(err);
+    if (adviserError.error !== "server_error") {
+      return NextResponse.json(
+        { ok: false, error: adviserError.error },
+        { status: adviserError.error.startsWith("already_") || adviserError.error.includes("binding") ? 409 : 400 }
+      );
+    }
     console.error("[auth/register] failed:", err);
     return NextResponse.json({ ok: false, error: "server_error" }, { status: 500 });
   }
@@ -238,10 +278,10 @@ export async function POST(req: NextRequest) {
 
 function validateHandle(handle: string): string | null {
   if (handle.length < 3 || handle.length > 24) {
-    return "Cloak IDs are 3-24 characters.";
+    return "Cloaq IDs are 3-24 characters.";
   }
   if (!/^[a-z0-9_]+$/.test(handle)) {
-    return "Cloak IDs use letters, numbers, and underscores.";
+    return "Cloaq IDs use letters, numbers, and underscores.";
   }
   return null;
 }

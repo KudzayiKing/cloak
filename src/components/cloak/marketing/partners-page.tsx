@@ -93,9 +93,9 @@ export function PartnersPage() {
             ))}
           </div>
           <p className="mx-auto mt-8 max-w-2xl text-center text-[13px] leading-relaxed text-cloak-text-muted">
-            Cloak does not run a public reseller program. Commercial terms,
+            Cloaq does not run a public reseller program. Commercial terms,
             deployment scope, and support boundaries are agreed directly with
-            the Cloak team.
+            the Cloaq team.
           </p>
         </Container>
       </section>

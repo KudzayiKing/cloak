@@ -27,7 +27,7 @@ import { assertDirectedAddAllowed, isBlockedBy, BlockOperationError as BlockOpEr
  *   - Everything here is backend-authoritative (§80): membership, roles,
  *     invite status, policy, archive/delete decisions live in the DB.
  *   - Circle membership NEVER implies billing entitlement, and removing
- *     someone from a Circle never touches their Cloak membership (§61).
+ *     someone from a Circle never touches their Cloaq membership (§61).
  *
  * v1 role model (spec §25/§27):
  *   owner  — everything incl. transfer, settings, policy, delete
@@ -421,7 +421,7 @@ export async function loadCircleDetail(
     .map((g) => mapGroupEntry(g, viewerId));
   const hiddenGroupCount = isManager ? 0 : groups.length - myGroupSet.size;
 
-  /* Directory (§42/§43): name, Cloak ID, circle role — never tier, wallet,
+  /* Directory (§42/§43): name, Cloaq ID, circle role — never tier, wallet,
      contact about, or device data. groupAccess follows least privilege. */
   const activeMembers = circle.members.filter((m) => !m.removedAt);
   const groupTitleById = new Map(groups.map((g) => [g.id, g.title ?? "Group"]));
@@ -632,7 +632,7 @@ export async function addCircleMembers(params: {
 
 /** Removing someone from the Circle also removes them from every group in
  *  it (§61/§77 v1 policy): circle access is the grant; revoking it revokes
- *  what it granted. Their Cloak membership is never touched here. */
+ *  what it granted. Their Cloaq membership is never touched here. */
 export async function removeCircleMember(params: {
   circleId: string;
   actorId: string;
@@ -1098,7 +1098,7 @@ export async function lookupCircleInvite(token: string) {
 }
 
 /** Redeem (§40/§41/§61): grants the CIRCLE membership + explicit group
- *  access. Requires an existing Cloak account — circle invites are for
+ *  access. Requires an existing Cloaq account — circle invites are for
  *  members, NOT a registration path (§60: passes bring people INTO Cloak;
  *  circle invites organize people who are already in). Approval-required
  *  invites (§41) file a join request instead of joining directly. */

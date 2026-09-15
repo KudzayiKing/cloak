@@ -9,12 +9,12 @@
  *
  * The commercial model (pricing & membership update spec §1, §66):
  *
- *   Cloak Private          $499      one-time individual membership
- *   Cloak Reserve          $2,500    one-time higher-assurance membership
- *                                    incl. 10 Cloak Private membership grants
- *   Cloak Private Circle   from $10,000      consultative
- *   Cloak Office           from $15,000/year organizational, annual
- *   Cloak Sovereign        custom            private deployment
+ *   Cloaq Private          $499      one-time individual membership
+ *   Cloaq Reserve          $2,500    one-time higher-assurance membership
+ *                                    incl. 10 Cloaq Private membership grants
+ *   Cloaq Private Circle   from $10,000      consultative
+ *   Cloaq Office           from $15,000/year organizational, annual
+ *   Cloaq Sovereign        custom            private deployment
  *
  * Reserve Concierge ($5,000) is an optional Reserve service, not a primary plan.
  *
@@ -23,11 +23,11 @@
  * retired; no persisted client state ever depended on it.
  */
 export const MEMBERSHIP_NAMES = {
-  private: "Cloak Private",
-  reserve: "Cloak Reserve",
-  privateCircle: "Cloak Private Circle",
-  office: "Cloak Office",
-  sovereign: "Cloak Sovereign",
+  private: "Cloaq Private",
+  reserve: "Cloaq Reserve",
+  privateCircle: "Cloaq Private Circle",
+  office: "Cloaq Office",
+  sovereign: "Cloaq Sovereign",
 } as const;
 
 export const CLOAK_PRICING = {
@@ -75,17 +75,26 @@ export function formatUSD(amount: number): string {
 }
 
 export const BRAND = {
-  name: "Cloak",
-  ai: "Cloak Intelligence",
-  cloakMode: "Cloak Mode",
+  name: "Cloaq",
+  uppercaseName: "CLOAQ",
+  baseUrl: process.env.NEXT_PUBLIC_APP_URL ?? "https://cloaq.app",
+  ai: "Cloaq Intelligence",
+  cloakMode: "Cloaq Mode",
   ghostChat: "Ghost Chat",
-  cloakId: "Cloak ID",
+  cloakId: "Cloaq ID",
   membership: "Membership",
-  cloakPrivate: "Cloak Private",
+  cloakPrivate: "Cloaq Private",
   cloakReserve: MEMBERSHIP_NAMES.reserve,
   securityCentre: "Security Centre",
-  tagline: "Private conversations. Private intelligence.",
+  tagline: "Private communications. Private intelligence.",
 } as const;
+
+export const APP_URL = BRAND.baseUrl;
+
+export function appUrl(path = "/"): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return new URL(normalized, APP_URL).toString();
+}
 
 /* ---------- Security audit status (review spec §7) ----------
  *
@@ -175,7 +184,7 @@ export const MODEL_MANIFEST: ModelManifestConfig = {
 export const CLOUD_FALLBACK_DEFAULT = false;
 
 /** The orchestrator handles these intents deterministically before any LLM call. */
-export const ORCHESTRATOR_TRIGGER = "@Cloak";
+export const ORCHESTRATOR_TRIGGER = "@Cloaq";
 
 export const SUPPORTED_PLATFORMS = [
   {

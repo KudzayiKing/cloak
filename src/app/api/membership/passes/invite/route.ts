@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 /*
  * POST /api/membership/passes/invite — issue one Reserve pass as a pending
  * invitation (pricing spec §12, §43). Only two delivery methods exist:
- * "secure_link" and "qr" — a pre-payment guest cannot have a Cloak ID, and
+ * "secure_link" and "qr" — a pre-payment guest cannot have a Cloaq ID, and
  * email/phone collection is not part of the flow. The raw token is returned
  * ONCE, inside the invite link / QR payload; the server keeps only the
  * SHA-256 hash (§43). Pending invites expire in 7 days (§13).

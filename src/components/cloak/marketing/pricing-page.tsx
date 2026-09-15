@@ -9,7 +9,7 @@
  * explanation + trusted-circle visual → PRIVATE ENVIRONMENTS (Private
  * Circle → Office → Sovereign) → membership philosophy → FAQ → CTA.
  *
- * Review spec §2: the display name for the $2,500 tier is "Cloak Reserve"
+ * Review spec §2: the display name for the $2,500 tier is "Cloaq Reserve"
  * (configurable via MEMBERSHIP_NAMES). Internal entitlement values that use
  * "black" type vocabulary is retired everywhere (owner decision, 2026-09).
  * No discounts, no countdowns, no "best value" gimmicks, no fake scarcity,
@@ -48,22 +48,22 @@ import {
 } from "@/lib/cloak/payments";
 
 const PRIVATE_INCLUDES = [
-  "Cloak messaging",
+  "Cloaq messaging",
   "Private groups",
   "Join trusted Circles",
-  "Cloak ID",
+  "Cloaq ID",
   "Ghost Chats",
-  "Cloak Mode",
+  "Cloaq Mode",
   "Dagger emergency device wipe",
   "Trusted devices",
   "Identity verification",
-  "Cloak Intelligence",
+  "Cloaq Intelligence",
   "Local memory and retrieval",
   "Core security updates",
 ];
 
 const RESERVE_PLUS = [
-  "10 full Cloak Private memberships to grant",
+  "10 full Cloaq Private memberships to grant",
   "Create a personal Circle",
   "Advanced Circle controls",
   "Advanced device controls",
@@ -75,40 +75,40 @@ const RESERVE_PLUS = [
 
 const PRICING_FAQS: { q: string; a: string }[] = [
   {
-    q: "How do I pay for Cloak Private or Reserve?",
-    a: "Individual membership can be settled directly with native USDC on Solana. Scan the QR or copy the payment details, send the exact amount, and Cloak activates membership after the transaction is verified.",
+    q: "How do I pay for Cloaq Private or Reserve?",
+    a: "Individual membership can be settled directly with native USDC on Solana. Scan the QR or copy the payment details, send the exact amount, and Cloaq activates membership after the transaction is verified.",
   },
   {
     q: "Do I need a credit card?",
     a: "No card is required for USDC settlement. There is no recurring card mandate for individual membership.",
   },
   {
-    q: "Does my wallet become my Cloak identity?",
-    a: "No. Payment verification and Cloak identity are separate systems. Your paying wallet is never used as your username, profile, or login.",
+    q: "Does my wallet become my Cloaq identity?",
+    a: "No. Payment verification and Cloaq identity are separate systems. Your paying wallet is never used as your username, profile, or login.",
   },
   {
     q: "Is USDC payment anonymous?",
-    a: "No. Standard blockchain activity is public. Cloak separates payment verification from messaging identity but does not claim blockchain payments are anonymous.",
+    a: "No. Standard blockchain activity is public. Cloaq separates payment verification from messaging identity but does not claim blockchain payments are anonymous.",
   },
   {
     q: "Do Reserve grants need USDC?",
-    a: "No. A Reserve grant gives the recipient full Cloak Private membership without payment — no wallet, no card, nothing to buy.",
+    a: "No. A Reserve grant gives the recipient full Cloaq Private membership without payment — no wallet, no card, nothing to buy.",
   },
   {
     q: "What about organizations?",
     a: "Private Circle, Office, and Sovereign support contact-led settlement including invoice, bank transfer, and USDC where appropriate.",
   },
   {
-    q: "Is Cloak Private a subscription?",
-    a: "No. Cloak Private is a one-time individual membership. Renewal: never.",
+    q: "Is Cloaq Private a subscription?",
+    a: "No. Cloaq Private is a one-time individual membership. Renewal: never.",
   },
   {
-    q: "Is Cloak Reserve a subscription?",
-    a: "No. Cloak Reserve is a one-time individual membership.",
+    q: "Is Cloaq Reserve a subscription?",
+    a: "No. Cloaq Reserve is a one-time individual membership.",
   },
   {
     q: "What happens to the 10 Private membership grants?",
-    a: "Each grant can be given to one person. Once accepted, that person receives Cloak Private membership and the grant is permanently consumed.",
+    a: "Each grant can be given to one person. Once accepted, that person receives Cloaq Private membership and the grant is permanently consumed.",
   },
   {
     q: "Can I reuse a pass after someone accepts?",
@@ -116,15 +116,15 @@ const PRICING_FAQS: { q: string; a: string }[] = [
   },
   {
     q: "Do Reserve recipients receive a limited account?",
-    a: "No. A redeemed Reserve grant provides full Cloak Private membership — the recipient is a full member, not a guest.",
+    a: "No. A redeemed Reserve grant provides full Cloaq Private membership — the recipient is a full member, not a guest.",
   },
   {
-    q: "Is Cloak Office one-time?",
-    a: "No. Cloak Office is an annual organizational product because it includes ongoing administration, support, and organizational infrastructure.",
+    q: "Is Cloaq Office one-time?",
+    a: "No. Cloaq Office is an annual organizational product because it includes ongoing administration, support, and organizational infrastructure.",
   },
   {
     q: "What does Sovereign cost?",
-    a: "Cloak Sovereign is priced according to deployment, support, integration, and infrastructure requirements.",
+    a: "Cloaq Sovereign is priced according to deployment, support, integration, and infrastructure requirements.",
   },
 ];
 
@@ -148,7 +148,7 @@ export function PricingPage() {
               Membership built around assurance, not attention.
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-cloak-text-secondary md:text-lg">
-              Cloak is designed for private communications, not advertising,
+              Cloaq is designed for private communications, not advertising,
               engagement metrics, or mass-market reach. Choose the level of
               assurance and service you require.
             </p>
@@ -158,7 +158,7 @@ export function PricingPage() {
                 className="cloak-cta-gold h-12 border border-black/20 px-7 text-base font-medium text-[#141310] hover:text-[#141310]"
                 onClick={() => navigate("/app/messages")}
               >
-                Open Cloak
+                Open Cloaq
               </Button>
               <Button
                 size="lg"
@@ -185,10 +185,10 @@ export function PricingPage() {
           </p>
           <div className="mx-auto grid max-w-4xl gap-5 md:grid-cols-2">
 
-            {/* Cloak Private */}
+            {/* Cloaq Private */}
             <Surface className="flex flex-col p-7 md:p-8">
               <h2 className="cloak-display text-2xl font-medium text-cloak-text">
-                Cloak Private
+                Cloaq Private
               </h2>
               <p className="mt-1 text-[13px] text-cloak-text-muted">For individuals.</p>
               <p
@@ -225,12 +225,12 @@ export function PricingPage() {
                   className="h-11 w-full border border-black/20 text-sm font-medium text-[#141310] hover:text-[#141310] cloak-cta-gold"
                   onClick={() => setCheckoutPlan("private")}
                 >
-                  Get Cloak Private
+                  Get Cloaq Private
                 </Button>
               </div>
             </Surface>
 
-            {/* Cloak Reserve — deeper surface, restrained gold hairline
+            {/* Cloaq Reserve — deeper surface, restrained gold hairline
                 (review spec §39: "Higher assurance", never "Best value") */}
             <div className="relative flex flex-col overflow-hidden rounded-xl border border-cloak-gold/25 bg-cloak-bg-elevated p-7 md:p-8">
               <div
@@ -252,7 +252,7 @@ export function PricingPage() {
               </p>
               <p className="mt-1.5 text-[12.5px] text-cloak-text-muted">one-time</p>
               <p className="mt-4 text-sm leading-relaxed text-cloak-text-secondary">
-                Everything in Cloak Private, plus:
+                Everything in Cloaq Private, plus:
               </p>
               <ul className="mt-4 space-y-2.5">
                 {RESERVE_PLUS.map((item) => (
@@ -263,7 +263,7 @@ export function PricingPage() {
                 ))}
               </ul>
               <p className="mt-6 border-t border-cloak-border pt-5 text-[12.5px] leading-relaxed text-cloak-text-secondary">
-                Bring your trusted circle into Cloak without asking each person
+                Bring your trusted circle into Cloaq without asking each person
                 to purchase membership separately.
               </p>
               <div className="mt-5 rounded-lg border border-cloak-gold/20 bg-cloak-bg/60 px-3.5 py-3">
@@ -295,11 +295,11 @@ export function PricingPage() {
             <SectionHeading
               eyebrow="Organizations"
               title="Beyond individual membership."
-              lead="For principals, executive teams, and institutions — arranged directly with Cloak."
+              lead="For principals, executive teams, and institutions — arranged directly with Cloaq."
             />
             <div className="grid gap-5 md:grid-cols-3">
               <OrgTierCard
-                title="Cloak Private Circle"
+                title="Cloaq Private Circle"
                 forLine="For principals and their trusted personal network."
                 price={`From ${formatUSD(CLOAK_PRICING.privateCircle.startingAt)}`}
                 body="Structured onboarding, higher-touch support, and a private communications environment for the people closest to your work and life."
@@ -307,7 +307,7 @@ export function PricingPage() {
                 onContact={() => setContactProduct("private_circle")}
               />
               <OrgTierCard
-                title="Cloak Office"
+                title="Cloaq Office"
                 forLine="For executive teams and high-trust organizations."
                 price={`From ${formatUSD(CLOAK_PRICING.office.startingAt)}/year`}
                 body="Managed identities, organizational controls, deployment support, and priority security support."
@@ -315,7 +315,7 @@ export function PricingPage() {
                 onContact={() => setContactProduct("office")}
               />
               <OrgTierCard
-                title="Cloak Sovereign"
+                title="Cloaq Sovereign"
                 forLine="Private infrastructure. Customer-controlled deployment."
                 price="Custom pricing"
                 body="For institutions requiring greater control over communications infrastructure, identity, deployment, and data locality."
@@ -335,9 +335,9 @@ export function PricingPage() {
               Your trusted circle, included
             </p>
             <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-cloak-text-secondary md:text-lg">
-              {MEMBERSHIP_NAMES.reserve} includes 10 full Cloak Private
+              {MEMBERSHIP_NAMES.reserve} includes 10 full Cloaq Private
               memberships to grant. Each redeemed grant becomes a full,
-              independent Cloak Private membership.
+              independent Cloaq Private membership.
             </p>
 
             {/* Grant tree (review spec §40) */}
@@ -345,7 +345,7 @@ export function PricingPage() {
               <p className="font-medium text-cloak-text">Reserve Member</p>
               {Array.from({ length: 6 }).map((_, i) => (
                 <p key={i} className="pl-5 text-cloak-text-muted">
-                  {"├──"} Cloak Private
+                  {"├──"} Cloaq Private
                 </p>
               ))}
               <p className="pl-5 text-cloak-text-muted">└── … 10 total</p>
@@ -354,12 +354,12 @@ export function PricingPage() {
             <div className="mt-5 grid gap-4 text-[13px] leading-relaxed text-cloak-text-secondary md:grid-cols-2">
               <p>
                 The Reserve member does not gain access to a recipient&apos;s
-                messages, devices, contacts, or Cloak Intelligence. An
+                messages, devices, contacts, or Cloaq Intelligence. An
                 invitation grants membership — never access, oversight, or
                 control.
               </p>
               <p>
-                Bring your trusted circle into Cloak without asking each
+                Bring your trusted circle into Cloaq without asking each
                 person to purchase membership separately. Designed for
                 families, boards, and close professional teams.
               </p>
@@ -392,12 +392,12 @@ export function PricingPage() {
               Membership philosophy
             </p>
             <p className="mt-6 cloak-display text-balance text-2xl font-medium leading-snug text-cloak-text md:text-3xl">
-              You do not need everyone on Cloak.
+              You do not need everyone on Cloaq.
               <br />
               You need the people you trust.
             </p>
             <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-cloak-text-secondary">
-              Cloak is funded by membership, not attention. There is no ad
+              Cloaq is funded by membership, not attention. There is no ad
               model, no behavioral tracking, and no engagement machinery — the
               product is priced on assurance, service, and the number of
               trusted people it protects.
@@ -453,7 +453,7 @@ function OrgTierCard({
       <p className="mt-1.5 text-[13px] leading-relaxed text-cloak-text-secondary">{forLine}</p>
       <p
         className="mt-4 cloak-display text-lg font-medium text-cloak-text"
-        aria-label={`${price} — arranged with the Cloak team`}
+        aria-label={`${price} — arranged with the Cloaq team`}
       >
         {price}
       </p>
@@ -468,7 +468,7 @@ function OrgTierCard({
           className="h-10 w-full border-cloak-border-strong bg-transparent text-[13px] text-cloak-text hover:bg-cloak-surface-hover hover:text-cloak-text"
           onClick={onContact}
         >
-          Contact Cloak
+          Contact Cloaq
           <ChevronRightIcon size={14} className="ml-1" />
         </Button>
       </div>
@@ -515,7 +515,7 @@ function DirectSettlementPanel() {
           <div className="rounded-xl bg-white p-3">
             <Image
               src={TREASURY_QR_SRC}
-              alt={`QR code for the Cloak treasury address ${TREASURY_ADDRESS} — native USDC on Solana`}
+              alt={`QR code for the Cloaq treasury address ${TREASURY_ADDRESS} — native USDC on Solana`}
               width={148}
               height={148}
               className="h-[148px] w-[148px]"
@@ -537,7 +537,7 @@ function DirectSettlementPanel() {
             Pay directly. No card required.
           </h3>
           <p className="mt-3 max-w-xl text-[13.5px] leading-relaxed text-cloak-text-secondary">
-            No recurring card dependency. Cloak Private and{" "}
+            No recurring card dependency. Cloaq Private and{" "}
             {MEMBERSHIP_NAMES.reserve} can be
             acquired with native USDC on Solana — settled to the address below,
             verified on-chain, and activated after confirmation.
@@ -545,7 +545,7 @@ function DirectSettlementPanel() {
 
           <div className="mt-5 max-w-xl">
             <p className="text-[11px] uppercase tracking-[0.18em] text-cloak-text-muted">
-              Cloak treasury · Solana
+              Cloaq treasury · Solana
             </p>
             <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-cloak-border bg-cloak-bg px-3.5 py-2.5">
               <code
@@ -581,7 +581,7 @@ function DirectSettlementPanel() {
 
             <div className="mt-3 grid gap-2 text-[12.5px] sm:grid-cols-2">
               <div className="rounded-lg border border-cloak-border bg-cloak-bg px-3.5 py-2.5">
-                <p className="text-cloak-text-muted">Cloak Private</p>
+                <p className="text-cloak-text-muted">Cloaq Private</p>
                 <p className="mt-0.5 font-medium text-cloak-text">499 USDC · one-time</p>
               </div>
               <div className="rounded-lg border border-cloak-border bg-cloak-bg px-3.5 py-2.5">
@@ -598,7 +598,7 @@ function DirectSettlementPanel() {
 
             <div className="mt-4 flex items-center gap-1.5 text-[12px] text-cloak-text-secondary">
               <ShieldCheckIcon size={13} className="shrink-0 text-cloak-gold" />
-              Your payment wallet does not become your Cloak identity.
+              Your payment wallet does not become your Cloaq identity.
             </div>
           </div>
         </div>

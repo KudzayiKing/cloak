@@ -37,7 +37,7 @@ const PHILOSOPHY = [
   {
     icon: EyeOffIcon,
     title: "No attention economy",
-    body: "Cloak is funded by membership, not advertising. There is no engagement machinery because there is no ad model to feed.",
+    body: "Cloaq is funded by membership, not advertising. There is no engagement machinery because there is no ad model to feed.",
   },
 ];
 
@@ -58,7 +58,7 @@ export function AboutPage() {
               Private communications. Private intelligence.
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-cloak-text-secondary md:text-lg">
-              Cloak is built for conversations where exposure has consequences
+              Cloaq is built for conversations where exposure has consequences
               — messaging and on-device intelligence designed to remain under
               your control.
             </p>
@@ -70,7 +70,7 @@ export function AboutPage() {
       <section className="pb-20 md:pb-24">
         <Container>
           <div className="mx-auto max-w-3xl">
-            <SectionHeading eyebrow="Mission" title="Why Cloak exists." />
+            <SectionHeading eyebrow="Mission" title="Why Cloaq exists." />
             <div className="space-y-4 text-base leading-relaxed text-cloak-text-secondary">
               <p>
                 Most communication tools are optimized for reach and attention.
@@ -81,7 +81,7 @@ export function AboutPage() {
                 already live.
               </p>
               <p>
-                Cloak exists to build that product to a standard its users can
+                Cloaq exists to build that product to a standard its users can
                 inspect: private messaging without a public identity graph,
                 local-first intelligence without default cloud exposure, and
                 membership without recurring card dependency.
@@ -94,7 +94,7 @@ export function AboutPage() {
       {/* Security philosophy */}
       <section className="border-y border-cloak-border bg-cloak-bg-elevated/40 py-20 md:py-24">
         <Container>
-          <SectionHeading eyebrow="Security philosophy" title="How Cloak makes decisions." />
+          <SectionHeading eyebrow="Security philosophy" title="How Cloaq makes decisions." />
           <div className="grid gap-4 md:grid-cols-3">
             {PHILOSOPHY.map((p) => (
               <Surface key={p.title} className="p-6">
@@ -126,7 +126,7 @@ export function AboutPage() {
               <Surface className="p-6">
                 <h3 className="text-base font-medium text-cloak-text">Company details</h3>
                 <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">
-                  Cloak is developed by a private company. Legal entity name,
+                  Cloaq is developed by a private company. Legal entity name,
                   registration jurisdiction, and business contact details are
                   published with the production launch and provided during
                   institutional engagement.

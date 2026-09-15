@@ -4,7 +4,7 @@
  * ChatSidebar + ChatListItem (spec §17, user feedback round 2).
  * Search, filter tabs (All / Unread / Groups / user-created + add button),
  * new-chat modal, mobile FAB, unread/pinned/muted/verified/ghost states,
- * and a Cloak Mode redacted preview state.
+ * and a Cloaq Mode redacted preview state.
  */
 
 import { useMemo, useState } from "react";
@@ -343,7 +343,7 @@ function ChatListItem({
       case "system":
         return last.body;
       case "ai":
-        return "Cloak Intelligence · answer";
+        return "Cloaq Intelligence · answer";
       case "view-once":
         return "View-once media";
       case "voice":
@@ -408,7 +408,7 @@ function ChatListItem({
                   : "text-cloak-text-muted"
               )}
             >
-              {/* Cloak Mode: only the redacted bar — no preview text at all */}
+              {/* Cloaq Mode: only the redacted bar — no preview text at all */}
               {cloakMode ? (
                 <span
                   aria-hidden="true"

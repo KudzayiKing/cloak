@@ -34,7 +34,7 @@ export function MessagesPage() {
     <AppShell
       active="/app/messages"
       /* Mobile header is bell + three-dot menu only (owner de-clutter
-         round) — Cloak Mode lives inside that menu now. */
+         round) — Cloaq Mode lives inside that menu now. */
       /* Fullscreen chat on mobile — no header, no bottom nav (user feedback) */
       mobileChrome={!(hasActive && mobileInConversation)}
     >

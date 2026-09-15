@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CloakLogoImage } from "@/components/cloak/brand/CloakLogo";
+import { BRAND } from "@/lib/cloak/config";
 
 /*
  * Splash screen (user feedback rounds 5 + 9). Every cold start shows the
@@ -12,7 +13,7 @@ import { CloakLogoImage } from "@/components/cloak/brand/CloakLogo";
  * synchronously — and reduced-motion users get a calm, static wordmark.
  */
 
-const WORDMARK = "Cloak";
+const WORDMARK = BRAND.name;
 
 /* ASCII-only glyph pool: every character is covered by the EB Garamond
    latin subset loaded via next/font, so scrambled glyphs never fall back

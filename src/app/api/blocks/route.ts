@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
 const blockSchema = z.object({ handle: z.string().trim().min(1).max(64) });
 
-/** Block a Cloak ID (spec §75). Idempotent. */
+/** Block a Cloaq ID (spec §75). Idempotent. */
 export async function POST(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) {

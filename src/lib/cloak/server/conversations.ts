@@ -49,7 +49,7 @@ export interface ServerConversationPayload {
   memberCount?: number;
   myRole?: GroupRole;
   /** Circle association (circles spec §53): set when this group belongs to
-   *  a Cloak Circle. The circle surface + group header show it. */
+   *  a Cloaq Circle. The circle surface + group header show it. */
   circleId?: string;
   circleName?: string;
   unreadCount: number;

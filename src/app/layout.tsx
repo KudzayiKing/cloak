@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { PwaRegister } from "@/components/cloak/pwa/pwa-register";
 import { ThemeSync } from "@/components/cloak/theme/theme-sync";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/cloak/theme";
+import { BRAND } from "@/lib/cloak/config";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,19 +26,19 @@ const cloakSerif = EB_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Cloak — Private Communications & Local-First Intelligence",
+  title: `${BRAND.name} — Private Communications & Local-First Intelligence`,
   description:
     "Private messaging, trusted Circles and local-first AI designed for conversations that should remain under your control. No ads. No behavioral advertising.",
-  applicationName: "Cloak",
+  applicationName: BRAND.name,
   manifest: "/manifest.webmanifest",
   keywords: [
-    "Cloak",
+    BRAND.name,
     "private messaging",
     "local-first AI",
     "private communications",
     "privacy",
   ],
-  authors: [{ name: "Cloak" }],
+  authors: [{ name: BRAND.name }],
   icons: {
     icon: [
       { url: "/icons/icon.svg", type: "image/svg+xml" },
@@ -47,14 +48,14 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "Cloak",
+    title: BRAND.name,
     statusBarStyle: "black-translucent",
   },
   openGraph: {
-    title: "Cloak — Private Communications & Local-First Intelligence",
+    title: `${BRAND.name} — Private Communications & Local-First Intelligence`,
     description:
       "Private messaging, trusted Circles and local-first AI designed for conversations that should remain under your control.",
-    siteName: "Cloak",
+    siteName: BRAND.name,
     type: "website",
   },
 };

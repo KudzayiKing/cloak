@@ -5,7 +5,7 @@
  * three-dot overflow menu for the mobile header. The header itself now
  * carries only the notifications bell and this menu; the controls that
  * used to be standalone header icons moved here:
- *   - Cloak Mode (guard-aware toggle — ON is immediate, OFF may ask for
+ *   - Cloaq Mode (guard-aware toggle — ON is immediate, OFF may ask for
  *     PIN / biometric verification via the Cloak gate)
  *   - Dagger (opens the shared hold-to-confirm dialog host)
  *   - Security (the /app/security centre)
@@ -36,7 +36,7 @@ export function MobileHeaderMenu() {
   const { cloakMode, toggle } = useCloakModeSwitch();
   const openDaggerDialog = useDaggerDialog((s) => s.openDialog);
 
-  /* Turning Cloak Mode OFF may open the PIN / biometric gate — close this
+  /* Turning Cloaq Mode OFF may open the PIN / biometric gate — close this
      menu first so the gate is the only dialog on screen. Turning ON is
      immediate and flips the row live inside the open menu. */
   const handleCloakToggle = () => {
@@ -84,7 +84,7 @@ export function MobileHeaderMenu() {
           </DialogHeader>
 
           <div className="space-y-1 pb-1">
-            {/* Cloak Mode — mirrors the desktop rail row (icon + state pill). */}
+            {/* Cloaq Mode — mirrors the desktop rail row (icon + state pill). */}
             <button
               type="button"
               onClick={handleCloakToggle}
@@ -97,7 +97,7 @@ export function MobileHeaderMenu() {
               )}
             >
               {cloakMode ? <EyeOffIcon size={17} /> : <EyeIcon size={17} />}
-              <span className="flex-1 whitespace-nowrap text-left">Cloak Mode</span>
+              <span className="flex-1 whitespace-nowrap text-left">Cloaq Mode</span>
               <span
                 className={cn(
                   "rounded-full px-2 py-0.5 text-[10px] font-medium",

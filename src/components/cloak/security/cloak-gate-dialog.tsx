@@ -2,9 +2,9 @@
 
 /*
  * CloakGateDialog (user feedback round 4) — verification required to turn
- * Cloak Mode off (or to change protection). Accepts the device PIN or the
+ * Cloaq Mode off (or to change protection). Accepts the device PIN or the
  * platform biometric authenticator, whichever the user configured.
- * Turning Cloak Mode on never passes through this dialog.
+ * Turning Cloaq Mode on never passes through this dialog.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -114,8 +114,8 @@ function GateForm({
 
   const description =
     purpose === "manage"
-      ? "Verify to change or remove Cloak Mode protection."
-      : "Verify to turn Cloak Mode off. Turning it on never requires verification.";
+      ? "Verify to change or remove Cloaq Mode protection."
+      : "Verify to turn Cloaq Mode off. Turning it on never requires verification.";
 
   return (
     <>
@@ -123,7 +123,7 @@ function GateForm({
         <span className="mb-1 grid h-11 w-11 place-items-center rounded-xl border border-cloak-gold/25 bg-cloak-gold-soft/40 text-cloak-gold">
           <ShieldCheckIcon size={20} />
         </span>
-        <DialogTitle className="cloak-display text-xl">Cloak Mode is protected</DialogTitle>
+        <DialogTitle className="cloak-display text-xl">Cloaq Mode is protected</DialogTitle>
         <DialogDescription className="text-cloak-text-secondary">
           {description}
         </DialogDescription>
@@ -191,7 +191,7 @@ function GateForm({
           onClick={onCancel}
           className="w-full pt-1 text-center text-[12.5px] text-cloak-text-muted transition-colors hover:text-cloak-text-secondary"
         >
-          Keep Cloak Mode on
+          Keep Cloaq Mode on
         </button>
       </div>
     </>

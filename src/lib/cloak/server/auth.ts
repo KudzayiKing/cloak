@@ -51,7 +51,7 @@ export function hashToken(token: string): string {
 }
 
 /**
- * One INSTALL (deviceId) may be shared by more than one Cloak ID — a phone
+ * One INSTALL (deviceId) may be shared by more than one Cloaq ID — a phone
  * PWA where the owner tests two admin accounts is the normal case, not an
  * attack. The registry therefore tracks which account the install is
  * CURRENTLY enrolled for, and allows the row to move between accounts when
@@ -217,6 +217,8 @@ async function sessionFromRequest(req: NextRequest) {
 export interface SessionUser {
   id: string;
   handle: string;
+  email: string | null;
+  emailVerifiedAt: Date | null;
   displayName: string;
   about: string | null;
   membershipTier: string | null;
@@ -230,6 +232,10 @@ export interface SessionUser {
  *  refresh a session, fetch messages, or query account AI data. */
 export async function getSessionUser(req: NextRequest): Promise<SessionUser | null> {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
+  return getSessionUserFromToken(token);
+}
+
+export async function getSessionUserFromToken(token: string | undefined | null): Promise<SessionUser | null> {
   if (!token) return null;
   const session = await db.session.findUnique({
     where: { tokenHash: hashToken(token) },
@@ -256,6 +262,8 @@ export async function getSessionUser(req: NextRequest): Promise<SessionUser | nu
   return {
     id: session.user.id,
     handle: session.user.handle,
+    email: session.user.email,
+    emailVerifiedAt: session.user.emailVerifiedAt,
     displayName: session.user.displayName,
     about: session.user.about,
     membershipTier: session.user.membershipTier,
@@ -453,7 +461,7 @@ export async function ensureDevAccounts(): Promise<void> {
         {
           conversationId: conversation.id,
           authorId: users[0].id,
-          body: "Aurora here. Cloak is live.",
+          body: "Aurora here. Cloaq is live.",
           createdAt: new Date(now - 1000 * 60 * 6),
         },
         {

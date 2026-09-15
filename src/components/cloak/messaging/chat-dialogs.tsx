@@ -84,7 +84,7 @@ function GroupCreateForm({
       return;
     }
     if (memberCount === 0) {
-      setError("Add at least one member from your contacts, or by Cloak ID.");
+      setError("Add at least one member from your contacts, or by Cloaq ID.");
       return;
     }
     setBusy(true);
@@ -109,7 +109,7 @@ function GroupCreateForm({
     } else if (res.error === "group_limit_reached") {
       setError("You've reached the number of groups your membership allows.");
     } else {
-      setError("Cloak could not create the group. Try again.");
+      setError("Cloaq could not create the group. Try again.");
     }
   };
 
@@ -153,10 +153,10 @@ function GroupCreateForm({
           <Switch checked={ghost} onCheckedChange={setGhost} aria-label="Create as ghost group" />
         </label>
 
-        {/* Add by Cloak ID — for people not in contacts yet */}
+        {/* Add by Cloaq ID — for people not in contacts yet */}
         <div>
           <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-cloak-text-muted">
-            Add by Cloak ID
+            Add by Cloaq ID
           </p>
           <div className="flex gap-2">
             <Input
@@ -174,7 +174,7 @@ function GroupCreateForm({
               placeholder="@handle"
               autoCapitalize="none"
               spellCheck={false}
-              aria-label="Cloak ID to add"
+              aria-label="Cloaq ID to add"
               className="border-cloak-border bg-cloak-surface text-[13.5px] text-cloak-text placeholder:text-cloak-text-muted"
             />
             <Button
@@ -213,7 +213,7 @@ function GroupCreateForm({
           </p>
           {contacts.length === 0 ? (
             <p className="rounded-xl border border-dashed border-cloak-border px-3.5 py-3 text-[12px] text-cloak-text-muted">
-              No contacts yet — add members by their Cloak ID above.
+              No contacts yet — add members by their Cloaq ID above.
             </p>
           ) : (
             <div className="rounded-xl border border-cloak-border bg-cloak-surface/40">
@@ -345,7 +345,7 @@ export function NewChatModal({
             New chat
           </DialogTitle>
           <DialogDescription className="text-[12.5px] text-cloak-text-muted">
-            Direct chats and groups — people reach you by Cloak ID, never by
+            Direct chats and groups — people reach you by Cloaq ID, never by
             phone number.
           </DialogDescription>
         </DialogHeader>
@@ -416,7 +416,7 @@ export function NewChatModal({
                 No matching contacts.
               </p>
               <p className="mt-1 text-xs text-cloak-text-muted">
-                Add someone by their Cloak ID to start chatting.
+                Add someone by their Cloaq ID to start chatting.
               </p>
             </div>
           ) : (

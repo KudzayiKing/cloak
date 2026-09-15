@@ -3,9 +3,9 @@
 /*
  * Cloak client state.
  *
- * - Cloak Mode is a global privacy control (spec §23) with a reusable
+ * - Cloaq Mode is a global privacy control (spec §23) with a reusable
  *   useCloakMode() hook built on this store.
- * - Demo conversations live in memory; settings and Cloak Mode persist
+ * - Demo conversations live in memory; settings and Cloaq Mode persist
  *   locally. When the real encrypted backend lands, conversations move to
  *   app-controlled encrypted storage without changing component contracts.
  */
@@ -145,6 +145,8 @@ export interface ChatFilter {
 export interface AuthUser {
   id: string;
   handle: string;
+  email?: string | null;
+  emailVerifiedAt?: string | null;
   displayName: string;
 }
 
@@ -457,7 +459,7 @@ async function toClientConversationAsync(
   };
 }
 
-/* Cloak Mode protection (user feedback round 4): turning Cloak Mode OFF can
+/* Cloaq Mode protection (user feedback round 4): turning Cloaq Mode OFF can
    require a PIN or platform biometrics. Only hashes / credential IDs are
    stored — never a plain-text PIN. */
 export interface CloakGuardSettings {
@@ -469,7 +471,7 @@ export interface CloakGuardSettings {
 
 export interface CloakGateState {
   open: boolean;
-  /** "cloak-off" — verifying to turn Cloak Mode off.
+  /** "cloak-off" — verifying to turn Cloaq Mode off.
    *  "manage" — verifying to change or remove protection. */
   purpose: "cloak-off" | "manage";
 }
@@ -491,7 +493,9 @@ interface CloakState {
     password: string,
     displayName: string | undefined,
     inviteToken?: string,
-    paymentClaimToken?: string
+    paymentClaimToken?: string,
+    adviserInviteToken?: string,
+    email?: string
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
   signOut: () => Promise<void>;
 
@@ -674,7 +678,7 @@ interface CloakState {
   setTranslationLanguage: (code: string) => void;
   setForwardSecrecy: (window: ForwardSecrecyWindow) => void;
 
-  /* Cloak Mode protection — PIN / biometric gate for turning it off */
+  /* Cloaq Mode protection — PIN / biometric gate for turning it off */
   cloakGuard: CloakGuardSettings;
   setCloakGuardPin: (pinHash: string | null) => void;
   setCloakGuardBiometric: (credentialId: string | null) => void;
@@ -798,7 +802,7 @@ export function nextLocalId(prefix: string): string {
   return `${prefix}-local-${Date.now()}-${localId}`;
 }
 
-/* Verification callback for the Cloak Mode gate — module scope so it never
+/* Verification callback for the Cloaq Mode gate — module scope so it never
    enters persisted state. */
 let cloakGateCallback: ((verified: boolean) => void) | null = null;
 
@@ -922,7 +926,7 @@ export const useCloakStore = create<CloakState>()(
         void syncPushAfterAuth();
         return { ok: true as const };
       },
-      register: async (handle, password, displayName, inviteToken, paymentClaimToken) => {
+      register: async (handle, password, displayName, inviteToken, paymentClaimToken, adviserInviteToken, email) => {
         const identity = deviceIdentity();
         const res = await api<{
           user: AuthUser;
@@ -935,6 +939,8 @@ export const useCloakStore = create<CloakState>()(
             displayName,
             inviteToken: inviteToken || undefined,
             paymentClaimToken: paymentClaimToken || undefined,
+            adviserInviteToken: adviserInviteToken || undefined,
+            email: email || undefined,
             deviceId: identity.deviceId,
             deviceName: identity.name,
             deviceToken: identity.deviceToken,

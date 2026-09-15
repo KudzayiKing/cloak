@@ -6,7 +6,7 @@
  * Standalone landing (no app chrome): the token IS the capability, so
  * lookup needs no session and shows only what the recipient needs to
  * decide — circle name, inviter, groups offered, expiry, status.
- * Redemption REQUIRES an existing Cloak account: circle invites organize
+ * Redemption REQUIRES an existing Cloaq account: circle invites organize
  * people who are already members; they are NOT a registration path (§60 —
  * registration is payment-gated; Reserve guest passes are the onboarding
  * grant). The link is shown once by the manager and cannot be reconstructed.
@@ -231,7 +231,7 @@ export function CircleInvitePage({ token }: { token: string }) {
                     Sign in to accept
                   </button>
                   <p className="mt-3 text-center text-[12px] leading-relaxed text-cloak-text-muted">
-                    Circle invites are for existing Cloak members. New to Cloak?
+                    Circle invites are for existing Cloak members. New to Cloaq?
                     Membership starts with a plan on the home page — or ask the
                     sender about a Reserve guest pass.
                   </p>

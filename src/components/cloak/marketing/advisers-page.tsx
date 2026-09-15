@@ -2,7 +2,7 @@
 
 /*
  * Marketing: Adviser page (review spec §33, §34, §36).
- * A private invitation to evaluate Cloak — evaluation and credibility,
+ * A private invitation to evaluate Cloaq — evaluation and credibility,
  * not an affiliate scheme. Shared directly with the adviser shortlist;
  * not part of the main navigation.
  */
@@ -31,7 +31,7 @@ const EVALUATION_AREAS = [
   {
     icon: LockIcon,
     title: "Messaging",
-    body: "End-to-end encryption, Cloak IDs, trusted devices, and Ghost Chats in daily use.",
+    body: "End-to-end encryption, Cloaq IDs, trusted devices, and Ghost Chats in daily use.",
   },
   {
     icon: FileSearchIcon,
@@ -46,7 +46,7 @@ const EVALUATION_AREAS = [
   {
     icon: MonitorSmartphoneIcon,
     title: "Operational fit",
-    body: "How Cloak performs under the communication patterns of real principals and teams.",
+    body: "How Cloaq performs under the communication patterns of real principals and teams.",
   },
 ];
 
@@ -64,12 +64,12 @@ export function AdvisersPage() {
               Advisers
             </p>
             <h1 className="cloak-display text-balance text-4xl font-medium leading-tight text-cloak-text md:text-5xl">
-              A private invitation to evaluate Cloak.
+              A private invitation to evaluate Cloaq.
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-cloak-text-secondary md:text-lg">
-              Cloak is inviting a small group of cybersecurity, family-office,
+              Cloaq is inviting a small group of cybersecurity, family-office,
               privacy, legal, and executive-protection professionals to
-              evaluate Cloak Private.
+              evaluate Cloaq Private.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button
@@ -98,7 +98,7 @@ export function AdvisersPage() {
           <div className="mx-auto flex max-w-3xl items-start gap-3.5 rounded-xl border border-cloak-gold/25 bg-cloak-gold-soft/30 px-6 py-5">
             <ShieldCheckIcon size={18} className="mt-0.5 shrink-0 text-cloak-gold" />
             <p className="text-sm leading-relaxed text-cloak-text-secondary">
-              There is no obligation to recommend Cloak. We want informed
+              There is no obligation to recommend Cloaq. We want informed
               criticism before endorsement.
             </p>
           </div>
@@ -111,7 +111,7 @@ export function AdvisersPage() {
           <SectionHeading
             eyebrow="Evaluation"
             title="What advisers are asked to evaluate."
-            lead="Access to Cloak Private for hands-on use, with direct contact to the team building it."
+            lead="Access to Cloaq Private for hands-on use, with direct contact to the team building it."
           />
           <div className="grid gap-4 md:grid-cols-2">
             {EVALUATION_AREAS.map((area) => (

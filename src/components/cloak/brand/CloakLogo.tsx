@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { navigate } from "@/hooks/use-hash-route";
+import { BRAND } from "@/lib/cloak/config";
 
 /*
  * CloakLogo — the wordmark is set in EB Garamond (user requirement).
@@ -74,7 +75,7 @@ export function CloakLogo({
     <button
       type="button"
       onClick={onClick ?? (() => navigate("/"))}
-      aria-label="Cloak — home"
+      aria-label={`${BRAND.name} — home`}
       className={cn(
         "inline-flex items-center gap-2.5 text-cloak-text transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-cloak-gold/70 rounded-sm",
         className
@@ -88,7 +89,7 @@ export function CloakLogo({
       <span
         className={cn("cloak-wordmark text-cloak-text leading-none pb-0.5", textClass)}
       >
-        Cloak
+        {BRAND.name}
       </span>
     </button>
   );

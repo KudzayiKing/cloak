@@ -1,5 +1,5 @@
 /*
- * Cloak service worker.
+ * Cloaq service worker.
  *
  * Security posture (spec §28): security wins over aggressive caching.
  * - Static shell cache: same-origin static assets only, cache-first.
@@ -149,9 +149,9 @@ self.addEventListener("push", (event) => {
 
   // Structural copy only — the server sends exactly the title/body the
   // in-app inbox stores. If a payload is missing/unparseable we degrade to
-  // a fully generic "Cloak" notification rather than dropping the event,
+  // a fully generic "Cloaq" notification rather than dropping the event,
   // because membership changes matter even when the payload was mangled.
-  const title = (payload && typeof payload.title === "string" && payload.title) || "Cloak";
+  const title = (payload && typeof payload.title === "string" && payload.title) || "Cloaq";
   const body = payload && typeof payload.body === "string" ? payload.body : "Security or membership event";
   const data = payload && typeof payload === "object" ? payload : {};
 

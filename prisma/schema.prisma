@@ -21,6 +21,8 @@ datasource db {
 model User {
   id                  String    @id @default(cuid())
   handle              String    @unique // stored without the leading "@", lowercase
+  email               String?   @unique // normalized lowercase; optional for legacy Cloak-ID-only accounts
+  emailVerifiedAt     DateTime?
   displayName         String
   passwordHash        String // scrypt: "salt:hash" hex
   about               String?
@@ -51,6 +53,10 @@ model User {
   claimsRedeemed     MembershipClaim[]
   passesGranted      GuestPass[]           @relation("passGrants")
   passesRedeemed     GuestPass[]           @relation("passRedemptions")
+  adviserInvitationsCreated  AdviserInvitation[]      @relation("adviserInvitationCreators")
+  adviserInvitationsRedeemed AdviserInvitation[]      @relation("adviserInvitationRedemptions")
+  adviserInvitationsRevoked  AdviserInvitation[]      @relation("adviserInvitationRevocations")
+  adviserInvitationEvents    AdviserInvitationEvent[] @relation("adviserInvitationEventActors")
   circlesOwned       Circle[]              @relation("circleOwnerships")
   circleMemberships  CircleMember[]        @relation("circleMemberships")
   circleJoinRequests CircleJoinRequest[]   @relation("circleJoinRequests")
@@ -563,4 +569,50 @@ model GuestPassInvite {
   createdAt        DateTime  @default(now())
 
   @@index([passId])
+}
+
+// Founding Adviser invitations. Raw tokens are returned once to an admin and
+// never persisted; tokenHash is the only stored capability. Adviser status is
+// private and only grants the normal private membership entitlement.
+model AdviserInvitation {
+  id                  String    @id @default(cuid())
+  type                String    @default("founding_adviser")
+  recipientName       String
+  recipientEmail      String
+  membershipSku       String    @default("private")
+  membershipOrigin    String    @default("founding_adviser")
+  tokenHash           String    @unique
+  emailBindingRequired Boolean  @default(true)
+  status              String    @default("pending") // pending | redeemed | expired | revoked
+  createdByAdminId    String
+  createdByAdmin      User      @relation("adviserInvitationCreators", fields: [createdByAdminId], references: [id], onDelete: Restrict)
+  createdAt           DateTime  @default(now())
+  expiresAt           DateTime
+  redeemedAt          DateTime?
+  redeemedByUserId    String?
+  redeemedByUser      User?     @relation("adviserInvitationRedemptions", fields: [redeemedByUserId], references: [id], onDelete: SetNull)
+  revokedAt           DateTime?
+  revokedByAdminId    String?
+  revokedByAdmin      User?     @relation("adviserInvitationRevocations", fields: [revokedByAdminId], references: [id], onDelete: SetNull)
+  internalNote        String?
+  events              AdviserInvitationEvent[]
+
+  @@index([status, expiresAt])
+  @@index([recipientEmail])
+  @@index([createdByAdminId])
+  @@index([redeemedByUserId])
+}
+
+model AdviserInvitationEvent {
+  id           String             @id @default(cuid())
+  invitationId String
+  invitation   AdviserInvitation  @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  actorUserId  String?
+  actor        User?              @relation("adviserInvitationEventActors", fields: [actorUserId], references: [id], onDelete: SetNull)
+  event        String // created | extended | revoked | redeemed
+  detail       String?
+  createdAt    DateTime           @default(now())
+
+  @@index([invitationId, createdAt])
+  @@index([actorUserId])
 }

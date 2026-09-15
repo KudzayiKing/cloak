@@ -334,7 +334,7 @@ export async function POST(req: NextRequest) {
       ...payload,
       status: (usdcMoved ? "wrong_recipient" : "wrong_asset") as PaymentVerifyStatus,
       message: usdcMoved
-        ? "USDC was received, but not at the Cloak treasury address for this request."
+        ? "USDC was received, but not at the Cloaq treasury address for this request."
         : "No native USDC on Solana was found in this transaction.",
     });
   }
@@ -410,7 +410,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         ...payload,
         status: "confirmed" as PaymentVerifyStatus,
-        message: "Payment confirmed. Create your Cloak ID to activate membership.",
+        message: "Payment confirmed. Create your Cloaq ID to activate membership.",
         claimToken: setupToken,
         membership: tier,
         setupExpiresAt: setupExpiresAt.getTime(),

@@ -3,9 +3,9 @@
 /*
  * Dagger — emergency device wipe and revocation (codex spec).
  *
- * Positioning: Cloak Mode reduces what the device reveals while you are
+ * Positioning: Cloaq Mode reduces what the device reveals while you are
  * using it. Dagger is for the moment you no longer trust the device itself.
- * It destroys Cloak's local keys, private data and device authorization —
+ * It destroys Cloaq's local keys, private data and device authorization —
  * nothing more, and honestly no less. It is NOT marketed as "leaves no
  * trace": a PWA cannot guarantee deletion of every OS/browser artifact.
  *
@@ -167,7 +167,7 @@ export async function destroyCryptoKeys(): Promise<void> {
   wipeKeyringMemory();
 }
 
-/** All Cloak-controlled browser storage (codex §7-§10). Cloak owns the
+/** All Cloaq-controlled browser storage (codex §7-§10). Cloak owns the
  *  origin — messages, drafts, contact cache, AI MemoryStore, embedding
  *  caches, model install flags, the persisted zustand slice — so a full
  *  clear is correct here. The device credential pair is recreated lazily

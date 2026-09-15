@@ -19,7 +19,7 @@ const GROUPS: { title: string; links: FooterLink[] }[] = [
     links: [
       { label: "Messaging", path: "/" },
       { label: "Groups & Circles", path: "/", anchor: "groups" },
-      { label: "Cloak Intelligence", path: "/intelligence" },
+      { label: "Cloaq Intelligence", path: "/intelligence" },
       { label: "Security", path: "/security" },
       { label: "Membership", path: "/pricing" },
     ],
@@ -37,7 +37,7 @@ const GROUPS: { title: string; links: FooterLink[] }[] = [
   {
     title: "Company",
     links: [
-      { label: "About Cloak", path: "/about" },
+      { label: "About Cloaq", path: "/about" },
       { label: "Advisers", path: "/advisers" },
       { label: "Partners", path: "/partners" },
     ],
@@ -45,8 +45,8 @@ const GROUPS: { title: string; links: FooterLink[] }[] = [
   {
     title: "Access",
     links: [
-      { label: "Open Cloak", path: "/app/messages" },
-      { label: "Install Cloak", path: "/download" },
+      { label: "Open Cloaq", path: "/app/messages" },
+      { label: "Install Cloaq", path: "/download" },
     ],
   },
 ];
@@ -88,7 +88,7 @@ export function MarketingFooter() {
           ))}
         </div>
         <div className="mt-12 flex flex-col gap-2 border-t border-cloak-border pt-6 text-xs text-cloak-text-muted md:flex-row md:items-center md:justify-between">
-          <span>CLOAK</span>
+          <span>CLOAQ</span>
           <span>No ads. No behavioral advertising.</span>
         </div>
       </Container>

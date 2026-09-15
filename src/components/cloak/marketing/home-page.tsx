@@ -3,7 +3,7 @@
 /*
  * Homepage assembly (review spec §3, §77) — sections in the specified order.
  * Shortened hierarchy: hero -> proof -> audience -> Groups & Circles ->
- * Cloak Mode -> Intelligence -> Security evidence -> Identity -> Ghost Chats
+ * Cloaq Mode -> Intelligence -> Security evidence -> Identity -> Ghost Chats
  * -> Membership -> Install -> FAQ -> final CTA. Deeper AI architecture lives
  * on /intelligence, detailed security on /security, all five memberships on
  * /pricing.
