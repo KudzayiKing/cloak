@@ -33,7 +33,7 @@ export function isCloakTheme(value: unknown): value is CloakTheme {
 /** Status-bar / browser-chrome colour per theme. */
 export const CLOAK_THEME_COLORS: Record<CloakTheme, string> = {
   dark: "#0b0b0c",
-  light: "#f4f0e8",
+  light: "#f4efe5",
 };
 
 /** iOS standalone status-bar style per theme. */

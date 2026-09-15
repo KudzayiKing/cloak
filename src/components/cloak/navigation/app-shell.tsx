@@ -8,7 +8,9 @@
  */
 
 import {
+  useCallback,
   useEffect,
+  useRef,
   useState,
   type ForwardRefExoticComponent,
   type MouseEvent as ReactMouseEvent,
@@ -93,6 +95,48 @@ function MobileNavItem({ item, active }: { item: NavItem; active: boolean }) {
     >
       <item.icon ref={iconRef} size={22} />
       {item.label}
+    </button>
+  );
+}
+
+function DesktopNavItem({
+  item,
+  active,
+  collapsed,
+}: {
+  item: NavItem;
+  active: boolean;
+  collapsed: boolean;
+}) {
+  const iconRef = useRef<IconAnimationHandle | null>(null);
+  const onMouseEnter = useCallback(() => {
+    const reduced =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+    if (!reduced) iconRef.current?.startAnimation();
+  }, []);
+  const onMouseLeave = useCallback(() => {
+    iconRef.current?.stopAnimation();
+  }, []);
+
+  return (
+    <button
+      onClick={() => navigate(item.path)}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      aria-current={active ? "page" : undefined}
+      title={collapsed ? item.label : undefined}
+      className={cn(
+        "transition-colors",
+        collapsed
+          ? "mx-auto grid h-10 w-10 place-items-center rounded-lg"
+          : "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
+        active
+          ? "bg-cloak-gold-soft text-cloak-gold"
+          : "text-cloak-text-secondary hover:bg-cloak-surface hover:text-cloak-text"
+      )}
+    >
+      <item.icon ref={iconRef} size={17} />
+      {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
     </button>
   );
 }
@@ -225,26 +269,12 @@ export function AppShell({
           {APP_NAV.map((item) => {
             const isActive = active === item.path;
             return (
-              <button
+              <DesktopNavItem
                 key={item.path}
-                onClick={() => navigate(item.path)}
-                aria-current={isActive ? "page" : undefined}
-                title={sidebarCollapsed ? item.label : undefined}
-                className={cn(
-                  "transition-colors",
-                  sidebarCollapsed
-                    ? "mx-auto grid h-10 w-10 place-items-center rounded-lg"
-                    : "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
-                  isActive
-                    ? "bg-cloak-gold-soft text-cloak-gold"
-                    : "text-cloak-text-secondary hover:bg-cloak-surface hover:text-cloak-text"
-                )}
-              >
-                <item.icon size={17} />
-                {!sidebarCollapsed && (
-                  <span className="whitespace-nowrap">{item.label}</span>
-                )}
-              </button>
+                item={item}
+                active={isActive}
+                collapsed={sidebarCollapsed}
+              />
             );
           })}
         </nav>
@@ -293,24 +323,11 @@ export function AppShell({
           <div className={cn(sidebarCollapsed ? "flex justify-center" : "")}>
             <NotificationsBell variant="rail" collapsed={sidebarCollapsed} />
           </div>
-          <button
-            onClick={() => navigate("/app/settings")}
-            title={sidebarCollapsed ? "Settings" : undefined}
-            className={cn(
-              "transition-colors",
-              sidebarCollapsed
-                ? "mx-auto grid h-10 w-10 place-items-center rounded-lg"
-                : "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
-              active === "/app/settings"
-                ? "bg-cloak-gold-soft text-cloak-gold"
-                : "text-cloak-text-secondary hover:bg-cloak-surface hover:text-cloak-text"
-            )}
-          >
-            <CogIcon size={17} />
-            {!sidebarCollapsed && (
-              <span className="whitespace-nowrap">Settings</span>
-            )}
-          </button>
+          <DesktopNavItem
+            item={{ label: "Settings", path: "/app/settings", icon: CogIcon }}
+            active={active === "/app/settings"}
+            collapsed={sidebarCollapsed}
+          />
           <div
             className={cn(
               "flex items-center rounded-lg py-2.5",

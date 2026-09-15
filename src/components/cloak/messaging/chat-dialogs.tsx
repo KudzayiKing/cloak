@@ -142,7 +142,7 @@ function GroupCreateForm({
         {/* Ghost group (user request): create the group as a ghost chat */}
         <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-cloak-border bg-cloak-bg/50 px-3.5 py-2.5">
           <span className="flex items-start gap-2.5">
-            <GhostGlyph size={14} className="mt-0.5 shrink-0 text-cloak-warning" />
+            <GhostGlyph size={14} color="currentColor" className="mt-0.5 shrink-0 text-cloak-text" />
             <span>
               <span className="block text-[12.5px] font-medium text-cloak-text">Ghost group</span>
               <span className="mt-0.5 block text-[10.5px] leading-relaxed text-cloak-text-muted">
@@ -384,7 +384,7 @@ export function NewChatModal({
         <div className="shrink-0 px-5 pb-3">
           <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-cloak-border bg-cloak-bg/50 px-3.5 py-2.5">
             <span className="flex items-start gap-2.5">
-              <GhostGlyph size={14} className="mt-0.5 shrink-0 text-cloak-warning" />
+              <GhostGlyph size={14} color="currentColor" className="mt-0.5 shrink-0 text-cloak-text" />
               <span>
                 <span className="block text-[12.5px] font-medium text-cloak-text">Ghost chat</span>
                 <span className="mt-0.5 block text-[10.5px] leading-relaxed text-cloak-text-muted">

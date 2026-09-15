@@ -2,8 +2,8 @@
 
 /*
  * GhostGlyph — the Ghost Chat marker (user requirement):
- * the Lucide "ghost" glyph (lucide.dev/icons/ghost), always white
- * (#ffffff).
+ * the Lucide "ghost" glyph (lucide.dev/icons/ghost), white by default
+ * with explicit color overrides for light surfaces that need dark ink.
  *
  * Animation is interaction-driven (user feedback round 3):
  *  - Web: floats while the mouse is over the icon
@@ -19,10 +19,12 @@ import { cn } from "@/lib/utils";
 export function GhostGlyph({
   size = 12,
   className,
+  color = "#ffffff",
   animate = true,
 }: {
   size?: number;
   className?: string;
+  color?: string;
   /** When true (default) the float animation plays on hover (web) / press (mobile). */
   animate?: boolean;
 }) {
@@ -50,7 +52,7 @@ export function GhostGlyph({
       {...handlers}
     >
       <Ghost
-        color="#ffffff"
+        color={color}
         size={size}
         strokeWidth={2}
         className={engaged ? "cloak-ghost-float" : undefined}

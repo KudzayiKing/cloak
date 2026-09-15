@@ -186,9 +186,9 @@ check("the light .light block was found", lightVars.length > 20, true);
 {
   const light = css.match(/\.light\s*\{([^}]*)\}/)?.[1] ?? "";
   const required: Array<[string, string]> = [
-    ["--cloak-bg", "#f4f0e8"],
+    ["--cloak-bg", "#f4efe5"],
     ["--cloak-bg-elevated", "#eee8de"],
-    ["--cloak-surface", "#e8e1d6"],
+    ["--cloak-surface", "#f4efe5"],
     ["--cloak-surface-hover", "#ded5c8"],
     ["--cloak-border", "rgba(30, 27, 23, 0.1)"],
     ["--cloak-border-strong", "rgba(30, 27, 23, 0.16)"],
@@ -371,6 +371,12 @@ check(
   check("ThemeSync subscribes rather than reading on mount", /useCloakStore\.subscribe/.test(sync), true);
 
   const shell = stripComments(read("src/components/cloak/navigation/app-shell.tsx"));
+  check("desktop sidebar nav has a shared hover animation item", /function DesktopNavItem/.test(shell), true);
+  check(
+    "desktop sidebar nav triggers icons from the full button hover",
+    /onMouseEnter=\{onMouseEnter\}[\s\S]{0,120}onMouseLeave=\{onMouseLeave\}/.test(shell),
+    true
+  );
   check(
     "mobile chrome paints the status-bar safe area",
     /h-\[env\(safe-area-inset-top\)\][^"]*bg-cloak-bg-elevated/.test(shell),
@@ -389,10 +395,21 @@ check(
 
   const settings = stripComments(read("src/components/cloak/settings/settings-page.tsx"));
   check("Settings exposes a theme choice", /setTheme\(choice\.id\)/.test(settings), true);
+  check("Settings previews the light ivory", /bg:\s*"#f4efe5"/.test(settings), true);
   check(
     "the old 'coming after security review' placeholder is gone",
     /Coming after security review/.test(settings),
     false
+  );
+
+  const ghost = stripComments(read("src/components/cloak/shared/ghost-icon.tsx"));
+  check("GhostGlyph supports explicit colour overrides", /color = "#ffffff"/.test(ghost), true);
+
+  const chatDialogs = stripComments(read("src/components/cloak/messaging/chat-dialogs.tsx"));
+  check(
+    "add-chat ghost icons inherit theme text colour",
+    /<GhostGlyph[^>]*color="currentColor"[^>]*text-cloak-text/.test(chatDialogs),
+    true
   );
 }
 

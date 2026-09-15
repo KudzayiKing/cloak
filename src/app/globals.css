@@ -137,9 +137,9 @@
  * components follow without touching a single one of them.
  */
 .light {
-  --cloak-bg: #f4f0e8;
+  --cloak-bg: #f4efe5;
   --cloak-bg-elevated: #eee8de;
-  --cloak-surface: #e8e1d6;
+  --cloak-surface: #f4efe5;
   --cloak-surface-hover: #ded5c8;
   --cloak-border: rgba(30, 27, 23, 0.1);
   --cloak-border-strong: rgba(30, 27, 23, 0.16);
@@ -157,9 +157,9 @@
   --cloak-warning: #a17e3c;
 
   /* shadcn primitives, mapped onto the Cloak palette. */
-  --background: #f4f0e8;
+  --background: #f4efe5;
   --foreground: #171513;
-  --card: #e8e1d6;
+  --card: #f4efe5;
   --card-foreground: #171513;
   --popover: #eee8de;
   --popover-foreground: #171513;
