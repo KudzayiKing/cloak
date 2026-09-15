@@ -210,7 +210,7 @@ function Bubble({
         className={cn(
           "max-w-[80%] px-3.5 py-2.5",
           side === "out"
-            ? "rounded-xl rounded-tr-sm border border-cloak-gold/15 bg-[#1D1A12] text-cloak-text"
+            ? "cloak-bubble-out rounded-xl rounded-tr-sm border text-cloak-text"
             : "rounded-xl rounded-tl-sm border border-cloak-border bg-cloak-surface text-cloak-text"
         )}
       >

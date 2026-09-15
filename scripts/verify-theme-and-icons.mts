@@ -413,6 +413,18 @@ check(
     /<GhostGlyph[^>]*color="currentColor"[^>]*text-cloak-text/.test(chatDialogs),
     true
   );
+
+  const productMockup = stripComments(read("src/components/cloak/marketing/product-mockup.tsx"));
+  check(
+    "homepage mock outgoing bubble uses theme token class",
+    /side === "out"[\s\S]{0,160}cloak-bubble-out/.test(productMockup),
+    true
+  );
+  check(
+    "homepage mock does not hardcode the dark outgoing bubble",
+    /bg-\[#1D1A12\]|bg-\[#1d1a12\]/.test(productMockup),
+    false
+  );
 }
 
 /* -------------------------------- report --------------------------------- */
