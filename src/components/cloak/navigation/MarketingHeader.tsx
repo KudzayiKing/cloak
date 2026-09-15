@@ -11,7 +11,7 @@ import { PrimaryCTA } from "@/components/cloak/shared/primitives";
 import { navigate, type RouteInfo } from "@/hooks/use-hash-route";
 import { useCloakStore } from "@/stores/cloak-store";
 import { cn } from "@/lib/utils";
-import { MenuIcon, XIcon } from "@animateicons/react/lucide";
+import { MenuIcon, MoonIcon, SunIcon, XIcon } from "@animateicons/react/lucide";
 
 /* Review spec §73: four primary links, no clutter. */
 const NAV_ITEMS = [
@@ -27,6 +27,8 @@ export function MarketingHeader({ route }: { route: RouteInfo }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const authUser = useCloakStore((s) => s.auth.user);
   const authChecked = useCloakStore((s) => s.auth.checked);
+  const theme = useCloakStore((s) => s.theme);
+  const setTheme = useCloakStore((s) => s.setTheme);
   /* Signed-out visitors get an explicit login path on every page — the
      app route gate renders the sign-in screen for them (owner ask: the
      login link was missing on mobile). */
@@ -66,6 +68,8 @@ export function MarketingHeader({ route }: { route: RouteInfo }) {
   };
 
   const isActive = (path: string) => route.path === path && path !== "/";
+  const nextTheme = theme === "dark" ? "light" : "dark";
+  const themeLabel = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
 
   return (
     <header
@@ -99,6 +103,15 @@ export function MarketingHeader({ route }: { route: RouteInfo }) {
             </button>
           ))}
           <div className="ml-4 flex items-center gap-3">
+            <button
+              type="button"
+              aria-label={themeLabel}
+              title={themeLabel}
+              onClick={() => setTheme(nextTheme)}
+              className="grid h-9 w-9 place-items-center rounded-full border border-cloak-border bg-cloak-surface text-cloak-text-secondary transition-colors hover:border-cloak-gold/40 hover:text-cloak-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cloak-gold/45"
+            >
+              {theme === "dark" ? <SunIcon size={16} /> : <MoonIcon size={16} />}
+            </button>
             <button
               onClick={() => navigate("/download")}
               className="hidden text-sm text-cloak-text-secondary transition-colors hover:text-cloak-text lg:block"
@@ -149,6 +162,14 @@ export function MarketingHeader({ route }: { route: RouteInfo }) {
                   className="rounded-lg px-3 py-2.5 text-left text-sm text-cloak-text-secondary hover:bg-cloak-surface-hover hover:text-cloak-text"
                 >
                   Install
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTheme(nextTheme)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-cloak-text-secondary hover:bg-cloak-surface-hover hover:text-cloak-text"
+                >
+                  {theme === "dark" ? <SunIcon size={16} /> : <MoonIcon size={16} />}
+                  {theme === "dark" ? "Light theme" : "Dark theme"}
                 </button>
                 {showSignIn && (
                   <button

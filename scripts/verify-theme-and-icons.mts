@@ -395,6 +395,12 @@ check(
     true
   );
 
+  const marketingHeader = stripComments(read("src/components/cloak/navigation/MarketingHeader.tsx"));
+  check("marketing header reads the shared theme", /useCloakStore\(\(s\)\s*=>\s*s\.theme\)/.test(marketingHeader), true);
+  check("marketing header can change the shared theme", /useCloakStore\(\(s\)\s*=>\s*s\.setTheme\)/.test(marketingHeader), true);
+  check("marketing header includes a desktop theme toggle", /aria-label=\{themeLabel\}/.test(marketingHeader), true);
+  check("marketing header includes a mobile theme toggle", /Light theme[\s\S]{0,80}Dark theme/.test(marketingHeader), true);
+
   const settings = stripComments(read("src/components/cloak/settings/settings-page.tsx"));
   check("Settings exposes a theme choice", /setTheme\(choice\.id\)/.test(settings), true);
   check("Settings previews the white light theme", /bg:\s*"#ffffff"/.test(settings), true);
