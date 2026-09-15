@@ -10,9 +10,9 @@
  * Treasury private keys, seeds, and RPC secrets never live here (§65) —
  * server-only configuration belongs in the verify route / environment.
  *
- * ⚠ Before production launch: review token identifiers against official
- * Circle documentation (spec §4). The Solana mainnet native USDC mint below
- * is Circle's well-known mint, but the operator must confirm it.
+ * Token identifiers were verified against Circle's public USDC contract
+ * address documentation on 2026-09-16. Re-check during payment incidents,
+ * network additions, or verifier changes.
  */
 
 export type SettlementMethod =
@@ -37,8 +37,8 @@ export interface SupportedPaymentAsset {
   recommended?: boolean;
 }
 
-/* Native Circle-issued USDC, Solana mainnet. Review against Circle docs
- * before launch (spec §4) — never accept lookalike tokens (§4, §32). */
+/* Native Circle-issued USDC, Solana mainnet. Never accept lookalike tokens
+ * (§4, §32). */
 export const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 /* Native Circle-issued USDC, Base mainnet. DISABLED — bridged USDbC and

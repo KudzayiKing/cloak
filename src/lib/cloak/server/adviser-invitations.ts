@@ -85,8 +85,34 @@ export function adviserNoStoreHeaders(extra?: HeadersInit): HeadersInit {
 }
 
 export function requireSameOrigin(req: NextRequest): boolean {
+  if (req.headers.get("sec-fetch-site") === "cross-site") return false;
   const origin = req.headers.get("origin");
-  return !origin || origin === req.nextUrl.origin;
+  if (!origin) return true;
+  return allowedRequestOrigins(req).has(origin);
+}
+
+function allowedRequestOrigins(req: NextRequest): Set<string> {
+  const origins = new Set([req.nextUrl.origin]);
+  const host = firstHeaderValue(req.headers.get("x-forwarded-host")) ?? req.headers.get("host");
+  const proto = firstHeaderValue(req.headers.get("x-forwarded-proto")) ?? req.nextUrl.protocol.replace(/:$/, "");
+
+  if (host) origins.add(`${proto}://${host}`);
+
+  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (configuredAppUrl) {
+    try {
+      origins.add(new URL(configuredAppUrl).origin);
+    } catch {
+      // Invalid deployment configuration should not relax origin checks.
+    }
+  }
+
+  return origins;
+}
+
+function firstHeaderValue(value: string | null): string | null {
+  const first = value?.split(",")[0]?.trim();
+  return first || null;
 }
 
 const inviteRateLimits = new Map<string, { count: number; resetAt: number }>();

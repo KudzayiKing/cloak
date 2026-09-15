@@ -81,8 +81,7 @@ export interface MembershipService {
   lookupInvite(token: string): Promise<InviteLookupResult>;
 }
 
-/** Upgrade quote placeholder, clearly labeled as an estimate in the UI.
- *  The payment service calculates real amounts (spec §38). */
+/** Upgrade quote estimate. The payment service calculates real amounts (spec §38). */
 async function quote(target: CloakMembership): Promise<MembershipQuote> {
   const current = useCloakStore.getState().membership;
   const from = current.membership;

@@ -108,7 +108,7 @@ const AUDIT_STATUS_COPY: Record<
   in_progress: {
     label: "Independent security assessment",
     state: "In progress",
-    body: "An independent assessment is underway. Results will be published when the engagement concludes.",
+    body: "An independent assessment is underway. Cloaq does not claim completed independent verification until a final report exists.",
   },
   completed: {
     label: "Independently assessed",
@@ -468,9 +468,10 @@ export function SecurityPage() {
                 </li>
               </ul>
               <p className="mt-4 text-[12.5px] leading-relaxed text-cloak-text-muted">
-                A dedicated security contact address and response process are
-                published with the production launch. No vulnerability bounty
-                program is offered at this time.
+                Send responsible-disclosure reports through the private launch
+                contact channel with the affected route, severity, impact, and
+                safe reproduction notes. No vulnerability bounty program is
+                offered at this time.
               </p>
             </Surface>
           </div>
@@ -502,9 +503,9 @@ export function SecurityPage() {
               ))}
             </div>
             <p className="mt-6 text-[12.5px] leading-relaxed text-cloak-text-muted">
-              The full privacy policy and terms of service are published at
-              production launch. Legal entity and jurisdiction details are
-              provided during institutional engagement.
+              For the private launch, account terms, privacy details, and
+              institutional legal requests are handled through private
+              onboarding.
             </p>
           </div>
         </Container>

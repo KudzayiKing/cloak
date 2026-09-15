@@ -126,18 +126,19 @@ export function AboutPage() {
               <Surface className="p-6">
                 <h3 className="text-base font-medium text-cloak-text">Company details</h3>
                 <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">
-                  Cloaq is developed by a private company. Legal entity name,
-                  registration jurisdiction, and business contact details are
-                  published with the production launch and provided during
-                  institutional engagement.
+                  Cloaq is operated as a private-launch product. Legal,
+                  billing, and company-verification requests are handled
+                  directly through the onboarding or purchase channel used for
+                  the account.
                 </p>
               </Surface>
               <Surface className="p-6">
                 <h3 className="text-base font-medium text-cloak-text">Security contact</h3>
                 <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">
-                  A dedicated security contact address and responsible
-                  disclosure process are published with the production launch.
-                  The current disclosure policy is on the Security page.
+                  Responsible-disclosure reports should use the private launch
+                  contact channel and include the affected route, impact, and
+                  safe reproduction notes. The current disclosure policy is on
+                  the Security page.
                 </p>
               </Surface>
             </div>
