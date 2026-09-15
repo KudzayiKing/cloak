@@ -132,14 +132,14 @@
  * Light mode. Applied when <html> carries .light
  * instead of .dark — see src/lib/cloak/theme.ts for the switcher.
  *
- * The cloak-* values below use a clean white base with neutral text and
- * borders for legibility. Gold remains the accent colour.
+ * The cloak-* values below keep every background surface white, with neutral
+ * text and borders for legibility. Gold remains the accent colour.
  */
 .light {
   --cloak-bg: #ffffff;
-  --cloak-bg-elevated: #f8fafc;
+  --cloak-bg-elevated: #ffffff;
   --cloak-surface: #ffffff;
-  --cloak-surface-hover: #f3f4f6;
+  --cloak-surface-hover: #ffffff;
   --cloak-border: rgba(17, 24, 39, 0.12);
   --cloak-border-strong: rgba(17, 24, 39, 0.18);
 
@@ -166,11 +166,11 @@
   /* Dark, not light: gold is a mid-tone, so ink on gold has to be dark in
      BOTH themes. This mirrors the app's `bg-cloak-gold text-black` buttons. */
   --primary-foreground: #111827;
-  --secondary: #f3f4f6;
+  --secondary: #ffffff;
   --secondary-foreground: #111827;
-  --muted: #f3f4f6;
+  --muted: #ffffff;
   --muted-foreground: #4b5563;
-  --accent: #f3f4f6;
+  --accent: #ffffff;
   --accent-foreground: #111827;
   --destructive: #a85353;
   --border: rgba(17, 24, 39, 0.12);
@@ -185,14 +185,14 @@
   --sidebar-foreground: #111827;
   --sidebar-primary: #b99343;
   --sidebar-primary-foreground: #111827;
-  --sidebar-accent: #f3f4f6;
+  --sidebar-accent: #ffffff;
   --sidebar-accent-foreground: #111827;
   --sidebar-border: rgba(17, 24, 39, 0.12);
   --sidebar-ring: rgba(185, 147, 67, 0.55);
 
   --cloak-scroll-thumb: rgba(17, 24, 39, 0.2);
   --cloak-selection: rgba(185, 147, 67, 0.28);
-  --cloak-message-outgoing: #f8f4eb;
+  --cloak-message-outgoing: #ffffff;
   --cloak-message-outgoing-border: rgba(185, 147, 67, 0.24);
 
   /* Tells the browser to render form controls, scrollbars and the canvas in

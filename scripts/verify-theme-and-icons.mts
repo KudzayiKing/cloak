@@ -182,14 +182,14 @@ check("the light .light block was found", lightVars.length > 20, true);
   if (missing.length) console.log("  missing from .light:", missing.join(", "));
 }
 
-/* Light mode keeps a clean white base and neutral readable text. */
+/* Light mode keeps every background surface white and the text neutral/readable. */
 {
   const light = css.match(/\.light\s*\{([^}]*)\}/)?.[1] ?? "";
   const required: Array<[string, string]> = [
     ["--cloak-bg", "#ffffff"],
-    ["--cloak-bg-elevated", "#f8fafc"],
+    ["--cloak-bg-elevated", "#ffffff"],
     ["--cloak-surface", "#ffffff"],
-    ["--cloak-surface-hover", "#f3f4f6"],
+    ["--cloak-surface-hover", "#ffffff"],
     ["--cloak-border", "rgba(17, 24, 39, 0.12)"],
     ["--cloak-border-strong", "rgba(17, 24, 39, 0.18)"],
     ["--cloak-text", "#111827"],
