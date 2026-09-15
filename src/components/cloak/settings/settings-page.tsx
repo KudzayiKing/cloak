@@ -929,11 +929,11 @@ function AppearanceSection() {
     {
       id: "light",
       label: "Light",
-      note: "Warm paper surfaces for bright rooms and daylight.",
-      bg: "#f4efe5",
-      surface: "#f4efe5",
-      border: "rgba(30,27,23,0.16)",
-      text: "#171513",
+      note: "Clean white surfaces for crisp everyday reading.",
+      bg: "#ffffff",
+      surface: "#ffffff",
+      border: "rgba(17,24,39,0.18)",
+      text: "#111827",
       gold: "#b99343",
     },
   ];

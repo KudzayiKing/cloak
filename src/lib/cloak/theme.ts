@@ -1,6 +1,6 @@
 /*
  * Theme contract for Cloak. Dark is the default and the design's first-class
- * mode; light is the owner-supplied palette (see the `.light` block in
+ * mode; light uses a clean white palette (see the `.light` block in
  * globals.css, which is the only place the colours live).
  *
  * The theme is carried on <html> as a single class — `.dark` or `.light` —
@@ -33,7 +33,7 @@ export function isCloakTheme(value: unknown): value is CloakTheme {
 /** Status-bar / browser-chrome colour per theme. */
 export const CLOAK_THEME_COLORS: Record<CloakTheme, string> = {
   dark: "#0b0b0c",
-  light: "#f4efe5",
+  light: "#ffffff",
 };
 
 /** iOS standalone status-bar style per theme. */

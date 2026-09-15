@@ -658,7 +658,7 @@ interface CloakState {
   cloakMode: boolean;
   /** Chat text size (user feedback): small | medium | large. */
   chatFontSize: "small" | "medium" | "large";
-  /** Colour theme. Dark is the default; light is the owner-supplied palette.
+  /** Colour theme. Dark is the default; light uses a clean white palette.
       Carried on <html> as a class by ThemeSync — see src/lib/cloak/theme.ts. */
   theme: CloakTheme;
   /** Web nav rail collapsed to icons (user feedback round 14). */

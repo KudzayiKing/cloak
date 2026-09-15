@@ -182,19 +182,19 @@ check("the light .light block was found", lightVars.length > 20, true);
   if (missing.length) console.log("  missing from .light:", missing.join(", "));
 }
 
-/* The owner's palette, verbatim. */
+/* Light mode keeps a clean white base and neutral readable text. */
 {
   const light = css.match(/\.light\s*\{([^}]*)\}/)?.[1] ?? "";
   const required: Array<[string, string]> = [
-    ["--cloak-bg", "#f4efe5"],
-    ["--cloak-bg-elevated", "#eee8de"],
-    ["--cloak-surface", "#f4efe5"],
-    ["--cloak-surface-hover", "#ded5c8"],
-    ["--cloak-border", "rgba(30, 27, 23, 0.1)"],
-    ["--cloak-border-strong", "rgba(30, 27, 23, 0.16)"],
-    ["--cloak-text", "#171513"],
-    ["--cloak-text-secondary", "#625d55"],
-    ["--cloak-text-muted", "#8a8379"],
+    ["--cloak-bg", "#ffffff"],
+    ["--cloak-bg-elevated", "#f8fafc"],
+    ["--cloak-surface", "#ffffff"],
+    ["--cloak-surface-hover", "#f3f4f6"],
+    ["--cloak-border", "rgba(17, 24, 39, 0.12)"],
+    ["--cloak-border-strong", "rgba(17, 24, 39, 0.18)"],
+    ["--cloak-text", "#111827"],
+    ["--cloak-text-secondary", "#4b5563"],
+    ["--cloak-text-muted", "#6b7280"],
     ["--cloak-gold", "#b99343"],
     ["--cloak-gold-bright", "#cdaa59"],
     ["--cloak-gold-soft", "rgba(185, 147, 67, 0.12)"],
@@ -203,7 +203,7 @@ check("the light .light block was found", lightVars.length > 20, true);
     ["--cloak-warning", "#a17e3c"],
   ];
   for (const [name, value] of required) {
-    check(`${name} is the owner's value`, new RegExp(`${name}:\\s*${value.replace(/[().]/g, "\\$&")}\\s*;`).test(light), true);
+    check(`${name} is the light theme value`, new RegExp(`${name}:\\s*${value.replace(/[().]/g, "\\$&")}\\s*;`).test(light), true);
   }
 }
 
@@ -395,7 +395,7 @@ check(
 
   const settings = stripComments(read("src/components/cloak/settings/settings-page.tsx"));
   check("Settings exposes a theme choice", /setTheme\(choice\.id\)/.test(settings), true);
-  check("Settings previews the light ivory", /bg:\s*"#f4efe5"/.test(settings), true);
+  check("Settings previews the white light theme", /bg:\s*"#ffffff"/.test(settings), true);
   check(
     "the old 'coming after security review' placeholder is gone",
     /Coming after security review/.test(settings),
