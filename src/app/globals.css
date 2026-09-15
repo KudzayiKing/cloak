@@ -193,7 +193,7 @@
   --cloak-scroll-thumb: rgba(17, 24, 39, 0.2);
   --cloak-selection: rgba(185, 147, 67, 0.28);
   --cloak-message-outgoing: #ffffff;
-  --cloak-message-outgoing-border: rgba(185, 147, 67, 0.24);
+  --cloak-message-outgoing-border: rgba(17, 24, 39, 0.12);
 
   /* Tells the browser to render form controls, scrollbars and the canvas in
      light. Without this, native widgets stay dark inside a light page. */
