@@ -343,7 +343,7 @@ function ChatListItem({
       case "system":
         return last.body;
       case "ai":
-        return "Cloaq Intelligence · answer";
+        return "Cloaq AI · answer";
       case "view-once":
         return "View-once media";
       case "voice":

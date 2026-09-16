@@ -19,7 +19,7 @@ const GROUPS: { title: string; links: FooterLink[] }[] = [
     links: [
       { label: "Messaging", path: "/" },
       { label: "Groups & Circles", path: "/", anchor: "groups" },
-      { label: "Cloaq Intelligence", path: "/intelligence" },
+      { label: "Cloaq AI", path: "/intelligence" },
       { label: "Security", path: "/security" },
       { label: "Membership", path: "/pricing" },
     ],

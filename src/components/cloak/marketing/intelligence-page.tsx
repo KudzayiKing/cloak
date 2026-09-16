@@ -35,8 +35,8 @@ const PIPELINE = [
   },
   {
     icon: BrainIcon,
-    title: "Reasoning — Gemma on-device",
-    body: "Gemma 4 E2B (instruction-tuned, QAT) runs in a Web Worker over WebGPU. Synthesis happens only when a request needs it, and the model never searches memory itself.",
+    title: "Reasoning — Cloaq AI on-device",
+    body: "Cloaq AI runs in a Web Worker over WebGPU. Synthesis happens only when a request needs it, and the model never searches memory itself.",
   },
   {
     icon: RouteIcon,
@@ -52,7 +52,7 @@ const FAQS = [
   },
   {
     q: "What if my device cannot run local inference?",
-    a: "Messaging works normally, and Cloaq Intelligence states precisely why local inference is unavailable — WebGPU, storage, or installation. Cloud is only ever an explicit choice.",
+    a: "Messaging works normally, and Cloaq AI states precisely why local inference is unavailable — WebGPU, storage, or installation. Cloud is only ever an explicit choice.",
   },
   {
     q: "How do I know where an answer was processed?",
@@ -76,7 +76,7 @@ export function IntelligencePage() {
         <Container className="relative">
           <div className="mx-auto max-w-3xl text-center">
             <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.22em] text-cloak-gold">
-              Cloaq Intelligence
+              Cloaq AI
             </p>
             <h1 className="cloak-display text-balance text-4xl font-medium leading-tight text-cloak-text md:text-5xl">
               Intelligence that lives where your conversations live.
@@ -94,7 +94,7 @@ export function IntelligencePage() {
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-cloak-border bg-cloak-bg-elevated/80 px-2.5 py-1 text-[11px] text-cloak-text-secondary">
                 <CpuIcon size={12} />
-                Gemma 4 E2B · WebGPU
+                Cloaq AI · WebGPU
               </span>
             </div>
           </div>

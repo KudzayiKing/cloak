@@ -6,7 +6,7 @@
  * compact centered dialog on desktop. Buttons:
  *   - Translate to <chosen language>  (or "Show translation" once done)
  *   - Copy text
- * The translation itself runs entirely on-device (TranslateGemma/WebGPU);
+ * The translation itself runs entirely on-device (Cloaq AI/WebGPU);
  * nothing about the message is uploaded.
  */
 

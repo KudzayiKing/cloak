@@ -970,7 +970,7 @@ function IntelligenceSection({ circle }: { circle: CircleDetail }) {
     setAskBusy(true);
     setAnswer(null);
     try {
-      /* §65 first: deterministic metadata answers never invoke Gemma. */
+      /* §65 first: deterministic metadata answers never invoke Cloaq AI. */
       const meta = await answerCircleMetadata(q, circle, async (groupId) => {
         const r = await fetchGroupMembers(groupId);
         return r.ok ? r.members.map((m) => ({ name: m.name, role: m.role })) : null;

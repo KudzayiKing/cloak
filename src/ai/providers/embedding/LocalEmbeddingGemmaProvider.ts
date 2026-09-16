@@ -17,11 +17,11 @@ export class LocalEmbeddingGemmaProvider implements EmbeddingProvider {
   async embed(text: string): Promise<Float32Array> {
     if (!modelManifest.embedding?.url) {
       throw new Error(
-        "Embedding model artifact not configured. Keyword retrieval remains fully functional."
+        "Cloaq AI embedding artifact not configured. Keyword retrieval remains fully functional."
       );
     }
     // With the artifact configured, inference runs through the embedding
     // worker. Semantic retrieval degrades gracefully to keyword search until then.
-    throw new Error("EmbeddingGemma artifact pending configuration.");
+    throw new Error("Cloaq AI embedding artifact pending configuration.");
   }
 }

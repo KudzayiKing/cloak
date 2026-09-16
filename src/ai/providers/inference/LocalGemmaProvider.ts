@@ -2,7 +2,7 @@
  * LocalGemmaProvider — the FIRST implementation priority (spec §4).
  *
  * Execution target (spec §5):
- *   PWA -> Web Worker -> LiteRT-LM JS -> WebGPU -> Gemma 4 E2B IT QAT (.litertlm)
+ *   PWA -> Web Worker -> LiteRT-LM JS -> WebGPU -> Cloaq AI artifact
  *
  * This provider reports honest states. When the model artifact URL has not
  * been configured (R2 delivery pending) or WebGPU is missing, isAvailable()
@@ -51,7 +51,7 @@ export class LocalGemmaProvider implements InferenceProvider {
       m.modelStorage.hasArtifact(modelManifest.gemma.id)
     );
     if (!installed) return "not-installed";
-    return this.initialized ? "ready" : "not-installed";
+    return "ready";
   }
 
   async isAvailable(): Promise<boolean> {
@@ -62,7 +62,7 @@ export class LocalGemmaProvider implements InferenceProvider {
     const st = await this.status();
     if (st !== "ready") {
       throw new Error(
-        `Local Gemma is not ready (state: ${st}). Install the model artifact first.`
+        `Cloaq AI is not ready (state: ${st}). Install the model artifact first.`
       );
     }
     // Runtime bootstrap happens inside gemma.worker.ts; the worker owns
@@ -77,7 +77,7 @@ export class LocalGemmaProvider implements InferenceProvider {
     // orchestrator never reaches this line — it routes around it and the UI
     // presents an explicit local-unavailable state.
     throw new Error(
-      "Local generation requires the .litertlm artifact. Configure NEXT_PUBLIC_CLOAK_MODEL_GEMMA_URL."
+      "Local generation requires the Cloaq AI artifact to be configured."
     );
   }
 }

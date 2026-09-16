@@ -30,6 +30,7 @@ type Listener = (snapshot: ModelStatusSnapshot) => void;
 class ModelManager {
   private listeners = new Set<Listener>();
   private snapshot: ModelStatusSnapshot | null = null;
+  private installPromise: Promise<void> | null = null;
 
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener);
@@ -43,7 +44,7 @@ class ModelManager {
       state,
       message,
       artifactId: manifest.id,
-      displayName: "Gemma 4 E2B IT QAT",
+      displayName: "Cloaq AI",
       sizeBytes: manifest.sizeBytes,
       version: manifest.version,
       ...extra,
@@ -62,46 +63,66 @@ class ModelManager {
     if (!modelManifest.gemma.url) {
       this.emit(
         "not-installed",
-        "Model delivery is not configured yet. Ask the operator to set the Gemma artifact URL."
+        "Cloaq AI delivery is not configured yet. Ask the operator to set the model artifact URL."
       );
       return this.snapshot!;
     }
 
     if (modelStorage.hasArtifact(modelManifest.gemma.id)) {
-      this.emit("ready", "Local model installed and verified.");
+      this.emit("ready", "Cloaq AI is ready on this device.");
       return this.snapshot!;
     }
 
     const est = availability.storageEstimate;
     if (est?.quota && modelManifest.gemma.sizeBytes && est.quota < modelManifest.gemma.sizeBytes * 1.2) {
-      this.emit("insufficient-storage", "Not enough free storage for the local model.");
+      this.emit("insufficient-storage", "Not enough free storage for Cloaq AI.");
       return this.snapshot!;
     }
 
-    this.emit("not-installed", "Local model not installed on this device.");
+    this.emit("not-installed", "Cloaq AI is not installed on this device yet.");
     return this.snapshot!;
   }
 
   /**
-   * Install flow. With a configured artifact URL this streams the .litertlm
-   * artifact into model storage with progress, then verifies sha256.
+   * Install flow. With a configured artifact URL this streams the artifact into
+   * model storage with progress, then verifies the stored byte count.
    * Without a URL the state remains honest — no simulated downloads.
    */
   async install(): Promise<void> {
+    if (this.installPromise) return this.installPromise;
+    this.installPromise = this.installInternal().finally(() => {
+      this.installPromise = null;
+    });
+    return this.installPromise;
+  }
+
+  private async installInternal(): Promise<void> {
     const snap = await this.probe();
-    if (snap.state === "unsupported") return;
+    if (snap.state === "unsupported" || snap.state === "insufficient-storage" || snap.state === "ready") return;
     if (!modelManifest.gemma.url) {
-      this.emit("error", "No model artifact URL configured. Installation cannot start.");
+      this.emit("error", "No Cloaq AI artifact URL configured. Installation cannot start.");
       return;
     }
-    this.emit("downloading", "Downloading model…", { progress: 0 });
+    this.emit("downloading", "Downloading Cloaq AI for this device…", { progress: 0 });
 
-    // Real pipeline: fetch with Range requests -> OPFS -> verify hash.
-    // Placeholder until the artifact URL is provided by the operator.
-    this.emit(
-      "error",
-      "Artifact delivery is not wired yet. Configure the R2/custom-domain URL to enable installation."
-    );
+    try {
+      await modelStorage.installArtifact({
+        artifactId: modelManifest.gemma.id,
+        url: modelManifest.gemma.url,
+        expectedBytes: modelManifest.gemma.sizeBytes,
+        version: modelManifest.gemma.version,
+        onProgress: (progress) => {
+          this.emit("downloading", "Downloading Cloaq AI for this device…", { progress });
+        },
+      });
+      this.emit("verifying", "Verifying Cloaq AI install…", { progress: 1 });
+      this.emit("ready", "Cloaq AI is ready on this device.", { progress: 1 });
+    } catch (err) {
+      this.emit(
+        "error",
+        err instanceof Error ? err.message : "Cloaq AI download failed. Check the connection and try again."
+      );
+    }
   }
 
   remove(): void {

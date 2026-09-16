@@ -3,7 +3,7 @@
 /*
  * Home sections (review spec §5, §11-§14, §16, §44-§45):
  * trust strip, audience, Groups & Circles, Cloaq Mode demo,
- * condensed Cloaq Intelligence.
+ * condensed Cloaq AI.
  *
  * Copy rules (review spec §80/§81): short, precise, calm, technically
  * defensible. No absolute security claims, no "Communities"/discovery
@@ -357,7 +357,7 @@ export function CloakModeSection() {
 }
 
 /* D2. Dagger — emergency device control (codex §35-§37).
-   Sits AFTER Cloaq Mode and BEFORE Cloaq Intelligence:
+   Sits AFTER Cloaq Mode and BEFORE Cloaq AI:
    Cloaq Mode = reduce exposure while using the device.
    Dagger = end trust in the device. */
 
@@ -454,7 +454,7 @@ export function DaggerSection() {
   );
 }
 
-/* E. Cloaq Intelligence — condensed (review spec §16-§19) ------------------ */
+/* E. Cloaq AI — condensed (review spec §16-§19) ------------------ */
 
 const INTELLIGENCE_STAGES = [
   {
@@ -463,7 +463,7 @@ const INTELLIGENCE_STAGES = [
   },
   {
     title: "Reason locally",
-    body: "Cloaq Intelligence runs on the device where supported.",
+    body: "Cloaq AI runs on the device where supported.",
   },
   {
     title: "Show the boundary",
@@ -476,7 +476,7 @@ export function IntelligenceSection() {
     <section className="border-y border-cloak-border bg-cloak-bg-elevated/40 py-20 md:py-28">
       <Container>
         <SectionHeading
-          eyebrow="Cloaq Intelligence"
+          eyebrow="Cloaq AI"
           title="Your AI should not need your conversations in the cloud."
           lead="The model does not search your entire message history. Cloaq retrieves only the context permitted for the request."
         />
@@ -513,7 +513,7 @@ export function IntelligenceSection() {
               onClick={() => navigate("/intelligence")}
               className="inline-flex items-center gap-2 rounded-lg border border-cloak-border-strong bg-cloak-surface px-5 py-3 text-sm font-medium text-cloak-text transition-colors hover:bg-cloak-surface-hover"
             >
-              Explore Cloaq Intelligence
+              Explore Cloaq AI
               <ChevronRightIcon size={15} className="text-cloak-gold" />
             </button>
           </div>

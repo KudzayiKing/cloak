@@ -624,7 +624,7 @@ function AIMessage({
               <CloakMark size={12} />
             </span>
             <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cloak-gold">
-              Cloaq Intelligence
+              Cloaq AI
             </span>
           </div>
 
@@ -639,7 +639,7 @@ function AIMessage({
                   onClick={onDownloadModel}
                   className="rounded-full border border-cloak-gold/30 bg-cloak-gold-soft px-3 py-1.5 text-[12px] font-medium text-cloak-gold-bright transition-colors hover:bg-cloak-gold-soft/70"
                 >
-                  Set up in Cloaq Intelligence
+                  Set up in Cloaq AI
                 </button>
               </div>
             </div>

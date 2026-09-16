@@ -107,7 +107,7 @@ export function IntelligencePage() {
                   <SparklesIcon size={17} />
                 </span>
                 <div>
-                  <h1 className="text-base font-semibold text-cloak-text">Cloaq Intelligence</h1>
+                  <h1 className="text-base font-semibold text-cloak-text">Cloaq AI</h1>
                   <p className="text-[11.5px] text-cloak-text-muted">
                     Private assistant workspace · local-first
                   </p>
@@ -158,7 +158,7 @@ export function IntelligencePage() {
                   <SparklesIcon size={20} />
                 </span>
                 <p className="mt-4 text-sm font-medium text-cloak-text">
-                  Cloaq Intelligence is disabled.
+                  Cloaq AI is disabled.
                 </p>
                 <p className="mt-1.5 text-[13px] leading-relaxed text-cloak-text-muted">
                   Messaging works normally without it. Re-enable it from the
@@ -169,7 +169,7 @@ export function IntelligencePage() {
                   size="sm"
                   onClick={() => setAI({ enabled: true })}
                 >
-                  Enable Cloaq Intelligence
+                  Enable Cloaq AI
                 </Button>
               </div>
             ) : session.length === 0 ? (
@@ -224,8 +224,8 @@ export function IntelligencePage() {
                     void ask();
                   }
                 }}
-                placeholder={disabled ? "Cloaq Intelligence is disabled" : "Ask about your conversations, people, or decisions"}
-                aria-label="Ask Cloaq Intelligence"
+                placeholder={disabled ? "Cloaq AI is disabled" : "Ask about your conversations, people, or decisions"}
+                aria-label="Ask Cloaq AI"
                 className="cloak-scroll max-h-[120px] w-full resize-none bg-transparent py-1.5 text-[13.5px] text-cloak-text outline-none placeholder:text-cloak-text-muted"
                 disabled={disabled || busy}
               />
@@ -259,7 +259,7 @@ export function IntelligencePage() {
             </h2>
             <div className="space-y-3 rounded-xl border border-cloak-border bg-cloak-bg/50 p-4">
               <ToggleRow
-                label="Cloaq Intelligence"
+                label="Cloaq AI"
                 note="Master switch for local intelligence"
                 checked={aiSettings.enabled}
                 onChange={(v) => setAI({ enabled: v })}
@@ -307,7 +307,7 @@ export function IntelligencePage() {
               className="flex w-full items-center gap-2.5 rounded-xl border border-cloak-danger/25 bg-cloak-danger/5 p-3.5 text-left text-[13px] text-cloak-danger transition-colors hover:bg-cloak-danger/10"
             >
               <TriangleAlertIcon size={14} />
-              Disable Cloaq Intelligence
+              Disable Cloaq AI
             </button>
           </section>
         </aside>

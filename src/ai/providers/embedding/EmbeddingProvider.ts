@@ -1,6 +1,6 @@
 /*
  * Embedding provider abstraction (spec §4).
- * EmbeddingGemma is separate from Gemma (spec §10-D): it powers semantic
+ * Cloaq AI embeddings are separate from generation (spec §10-D): semantic
  * retrieval, never generation.
  */
 

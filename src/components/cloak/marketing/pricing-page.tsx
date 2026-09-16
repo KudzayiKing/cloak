@@ -57,7 +57,7 @@ const PRIVATE_INCLUDES = [
   "Dagger emergency device wipe",
   "Trusted devices",
   "Identity verification",
-  "Cloaq Intelligence",
+  "Cloaq AI",
   "Local memory and retrieval",
   "Core security updates",
 ];
@@ -354,7 +354,7 @@ export function PricingPage() {
             <div className="mt-5 grid gap-4 text-[13px] leading-relaxed text-cloak-text-secondary md:grid-cols-2">
               <p>
                 The Reserve member does not gain access to a recipient&apos;s
-                messages, devices, contacts, or Cloaq Intelligence. An
+                messages, devices, contacts, or Cloaq AI. An
                 invitation grants membership — never access, oversight, or
                 control.
               </p>

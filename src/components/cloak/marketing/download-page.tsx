@@ -70,7 +70,7 @@ export function DownloadPage() {
                   "Full-screen, standalone window",
                   "Home screen / dock presence",
                   "Offline shell for the interface",
-                  "Local model storage on-device",
+                  "Cloaq AI stored on-device",
                   "Same dark, quiet interface",
                   "Same privacy defaults",
                 ].map((item) => (
@@ -82,8 +82,9 @@ export function DownloadPage() {
               </ul>
               <p className="mt-5 text-xs leading-relaxed text-cloak-text-muted">
                 Installation is optional — Cloaq remains fully usable in the
-                browser. Local model artifacts are stored per device and never
-                downloaded without your explicit action.
+                browser. In the installed PWA, Cloaq AI downloads automatically
+                on first launch where the device supports it and keeps the
+                artifact on that device.
               </p>
             </Surface>
           </div>

@@ -9,8 +9,8 @@
  *   <- { type: "chunk", id, textDelta }
  *   <- { type: "done", id, text }
  *
- * When the owner supplies the .litertlm artifact URL, init() loads Google's
- * LiteRT-LM JavaScript runtime inside this worker (WebGPU-backed). Until
+ * When the owner supplies the Cloaq AI artifact URL, init() loads the
+ * local inference runtime inside this worker (WebGPU-backed). Until
  * then the worker reports a precise error instead of pretending.
  */
 
@@ -43,7 +43,7 @@ self.addEventListener("message", (event: MessageEvent<WorkerRequest>) => {
     if (!artifactUrl) {
       (self as unknown as Worker).postMessage({
         type: "error",
-        message: "No model artifact URL configured.",
+        message: "No Cloaq AI artifact URL configured.",
       });
       return;
     }
@@ -57,7 +57,7 @@ self.addEventListener("message", (event: MessageEvent<WorkerRequest>) => {
     if (!initialized) {
       (self as unknown as Worker).postMessage({
         type: "error",
-        message: "Worker not initialized. Install and verify the model first.",
+      message: "Worker not initialized. Install and verify the model first.",
       });
       return;
     }
@@ -65,7 +65,7 @@ self.addEventListener("message", (event: MessageEvent<WorkerRequest>) => {
     (self as unknown as Worker).postMessage({
       type: "error",
       id: msg.id,
-      message: "Generation requires the configured .litertlm artifact.",
+      message: "Generation requires the configured Cloaq AI artifact.",
     });
   }
 });

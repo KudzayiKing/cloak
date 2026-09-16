@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, EB_Garamond } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { PwaRegister } from "@/components/cloak/pwa/pwa-register";
+import { AutoModelInstall } from "@/components/cloak/pwa/auto-model-install";
 import { ThemeSync } from "@/components/cloak/theme/theme-sync";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/cloak/theme";
 import { BRAND } from "@/lib/cloak/config";
@@ -96,6 +97,7 @@ export default function RootLayout({
         {children}
         <ThemeSync />
         <PwaRegister />
+        <AutoModelInstall />
         <Toaster />
       </body>
     </html>

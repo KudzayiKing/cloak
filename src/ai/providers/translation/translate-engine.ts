@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * TranslateGemma engine — real on-device translation (user request:
+ * Cloaq AI translation engine — real on-device translation (user request:
  * long-press a message -> Translate -> runs locally in the browser).
  *
  * Pipeline:
@@ -54,8 +54,7 @@ export interface TranslateRequest {
 }
 
 /**
- * TranslateGemma prompt — Google's documented "preferred prompt" for the
- * model (TranslateGemma technical report, Figure 3), wrapped in Gemma's
+ * Cloaq AI translation prompt, wrapped in the local model's
  * turn markers because MediaPipe applies no chat template itself.
  * Two blank lines separate the instruction from the text (as shipped).
  */
@@ -133,7 +132,7 @@ class TranslateEngine {
     this.loadPromise = (async () => {
       if (!this.configured) {
         throw new Error(
-          "The translation model artifact is not configured. Ask the operator to set the TranslateGemma URL."
+          "The translation model artifact is not configured. Ask the operator to set the Cloaq AI translation URL."
         );
       }
       if (!this.webGPUSupported) {

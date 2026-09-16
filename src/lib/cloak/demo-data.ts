@@ -96,8 +96,8 @@ export const DEMO_CONVERSATIONS: Conversation[] = [
         createdAt: at(4, 10),
         status: "read",
         ai: {
-          provider: "LocalGemmaProvider",
-          model: "Gemma 4 E2B",
+          provider: "Cloaq AI",
+          model: "Cloaq AI",
           location: "This device",
           cloudUsed: false,
           memoryUploaded: false,

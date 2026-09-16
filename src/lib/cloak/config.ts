@@ -78,7 +78,7 @@ export const BRAND = {
   name: "Cloaq",
   uppercaseName: "CLOAQ",
   baseUrl: process.env.NEXT_PUBLIC_APP_URL ?? "https://cloaq.app",
-  ai: "Cloaq Intelligence",
+  ai: "Cloaq AI",
   cloakMode: "Cloaq Mode",
   ghostChat: "Ghost Chat",
   cloakId: "Cloaq ID",
@@ -118,7 +118,7 @@ export const SECURITY_AUDIT_STATUS: SecurityAuditStatus = "planned";
  * backend logic. The browser never receives R2 access keys.
  *
  * Provide URLs through environment variables:
- *   NEXT_PUBLIC_CLOAK_MODEL_GEMMA_URL
+ *   NEXT_PUBLIC_CLOAQ_AI_MODEL_URL
  *   NEXT_PUBLIC_CLOAK_MODEL_EMBEDDING_URL
  *   NEXT_PUBLIC_CLOAK_MODEL_TRANSLATION_URL
  *
@@ -146,10 +146,11 @@ export interface ModelManifestEntry {
 export const MODEL_MANIFEST: ModelManifestConfig = {
   gemma: {
     id: "gemma-4-e2b-it-qat",
-    displayName: "Gemma 4 E2B IT QAT",
+    displayName: "Cloaq AI",
     /* Owner-provided R2 artifact (Sep 2026). The env var still wins so a
        different artifact can be swapped in without a code change. */
     url:
+      process.env.NEXT_PUBLIC_CLOAQ_AI_MODEL_URL ??
       process.env.NEXT_PUBLIC_CLOAK_MODEL_GEMMA_URL ??
       "https://pub-610daaff40ac42f18aa2de55bc3970b2.r2.dev/models/gemma-4-E2B-it-web.litertlm",
     // Content-Length verified via HEAD (2,008,432,640 bytes).
@@ -158,7 +159,7 @@ export const MODEL_MANIFEST: ModelManifestConfig = {
   },
   embedding: {
     id: "embedding-gemma-web",
-    displayName: "EmbeddingGemma",
+    displayName: "Cloaq AI Embeddings",
     /* Artifact is a folder of ONNX files; the exact public URL is pending
        from the owner — left unset until then (honest state in the UI). */
     url: process.env.NEXT_PUBLIC_CLOAK_MODEL_EMBEDDING_URL,
@@ -167,7 +168,7 @@ export const MODEL_MANIFEST: ModelManifestConfig = {
   },
   translation: {
     id: "translategemma-4b-it-int8-web",
-    displayName: "TranslateGemma 4B IT (int8, web)",
+    displayName: "Cloaq AI Translation",
     /* Owner-provided R2 artifact, MediaPipe LLM Inference web format
        (.task). Powers the long-press message translation — the model runs
        in the browser via WebGPU and is cached on-device (OPFS). */

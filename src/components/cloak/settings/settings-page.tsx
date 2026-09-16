@@ -2,7 +2,7 @@
 
 /*
  * SettingsPage (spec §26, pricing & membership update §37) — Account,
- * Membership, Privacy, Security, Notifications, Cloaq Intelligence, Storage,
+ * Membership, Privacy, Security, Notifications, Cloaq AI, Storage,
  * Appearance, About. Nested hash routes: /settings, /settings/membership,
  * /settings/privacy, /settings/notifications, /settings/ai,
  * /settings/storage, /settings/appearance.
@@ -74,7 +74,7 @@ const SECTIONS: { id: SectionId; label: string; path: string }[] = [
   { id: "cloak", label: "Cloaq Mode", path: "/app/settings/cloak" },
   { id: "privacy", label: "Privacy", path: "/app/settings/privacy" },
   { id: "notifications", label: "Notifications", path: "/app/settings/notifications" },
-  { id: "ai", label: "Cloaq Intelligence", path: "/app/settings/ai" },
+  { id: "ai", label: "Cloaq AI", path: "/app/settings/ai" },
   { id: "storage", label: "Storage", path: "/app/settings/storage" },
   { id: "appearance", label: "Appearance", path: "/app/settings/appearance" },
 ];
@@ -810,9 +810,9 @@ function AISection() {
   return (
     <>
       <Surface className="p-5">
-        <h2 className="mb-4 text-sm font-semibold text-cloak-text">Cloaq Intelligence</h2>
+        <h2 className="mb-4 text-sm font-semibold text-cloak-text">Cloaq AI</h2>
         <div className="divide-y divide-cloak-border">
-          <ToggleRow label="Enable Cloaq Intelligence" note="Local-first assistant inside the messenger" checked={ai.enabled} onChange={(v) => setAI({ enabled: v })} />
+          <ToggleRow label="Enable Cloaq AI" note="Local-first assistant inside the messenger" checked={ai.enabled} onChange={(v) => setAI({ enabled: v })} />
           <ToggleRow label="Persistent memory" note="Keep allowed facts locally between sessions" checked={ai.persistentMemory} onChange={(v) => setAI({ persistentMemory: v })} />
           <ToggleRow label="Local translation" note="Translate with a local model where installed" checked={ai.translation} onChange={(v) => setAI({ translation: v })} />
         </div>
@@ -859,7 +859,7 @@ function StorageSection() {
         </h2>
         <div className="space-y-3 text-[13px]">
           <StorageRow label="Message store" note="Encrypted application data (app-controlled)" value="4.2 MB" />
-          <StorageRow label="Local AI model" note={MODEL_MANIFEST.gemma.url ? "Installed artifact" : "Not installed — nothing stored"} value={MODEL_MANIFEST.gemma.url ? formatBytes(MODEL_MANIFEST.gemma.sizeBytes) : "0 B"} />
+          <StorageRow label="Cloaq AI" note={MODEL_MANIFEST.gemma.url ? "Installed artifact" : "Not installed — nothing stored"} value={MODEL_MANIFEST.gemma.url ? formatBytes(MODEL_MANIFEST.gemma.sizeBytes) : "0 B"} />
           <StorageRow label="Media cache" note="Cleared on session end" value="12.8 MB" />
         </div>
       </Surface>
@@ -1064,10 +1064,10 @@ function AppearanceSection() {
         <div className="mt-3 flex max-w-xl items-start gap-2 text-[11.5px] leading-relaxed text-cloak-text-muted">
           <InfoIcon size={13} className="mt-0.5 shrink-0" />
           <span>
-            Translation runs entirely on this device with TranslateGemma — the
-            message text is never uploaded. The first translation downloads the
-            model once (about 3.9 GB, kept on this device) and needs a WebGPU
-            browser.
+            Translation runs entirely on this device with Cloaq AI — the
+            message text is never uploaded. The first translation downloads
+            its local model once (about 3.9 GB, kept on this device) and needs
+            a WebGPU browser.
           </span>
         </div>
       </div>

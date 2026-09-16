@@ -364,7 +364,7 @@ export function SecurityPage() {
         <Container>
           <div className="mx-auto max-w-4xl">
             <SectionHeading
-              eyebrow="Cloaq Intelligence"
+              eyebrow="Cloaq AI"
               title="What stays local, and when cloud can occur."
             />
             <div className="grid gap-4 md:grid-cols-2">

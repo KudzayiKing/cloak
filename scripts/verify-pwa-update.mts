@@ -212,6 +212,9 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
   const cloakRoot = stripComments(read("src/components/cloak/router/cloak-root.tsx"));
   check("the prompt is mounted in the app root", /<PwaUpdatePrompt \/>/.test(cloakRoot), true);
 
+  const layout = stripComments(read("src/app/layout.tsx"));
+  check("automatic Cloaq AI install is mounted", /<AutoModelInstall \/>/.test(layout), true);
+
   const register = stripComments(read("src/components/cloak/pwa/pwa-register.tsx"));
   check(
     "a reload happens only on a consented handover",
@@ -228,6 +231,17 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
     /registration\.waiting && navigator\.serviceWorker\.controller/.test(register),
     true
   );
+}
+
+{
+  const autoInstall = stripComments(read("src/components/cloak/pwa/auto-model-install.tsx"));
+  check("auto model install runs only in standalone PWA", /display-mode:\s*standalone/.test(autoInstall), true);
+  check("auto model install does not run in development", /NODE_ENV !== "production"/.test(autoInstall), true);
+  check("auto model install starts when not installed", /snapshot\.state === "not-installed"[\s\S]{0,80}modelManager\.install/.test(autoInstall), true);
+
+  const manager = stripComments(read("src/ai/models/modelManager.ts"));
+  check("model manager downloads Cloaq AI with progress", /installArtifact[\s\S]{0,220}onProgress/.test(manager), true);
+  check("model manager exposes Cloaq AI copy", /displayName:\s*"Cloaq AI"/.test(manager), true);
 }
 
 {

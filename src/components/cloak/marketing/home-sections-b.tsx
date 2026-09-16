@@ -57,7 +57,7 @@ const EVIDENCE_CARDS = [
   },
   {
     icon: BrainIcon,
-    title: "Cloaq Intelligence",
+    title: "Cloaq AI",
     body: "What stays local and when cloud processing can occur.",
     path: "/intelligence",
     anchor: undefined,
@@ -249,7 +249,7 @@ export function IdentitySection() {
 const GHOST_FEATURES: { icon: typeof TimerIcon; title: string; body: string }[] = [
   { icon: TimerIcon, title: "Timers you choose", body: "Conversations are configured to disappear from Cloaq after the period you set." },
   { icon: EyeOffIcon, title: "View-once media", body: "View-once media can be opened once inside Cloaq." },
-  { icon: BrainIcon, title: "No AI memory by default", body: "Ghost Chats are excluded from Cloaq Intelligence memory unless you allow it." },
+  { icon: BrainIcon, title: "No AI memory by default", body: "Ghost Chats are excluded from Cloaq AI memory unless you allow it." },
   { icon: LockIcon, title: "Local retention controls", body: "History rules live on your device and follow your settings." },
 ];
 
@@ -521,7 +521,7 @@ const FAQS: { q: string; a: string }[] = [
     a: "No. Cloaq Private is a one-time individual membership. You pay once — there is no recurring billing and nothing to cancel.",
   },
   {
-    q: "Does Cloaq Intelligence upload my conversations?",
+    q: "Does Cloaq AI upload my conversations?",
     a: "No. Retrieval and reasoning run on your device. Only a small, permissioned context reaches the local model — and cloud processing never happens without your explicit choice.",
   },
   {

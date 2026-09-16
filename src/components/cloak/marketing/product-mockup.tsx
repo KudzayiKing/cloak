@@ -3,7 +3,7 @@
 /*
  * Interactive Cloak product mockup (spec §9-Hero).
  * Built with CSS/React — no screenshots, no stock photography.
- * Shows: conversation sidebar, encrypted conversation, Cloaq Intelligence
+ * Shows: conversation sidebar, encrypted conversation, Cloaq AI
  * answer, on-device processing status, security state, restrained gold.
  */
 
@@ -30,7 +30,7 @@ const SIDEBAR_ITEMS = [
 export function ProductMockup({ className }: { className?: string }) {
   const [stage, setStage] = useState(0);
 
-  /* One quiet loop: message arrives -> Cloaq Intelligence answers. */
+  /* One quiet loop: message arrives -> Cloaq AI answers. */
   useEffect(() => {
     const timers = [
       window.setTimeout(() => setStage(1), 1800),
@@ -46,7 +46,7 @@ export function ProductMockup({ className }: { className?: string }) {
         className
       )}
       role="img"
-      aria-label="Cloaq application preview showing an encrypted conversation and a Cloaq Intelligence answer processed on-device"
+      aria-label="Cloaq application preview showing an encrypted conversation and a Cloaq AI answer processed on-device"
     >
       {/* Window chrome */}
       <div className="flex items-center justify-between border-b border-cloak-border bg-cloak-bg/60 px-4 py-3">
@@ -132,7 +132,7 @@ export function ProductMockup({ className }: { className?: string }) {
             <Bubble side="out" text="Keep this between us until the board receives the final version." time="14:30" />
             <Bubble side="in" text="Security moved tomorrow's arrival window to 08:30. Use the updated itinerary." time="14:31" />
 
-            {/* Cloaq Intelligence answer */}
+            {/* Cloaq AI answer */}
             <div
               className={cn(
                 "max-w-[92%] rounded-xl border border-cloak-gold/20 bg-cloak-gold-soft/50 p-3 transition-all duration-500 sm:max-w-[85%]",
@@ -144,7 +144,7 @@ export function ProductMockup({ className }: { className?: string }) {
                   <CloakMark size={11} />
                 </span>
                 <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cloak-gold">
-                  Cloaq Intelligence
+                  Cloaq AI
                 </span>
               </div>
               <p className="text-[12px] leading-relaxed text-cloak-text">

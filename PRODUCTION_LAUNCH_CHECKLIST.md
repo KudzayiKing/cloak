@@ -8,7 +8,7 @@
 - `CLOAQ_ADMIN_HANDLES` or `CLOAQ_ADMIN_USER_IDS`: comma-separated admin allowlist for adviser invitations.
 - `SOLANA_RPC_ENDPOINT`: production Solana RPC endpoint used by payment verification.
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`: Web Push credentials and a real contact mailbox.
-- `NEXT_PUBLIC_CLOAK_MODEL_GEMMA_URL`, `NEXT_PUBLIC_CLOAK_MODEL_EMBEDDING_URL`, `NEXT_PUBLIC_CLOAK_MODEL_TRANSLATION_URL`: public model artifact URLs when local AI is enabled.
+- `NEXT_PUBLIC_CLOAQ_AI_MODEL_URL`, `NEXT_PUBLIC_CLOAK_MODEL_EMBEDDING_URL`, `NEXT_PUBLIC_CLOAK_MODEL_TRANSLATION_URL`: public model artifact URLs when local AI is enabled.
 
 Keep `CLOAK_ALLOW_DEV_ACTIVATION=0` in production. Leave `PRISMA_LOG_QUERIES` and `PRISMA_LOG_ERRORS` off unless debugging a live incident.
 

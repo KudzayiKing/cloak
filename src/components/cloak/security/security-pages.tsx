@@ -148,8 +148,8 @@ function useSecurityRows(onConfigureFs: () => void): SecurityRow[] {
       state: aiSettings.enabled ? "protected" : "disabled",
       value: aiSettings.enabled ? "On-device" : "Disabled",
       detail: aiSettings.enabled
-        ? "Cloaq Intelligence runs locally. Memory stays on this device."
-        : "Cloaq Intelligence is disabled. Messaging works normally.",
+        ? "Cloaq AI runs locally. Memory stays on this device."
+        : "Cloaq AI is disabled. Messaging works normally.",
       icon: CpuIcon,
       action: { label: "Adjust", onClick: () => navigate("/app/settings/ai") },
     },
