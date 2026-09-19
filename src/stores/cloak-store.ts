@@ -2342,13 +2342,6 @@ export const useCloakStore = create<CloakState>()(
   )
 );
 
-/* TEMP-theme-repro: expose the store in dev so an e2e can drive setTheme
-   without auth. Removed after the repro. */
-if (process.env.NODE_ENV !== "production") {
-  (globalThis as unknown as { __cloakStore?: typeof useCloakStore }).__cloakStore =
-    useCloakStore;
-}
-
 /* Convenience selector: the active conversation object. */
 export function useActiveConversation(): Conversation | null {
   return useCloakStore((s) => {
