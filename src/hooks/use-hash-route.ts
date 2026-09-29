@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { isPublicMarketingPath } from "@/lib/cloak/seo";
 
 export interface RouteInfo {
   /** Normalized path without leading '#', always starts with '/'. */
@@ -32,6 +33,20 @@ function parseHash(): RouteInfo {
 export function navigate(path: string) {
   if (typeof window === "undefined") return;
   const target = path.startsWith("/") ? path : "/" + path;
+  const [pathname, anchor] = target.split("#", 2);
+  if (isPublicMarketingPath(pathname)) {
+    const destination = anchor ? `${pathname}#${anchor}` : pathname;
+    if (window.location.pathname === pathname) {
+      if (anchor) {
+        document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        window.scrollTo({ top: 0 });
+      }
+      return;
+    }
+    window.location.assign(destination);
+    return;
+  }
   if (window.location.hash === "#" + target) {
     // Force scroll reset for same-route navigation
     window.scrollTo({ top: 0 });
@@ -48,6 +63,15 @@ export function navigate(path: string) {
  */
 export function navigateToSection(path: string, anchor: string) {
   if (typeof window === "undefined") return;
+  const target = path.startsWith("/") ? path : "/" + path;
+  if (isPublicMarketingPath(target)) {
+    if (window.location.pathname === target) {
+      document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    window.location.assign(`${target}#${anchor}`);
+    return;
+  }
   const scroll = () => {
     window.setTimeout(() => {
       document

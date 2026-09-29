@@ -6,7 +6,8 @@ import { PwaRegister } from "@/components/cloak/pwa/pwa-register";
 import { AutoModelInstall } from "@/components/cloak/pwa/auto-model-install";
 import { ThemeSync } from "@/components/cloak/theme/theme-sync";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/cloak/theme";
-import { BRAND } from "@/lib/cloak/config";
+import { APP_URL, BRAND } from "@/lib/cloak/config";
+import { SEO, absoluteUrl } from "@/lib/cloak/seo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,18 +28,33 @@ const cloakSerif = EB_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: `${BRAND.name} — Private Communications & Local-First Intelligence`,
-  description: `${BRAND.tagline} Private messaging, trusted Circles and local-first AI designed for conversations that should remain under your control.`,
+  metadataBase: new URL(APP_URL),
+  title: {
+    default: SEO.title,
+    template: `%s | ${BRAND.name}`,
+  },
+  description: SEO.description,
   applicationName: BRAND.name,
   manifest: "/manifest.webmanifest",
-  keywords: [
-    BRAND.name,
-    "private messaging",
-    "local-first AI",
-    "private communications",
-    "privacy",
-  ],
+  keywords: [...SEO.keywords],
   authors: [{ name: BRAND.name }],
+  creator: BRAND.name,
+  publisher: BRAND.name,
+  category: "Secure communications software",
+  alternates: {
+    canonical: absoluteUrl("/"),
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
+  },
   icons: {
     icon: [
       { url: "/icons/icon.svg", type: "image/svg+xml" },
@@ -52,12 +68,66 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   openGraph: {
-    title: `${BRAND.name} — Private Communications & Local-First Intelligence`,
-    description: BRAND.tagline,
+    title: SEO.title,
+    description: SEO.description,
+    url: absoluteUrl("/"),
     siteName: BRAND.name,
     type: "website",
+    locale: "en_US",
+    images: [
+      {
+        url: "/icons/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: `${BRAND.name} logo`,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: SEO.title,
+    description: SEO.description,
+    images: ["/icons/icon-512.png"],
   },
 };
+
+const structuredData = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: BRAND.name,
+    url: absoluteUrl("/"),
+    logo: absoluteUrl("/icons/icon-512.png"),
+    slogan: BRAND.tagline,
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "security",
+      email: "security@cloakdagger.app",
+    },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: BRAND.name,
+    applicationCategory: "CommunicationApplication",
+    operatingSystem: "Web, iOS, Android, macOS, Windows",
+    url: absoluteUrl("/"),
+    description: SEO.description,
+    offers: {
+      "@type": "Offer",
+      price: "499",
+      priceCurrency: "USD",
+      category: "membership",
+    },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: BRAND.name,
+    url: absoluteUrl("/"),
+    description: SEO.description,
+  },
+];
 
 export const viewport: Viewport = {
   themeColor: [
@@ -92,6 +162,10 @@ export default function RootLayout({
             never sees a flash of the dark shell. Runs first in <body>, which
             is before anything below it has painted. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
         {children}
         <ThemeSync />
         <PwaRegister />

@@ -53,6 +53,11 @@ const GROUPS: { title: string; links: FooterLink[] }[] = [
 ];
 
 export function MarketingFooter() {
+  const hrefFor = (link: FooterLink) =>
+    link.path.startsWith("/app")
+      ? `/#${link.path}`
+      : `${link.path}${link.anchor ? `#${link.anchor}` : ""}`;
+
   const go = (link: FooterLink) => {
     if (link.anchor) navigateToSection(link.path, link.anchor);
     else navigate(link.path);
@@ -76,12 +81,16 @@ export function MarketingFooter() {
               <ul className="space-y-2.5">
                 {group.links.map((link) => (
                   <li key={link.label}>
-                    <button
-                      onClick={() => go(link)}
+                    <a
+                      href={hrefFor(link)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        go(link);
+                      }}
                       className="text-sm text-cloak-text-secondary transition-colors hover:text-cloak-text"
                     >
                       {link.label}
-                    </button>
+                    </a>
                   </li>
                 ))}
               </ul>

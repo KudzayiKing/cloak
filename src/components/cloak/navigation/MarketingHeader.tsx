@@ -88,9 +88,13 @@ export function MarketingHeader({ route }: { route: RouteInfo }) {
         {/* Desktop nav */}
         <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
           {NAV_ITEMS.map((item) => (
-            <button
+            <a
               key={item.path}
-              onClick={() => go(item.path)}
+              href={item.path}
+              onClick={(e) => {
+                e.preventDefault();
+                go(item.path);
+              }}
               aria-current={isActive(item.path) ? "page" : undefined}
               className={cn(
                 "rounded-md px-3.5 py-2 text-sm transition-colors",
@@ -100,7 +104,7 @@ export function MarketingHeader({ route }: { route: RouteInfo }) {
               )}
             >
               {item.label}
-            </button>
+            </a>
           ))}
           <div className="ml-4 flex items-center gap-3">
             <button
@@ -112,19 +116,27 @@ export function MarketingHeader({ route }: { route: RouteInfo }) {
             >
               {theme === "dark" ? <SunIcon size={16} /> : <MoonIcon size={16} />}
             </button>
-            <button
-              onClick={() => navigate("/download")}
+            <a
+              href="/download"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate("/download");
+              }}
               className="hidden text-sm text-cloak-text-secondary transition-colors hover:text-cloak-text lg:block"
             >
               Install
-            </button>
+            </a>
             {showSignIn && (
-              <button
-                onClick={() => navigate("/app/messages")}
+              <a
+                href="/#/app/messages"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/app/messages");
+                }}
                 className="text-sm text-cloak-text-secondary transition-colors hover:text-cloak-text"
               >
                 Sign in
-              </button>
+              </a>
             )}
             <PrimaryCTA size="sm" className="h-9 px-4" />
           </div>
@@ -144,9 +156,13 @@ export function MarketingHeader({ route }: { route: RouteInfo }) {
             <div className="cloak-message-in absolute right-0 top-12 w-56 overflow-hidden rounded-xl border border-cloak-border bg-cloak-bg-elevated shadow-2xl shadow-black/50">
               <div className="flex flex-col p-1.5">
                 {NAV_ITEMS.map((item) => (
-                  <button
+                  <a
                     key={item.path}
-                    onClick={() => go(item.path)}
+                    href={item.path}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      go(item.path);
+                    }}
                     className={cn(
                       "rounded-lg px-3 py-2.5 text-left text-sm",
                       isActive(item.path)
@@ -155,14 +171,18 @@ export function MarketingHeader({ route }: { route: RouteInfo }) {
                     )}
                   >
                     {item.label}
-                  </button>
+                  </a>
                 ))}
-                <button
-                  onClick={() => go("/download")}
+                <a
+                  href="/download"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    go("/download");
+                  }}
                   className="rounded-lg px-3 py-2.5 text-left text-sm text-cloak-text-secondary hover:bg-cloak-surface-hover hover:text-cloak-text"
                 >
                   Install
-                </button>
+                </a>
                 <button
                   type="button"
                   onClick={() => setTheme(nextTheme)}
@@ -172,12 +192,16 @@ export function MarketingHeader({ route }: { route: RouteInfo }) {
                   {theme === "dark" ? "Light theme" : "Dark theme"}
                 </button>
                 {showSignIn && (
-                  <button
-                    onClick={() => go("/app/messages")}
+                  <a
+                    href="/#/app/messages"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      go("/app/messages");
+                    }}
                     className="rounded-lg px-3 py-2.5 text-left text-sm font-medium text-cloak-gold hover:bg-cloak-surface-hover"
                   >
                     Sign in
-                  </button>
+                  </a>
                 )}
                 <div className="my-1 h-px bg-cloak-border" />
                 <div className="p-1.5">
