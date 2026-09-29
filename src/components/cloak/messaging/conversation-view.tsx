@@ -30,6 +30,7 @@ import { CloakMark } from "@/components/cloak/brand/CloakLogo";
 import { navigate } from "@/hooks/use-hash-route";
 import { Button } from "@/components/ui/button";
 import { initialsOf } from "@/lib/cloak/utils";
+import { ORCHESTRATOR_TRIGGER } from "@/lib/cloak/config";
 
 export function ConversationView({
   onOpenSecurityPanel,
@@ -214,14 +215,15 @@ export function ConversationView({
     sendMessage(conversation.id, body);
 
     /* @CD works in every chat — mention it anywhere, any case. */
-    const isCloakAsk = /@cloak\b/i.test(body);
+    const triggerPattern = new RegExp(`${escapeRegExp(ORCHESTRATOR_TRIGGER)}\\b`, "i");
+    const isCloakAsk = triggerPattern.test(body);
     if (!isCloakAsk || aiBlocked) return;
 
     ensureSeededMemories(SEED_MEMORIES);
     setCloakPending(true);
 
     try {
-      const query = body.replace(/@cloak\b/gi, "").trim() || body;
+      const query = body.replace(new RegExp(`${escapeRegExp(ORCHESTRATOR_TRIGGER)}\\b`, "gi"), "").trim() || body;
 
       const result = await cloakOrchestrator.run({
         query,
@@ -450,6 +452,10 @@ export function ConversationView({
       </div>
     </div>
   );
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function timerLabel(t?: string): string {
