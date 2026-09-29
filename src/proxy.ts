@@ -28,7 +28,7 @@ const RATE_POLICIES: Array<{ test: RegExp; policy: RatePolicy }> = [
 
 const DEFAULT_WRITE_POLICY: RatePolicy = { name: "write", max: 120, windowMs: 60_000 };
 
-export function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   if (!WRITE_METHODS.has(req.method)) {
     return NextResponse.next();
   }
@@ -37,7 +37,7 @@ export function proxy(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "bad_origin" }, { status: 403 });
   }
 
-  const limit = checkWriteRateLimit(req);
+  const limit = await checkWriteRateLimit(req);
   if (!limit.allowed) {
     return NextResponse.json(
       { ok: false, error: "rate_limited", retryAfterSec: limit.retryAfterSec },
@@ -89,7 +89,10 @@ function getAllowedOrigins(req: NextRequest): Set<string> {
   return origins;
 }
 
-function checkWriteRateLimit(req: NextRequest): { allowed: boolean; retryAfterSec: number } {
+async function checkWriteRateLimit(req: NextRequest): Promise<{ allowed: boolean; retryAfterSec: number }> {
+  const sharedLimit = await checkSharedWriteRateLimit(req);
+  if (sharedLimit) return sharedLimit;
+
   const now = Date.now();
   cleanupExpiredBuckets(now);
 
@@ -108,6 +111,43 @@ function checkWriteRateLimit(req: NextRequest): { allowed: boolean; retryAfterSe
   }
 
   return { allowed: true, retryAfterSec: 0 };
+}
+
+async function checkSharedWriteRateLimit(
+  req: NextRequest
+): Promise<{ allowed: boolean; retryAfterSec: number } | null> {
+  const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!redisUrl || !redisToken) return null;
+
+  const now = Date.now();
+  const policy = policyForPath(req.nextUrl.pathname);
+  const bucket = Math.floor(now / policy.windowMs);
+  const key = `cloak:rate:${policy.name}:${clientIp(req)}:${bucket}`;
+  const retryAfterSec = Math.max(1, Math.ceil(((bucket + 1) * policy.windowMs - now) / 1000));
+
+  try {
+    const res = await fetch(`${redisUrl.replace(/\/$/, "")}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${redisToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify([
+        ["INCR", key],
+        ["EXPIRE", key, Math.ceil(policy.windowMs / 1000) + 5],
+      ]),
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error(`Upstash ${res.status}`);
+    const payload = (await res.json()) as Array<{ result?: unknown; error?: string }>;
+    const count = Number(payload[0]?.result ?? 0);
+    if (!Number.isFinite(count) || count <= 0) return null;
+    return count <= policy.max ? { allowed: true, retryAfterSec: 0 } : { allowed: false, retryAfterSec };
+  } catch (err) {
+    console.warn("[proxy/rate-limit] shared limiter unavailable; falling back to local bucket", err);
+    return null;
+  }
 }
 
 function policyForPath(pathname: string): RatePolicy {

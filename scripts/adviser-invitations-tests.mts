@@ -16,8 +16,8 @@ const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 assert.equal(BRAND.name, "Cloak Dagger");
 assert.equal(BRAND.uppercaseName, "CLOAK DAGGER");
-assert.equal(APP_URL, "https://cloaq.app");
-assert.equal(appUrl("/invite/adviser/token-test"), "https://cloaq.app/invite/adviser/token-test");
+assert.equal(APP_URL, "https://cloakdagger.app");
+assert.equal(appUrl("/invite/adviser/token-test"), "https://cloakdagger.app/invite/adviser/token-test");
 
 const schema = read("prisma/schema.prisma");
 assert.match(schema, /model AdviserInvitation/);

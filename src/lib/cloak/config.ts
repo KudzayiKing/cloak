@@ -77,7 +77,7 @@ export function formatUSD(amount: number): string {
 export const BRAND = {
   name: "Cloak Dagger",
   uppercaseName: "CLOAK DAGGER",
-  baseUrl: process.env.NEXT_PUBLIC_APP_URL ?? "https://cloaq.app",
+  baseUrl: process.env.NEXT_PUBLIC_APP_URL ?? "https://cloakdagger.app",
   ai: "Cloak Dagger AI",
   cloakMode: "Cloak Mode",
   ghostChat: "Ghost Chat",

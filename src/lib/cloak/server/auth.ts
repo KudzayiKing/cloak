@@ -403,7 +403,6 @@ export function clientIp(req: NextRequest): string {
 
 /* ---------- Dev account seeding (idempotent) ---------- */
 
-const DEV_PASSWORD = "vault-key-9x";
 const DEV_ACCOUNTS = [
   { handle: "aurora", displayName: "Aurora", about: "Cloak member" },
   { handle: "blake", displayName: "Blake", about: "Cloak member" },
@@ -417,8 +416,13 @@ const DEV_ACCOUNTS = [
  */
 export async function ensureDevAccounts(): Promise<void> {
   if (process.env.CLOAK_ALLOW_DEV_ACTIVATION !== "1") return;
+  const devPassword = process.env.CLOAK_DEV_PASSWORD;
+  if (!devPassword) {
+    console.warn("[auth/dev] CLOAK_ALLOW_DEV_ACTIVATION=1 but CLOAK_DEV_PASSWORD is unset; dev seeding skipped.");
+    return;
+  }
   try {
-    const passwordHash = await hashPassword(DEV_PASSWORD);
+    const passwordHash = await hashPassword(devPassword);
     const users: { id: string }[] = [];
     let missing = false;
     for (const account of DEV_ACCOUNTS) {

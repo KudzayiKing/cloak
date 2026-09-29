@@ -468,10 +468,12 @@ export function SecurityPage() {
                 </li>
               </ul>
               <p className="mt-4 text-[12.5px] leading-relaxed text-cloak-text-muted">
-                Send responsible-disclosure reports through the private launch
-                contact channel with the affected route, severity, impact, and
-                safe reproduction notes. No vulnerability bounty program is
-                offered at this time.
+                Send responsible-disclosure reports to{" "}
+                <a href="mailto:security@cloakdagger.app" className="text-cloak-gold-bright underline-offset-4 hover:underline">
+                  security@cloakdagger.app
+                </a>{" "}
+                with the affected route, severity, impact, and safe reproduction
+                notes. No vulnerability bounty program is offered at this time.
               </p>
             </Surface>
           </div>
@@ -503,9 +505,9 @@ export function SecurityPage() {
               ))}
             </div>
             <p className="mt-6 text-[12.5px] leading-relaxed text-cloak-text-muted">
-              For the private launch, account terms, privacy details, and
-              institutional legal requests are handled through private
-              onboarding.
+              Account terms, privacy details, refund/payment questions, and
+              institutional legal requests are handled through onboarding until
+              the formal public policy pages are approved.
             </p>
           </div>
         </Container>

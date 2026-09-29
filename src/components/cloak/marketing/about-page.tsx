@@ -136,10 +136,12 @@ export function AboutPage() {
               <Surface className="p-6">
                 <h3 className="text-base font-medium text-cloak-text">Security contact</h3>
                 <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">
-                  Responsible-disclosure reports should use the private launch
-                  contact channel and include the affected route, impact, and
-                  safe reproduction notes. The current disclosure policy is on
-                  the Security page.
+                  Responsible-disclosure reports should go to{" "}
+                  <a href="mailto:security@cloakdagger.app" className="text-cloak-gold-bright underline-offset-4 hover:underline">
+                    security@cloakdagger.app
+                  </a>{" "}
+                  and include the affected route, impact, and safe reproduction
+                  notes. The current disclosure policy is on the Security page.
                 </p>
               </Surface>
             </div>
