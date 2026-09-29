@@ -23,7 +23,7 @@ export default async function AdminInvitationsPage() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cloak-gold">{BRAND.uppercaseName}</p>
           <h1 className="cloak-display mt-3 text-2xl font-medium">Admin access required</h1>
           <p className="mt-3 text-sm leading-relaxed text-cloak-text-secondary">
-            Sign in with an account listed in `CLOAQ_ADMIN_HANDLES` or `CLOAQ_ADMIN_USER_IDS`.
+            Sign in with an account listed in `CLOAK_ADMIN_HANDLES` or `CLOAK_ADMIN_USER_IDS`.
           </p>
         </div>
       </main>

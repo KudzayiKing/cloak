@@ -34,9 +34,9 @@ export type ContactProduct =
   | "partner";
 
 const INTEREST_LABELS: Record<string, string> = {
-  private_circle: "Cloaq Private Circle",
-  office: "Cloaq Office",
-  sovereign: "Cloaq Sovereign",
+  private_circle: "Cloak Dagger Private Circle",
+  office: "Cloak Dagger Office",
+  sovereign: "Cloak Dagger Sovereign",
   briefing: "A private briefing",
   adviser: "Adviser access",
   partner: "A partnership",
@@ -58,7 +58,7 @@ export function ContactRequestDialog({
     product === "adviser" ||
     product === "partner";
   const orgLabel = orgOptional ? "Organization (optional)" : "Organization";
-  const title = INTEREST_LABELS[product] ?? "Cloaq";
+  const title = INTEREST_LABELS[product] ?? "Cloak Dagger";
 
   return (
     <Dialog
@@ -70,7 +70,7 @@ export function ContactRequestDialog({
     >
       <RiseDialogContent className="max-h-[85dvh] overflow-y-auto border-cloak-border bg-cloak-bg-elevated text-cloak-text sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="cloak-display text-xl">Contact Cloaq</DialogTitle>
+          <DialogTitle className="cloak-display text-xl">Contact Cloak Dagger</DialogTitle>
           <DialogDescription className="text-cloak-text-secondary">
             {title} — tell us a little about your requirements.
           </DialogDescription>
@@ -85,8 +85,8 @@ export function ContactRequestDialog({
               </div>
               <p className="mt-2 text-[13px] leading-relaxed text-cloak-text-secondary">
                 This preview keeps everything on this device — nothing was
-                transmitted. When Cloaq&apos;s communications service launches,
-                this form reaches the Cloaq team directly.
+                transmitted. When Cloak Dagger&apos;s communications service launches,
+                this form reaches the Cloak Dagger team directly.
               </p>
             </div>
             <Button

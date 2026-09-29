@@ -31,7 +31,7 @@ export const dynamic = "force-dynamic";
  * POST /api/auth/register — account creation (pricing spec §9, §41-§43).
  *
  * Access model: account creation is membership-gated. A new user can create
- * a Cloaq ID only after a verified USDC payment claim or a valid Reserve
+ * a Cloak Dagger ID only after a verified USDC payment claim or a valid Reserve
  * guest invitation. The wallet never becomes the identity; the setup token
  * is one-time and hash-stored.
  */
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     body = {};
   }
 
-  /* Cloaq IDs: stored without "@", lowercase, 3-24 chars of a-z/0-9/_ —
+  /* Cloak Dagger IDs: stored without "@", lowercase, 3-24 chars of a-z/0-9/_ —
    * same normalization the login route applies when looking up. */
   const rawHandle = (body.handle ?? "").trim().replace(/^@+/, "").toLowerCase();
   const password = body.password ?? "";
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
   const existing = await db.user.findUnique({ where: { handle: rawHandle }, select: { id: true } });
   if (existing) {
     return NextResponse.json(
-      { ok: false, error: "handle_taken", message: "That Cloaq ID is already taken." },
+      { ok: false, error: "handle_taken", message: "That Cloak Dagger ID is already taken." },
       { status: 409 }
     );
   }
@@ -278,10 +278,10 @@ export async function POST(req: NextRequest) {
 
 function validateHandle(handle: string): string | null {
   if (handle.length < 3 || handle.length > 24) {
-    return "Cloaq IDs are 3-24 characters.";
+    return "Cloak Dagger IDs are 3-24 characters.";
   }
   if (!/^[a-z0-9_]+$/.test(handle)) {
-    return "Cloaq IDs use letters, numbers, and underscores.";
+    return "Cloak Dagger IDs use letters, numbers, and underscores.";
   }
   return null;
 }

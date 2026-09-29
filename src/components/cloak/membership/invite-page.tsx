@@ -5,12 +5,12 @@
  *
  * Flow: open invite -> validate token against the server (no auth needed —
  * the 256-bit token in the link IS the capability) -> show invitation ->
- * accept -> consume the pass server-side -> grant Cloaq Private -> open
+ * accept -> consume the pass server-side -> grant Cloak Dagger Private -> open
  * /messages.
  *
- * Recipients without an account register INLINE (Cloaq ID + passphrase);
+ * Recipients without an account register INLINE (Cloak Dagger ID + passphrase);
  * the token rides along so the pass redeems atomically at account
- * creation. No wallet, no payment, no Cloaq ID beforehand — a pre-payment
+ * creation. No wallet, no payment, no Cloak Dagger ID beforehand — a pre-payment
  * guest cannot have one. Redeemed, expired, revoked, and unknown tokens
  * receive honest states — never a silent fallback.
  */
@@ -68,7 +68,7 @@ export function InvitePage({ token }: { token: string }) {
       } else if (lookup.status === "pending") {
         setPhase({
           kind: "invitation",
-          inviterName: lookup.inviterName ?? "A Cloaq Reserve member",
+          inviterName: lookup.inviterName ?? "A Cloak Dagger Reserve member",
           expiresAt: lookup.expiresAt,
         });
       } else {
@@ -146,13 +146,13 @@ export function InvitePage({ token }: { token: string }) {
             <span className="mx-auto mb-6 grid h-12 w-12 place-items-center rounded-2xl border border-cloak-gold/25 bg-cloak-gold-soft text-cloak-gold">
               <ShieldCheckIcon size={20} />
             </span>
-            <h1 className="cloak-display text-2xl font-medium text-cloak-text">Cloaq Private</h1>
+            <h1 className="cloak-display text-2xl font-medium text-cloak-text">Cloak Dagger Private</h1>
             <div className="mt-3 flex items-center justify-center gap-1.5 text-sm font-medium text-cloak-success">
               <ShieldCheckIcon size={14} />
               Active
             </div>
             <p className="mt-4 text-sm leading-relaxed text-cloak-text-secondary">
-              Granted through Cloaq Reserve.
+              Granted through Cloak Dagger Reserve.
               <br />
               Lifetime core access.
             </p>
@@ -160,7 +160,7 @@ export function InvitePage({ token }: { token: string }) {
               className="bg-cloak-gold/20 hover:bg-cloak-gold/25 mt-8 h-12 w-full border border-cloak-gold/30 text-[15px] font-medium text-cloak-gold hover:text-cloak-gold"
               onClick={() => navigate("/app/messages")}
             >
-              Open Cloaq
+              Open Cloak Dagger
             </Button>
           </div>
         )}
@@ -181,7 +181,7 @@ export function InvitePage({ token }: { token: string }) {
               className="mt-8 h-11 w-full border-cloak-border-strong text-cloak-text hover:bg-cloak-surface"
               onClick={() => navigate("/")}
             >
-              Open Cloaq
+              Open Cloak Dagger
             </Button>
           </div>
         )}
@@ -190,8 +190,8 @@ export function InvitePage({ token }: { token: string }) {
           <div className="cloak-message-in rounded-2xl border border-cloak-warning/25 bg-cloak-bg-elevated p-7 text-center md:p-9">
             <h1 className="cloak-display text-xl font-medium text-cloak-text">
               {phase.reason === "recipient_already_reserve"
-                ? "This account already holds Cloaq Reserve."
-                : "This account already has Cloaq Private."}
+                ? "This account already holds Cloak Dagger Reserve."
+                : "This account already has Cloak Dagger Private."}
             </h1>
             <p className="mt-4 text-sm leading-relaxed text-cloak-text-secondary">
               {phase.reason === "recipient_already_reserve"
@@ -203,7 +203,7 @@ export function InvitePage({ token }: { token: string }) {
               className="mt-8 h-11 w-full border-cloak-border-strong text-cloak-text hover:bg-cloak-surface"
               onClick={() => navigate("/app/messages")}
             >
-              Open Cloaq
+              Open Cloak Dagger
             </Button>
           </div>
         )}
@@ -259,10 +259,10 @@ function SignedInAccept({
         <MailIcon size={20} />
       </span>
       <h1 className="cloak-display text-2xl font-medium text-cloak-text">
-        You have been invited to Cloaq.
+        You have been invited to Cloak Dagger.
       </h1>
       <p className="mt-4 text-sm leading-relaxed text-cloak-text-secondary">
-        {inviterName} has granted you Cloaq Private membership.
+        {inviterName} has granted you Cloak Dagger Private membership.
       </p>
       <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">
         No purchase is required. Your membership has been provided for you.
@@ -271,10 +271,10 @@ function SignedInAccept({
         className="bg-cloak-gold/20 hover:bg-cloak-gold/25 mt-8 h-12 w-full border border-cloak-gold/30 text-[15px] font-medium text-cloak-gold hover:text-cloak-gold"
         onClick={accept}
       >
-        Accept Cloaq Private
+        Accept Cloak Dagger Private
       </Button>
       <p className="mt-4 text-[11.5px] leading-relaxed text-cloak-text-muted">
-        Cloaq Private — lifetime core access. Your account will remain
+        Cloak Dagger Private — lifetime core access. Your account will remain
         private and independent.
       </p>
     </div>
@@ -302,12 +302,12 @@ function GuestRegister({
   const [busy, setBusy] = useState(false);
 
   const ERROR_COPY: Record<string, string> = {
-    bad_handle: "Cloaq IDs are 3-24 characters using letters, numbers, and underscores.",
+    bad_handle: "Cloak Dagger IDs are 3-24 characters using letters, numbers, and underscores.",
     bad_password: "Passphrases are 8-256 characters.",
-    handle_taken: "That Cloaq ID is already taken. Choose another.",
+    handle_taken: "That Cloak Dagger ID is already taken. Choose another.",
     invite_race: "That invitation was just redeemed. Ask for a new one.",
     rate_limited: "Too many attempts. Wait a few minutes and try again.",
-    network: "Cloaq could not reach the server. Check your connection.",
+    network: "Cloak Dagger could not reach the server. Check your connection.",
     server_error: "Something went wrong on our side. Try again.",
   };
 
@@ -331,20 +331,20 @@ function GuestRegister({
       </span>
       <div className="text-center">
         <h1 className="cloak-display text-2xl font-medium text-cloak-text">
-          You have been invited to Cloaq.
+          You have been invited to Cloak Dagger.
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-cloak-text-secondary">
-          {inviterName} has granted you Cloaq Private membership.
+          {inviterName} has granted you Cloak Dagger Private membership.
         </p>
         <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">
-          Create your Cloaq ID to accept — no wallet, no payment.
+          Create your Cloak Dagger ID to accept — no wallet, no payment.
         </p>
       </div>
 
       <div className="mt-6 space-y-3">
         <label className="block">
           <span className="mb-1.5 block text-[12px] font-medium text-cloak-text-secondary">
-            Cloaq ID
+            Cloak Dagger ID
           </span>
           <Input
             value={handle}
@@ -395,7 +395,7 @@ function GuestRegister({
           Create account & accept
         </Button>
         <p className="text-[11px] leading-relaxed text-cloak-text-muted">
-          Cloaq Private — lifetime core access. Your account will remain
+          Cloak Dagger Private — lifetime core access. Your account will remain
           private and independent from the person who invited you.
         </p>
       </div>

@@ -3,9 +3,9 @@
 /*
  * Cloak client state.
  *
- * - Cloaq Mode is a global privacy control (spec §23) with a reusable
+ * - Cloak Mode is a global privacy control (spec §23) with a reusable
  *   useCloakMode() hook built on this store.
- * - Demo conversations live in memory; settings and Cloaq Mode persist
+ * - Demo conversations live in memory; settings and Cloak Mode persist
  *   locally. When the real encrypted backend lands, conversations move to
  *   app-controlled encrypted storage without changing component contracts.
  */
@@ -459,7 +459,7 @@ async function toClientConversationAsync(
   };
 }
 
-/* Cloaq Mode protection (user feedback round 4): turning Cloaq Mode OFF can
+/* Cloak Mode protection (user feedback round 4): turning Cloak Mode OFF can
    require a PIN or platform biometrics. Only hashes / credential IDs are
    stored — never a plain-text PIN. */
 export interface CloakGuardSettings {
@@ -471,7 +471,7 @@ export interface CloakGuardSettings {
 
 export interface CloakGateState {
   open: boolean;
-  /** "cloak-off" — verifying to turn Cloaq Mode off.
+  /** "cloak-off" — verifying to turn Cloak Mode off.
    *  "manage" — verifying to change or remove protection. */
   purpose: "cloak-off" | "manage";
 }
@@ -678,7 +678,7 @@ interface CloakState {
   setTranslationLanguage: (code: string) => void;
   setForwardSecrecy: (window: ForwardSecrecyWindow) => void;
 
-  /* Cloaq Mode protection — PIN / biometric gate for turning it off */
+  /* Cloak Mode protection — PIN / biometric gate for turning it off */
   cloakGuard: CloakGuardSettings;
   setCloakGuardPin: (pinHash: string | null) => void;
   setCloakGuardBiometric: (credentialId: string | null) => void;
@@ -802,7 +802,7 @@ export function nextLocalId(prefix: string): string {
   return `${prefix}-local-${Date.now()}-${localId}`;
 }
 
-/* Verification callback for the Cloaq Mode gate — module scope so it never
+/* Verification callback for the Cloak Mode gate — module scope so it never
    enters persisted state. */
 let cloakGateCallback: ((verified: boolean) => void) | null = null;
 

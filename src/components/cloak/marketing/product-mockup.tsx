@@ -3,7 +3,7 @@
 /*
  * Interactive Cloak product mockup (spec §9-Hero).
  * Built with CSS/React — no screenshots, no stock photography.
- * Shows: conversation sidebar, encrypted conversation, Cloaq AI
+ * Shows: conversation sidebar, encrypted conversation, Cloak Dagger AI
  * answer, on-device processing status, security state, restrained gold.
  */
 
@@ -30,7 +30,7 @@ const SIDEBAR_ITEMS = [
 export function ProductMockup({ className }: { className?: string }) {
   const [stage, setStage] = useState(0);
 
-  /* One quiet loop: message arrives -> Cloaq AI answers. */
+  /* One quiet loop: message arrives -> Cloak Dagger AI answers. */
   useEffect(() => {
     const timers = [
       window.setTimeout(() => setStage(1), 1800),
@@ -46,13 +46,13 @@ export function ProductMockup({ className }: { className?: string }) {
         className
       )}
       role="img"
-      aria-label="Cloaq application preview showing an encrypted conversation and a Cloaq AI answer processed on-device"
+      aria-label="Cloak Dagger application preview showing an encrypted conversation and a Cloak Dagger AI answer processed on-device"
     >
       {/* Window chrome */}
       <div className="flex items-center justify-between border-b border-cloak-border bg-cloak-bg/60 px-4 py-3">
         <div className="flex items-center gap-2">
           <CloakLogoImage size={14} />
-          <span className="cloak-wordmark text-[11px] text-cloak-text-secondary">Cloaq</span>
+          <span className="cloak-wordmark text-[11px] text-cloak-text-secondary">Cloak Dagger</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-cloak-border bg-cloak-surface px-2 py-0.5 text-[10px] text-cloak-text-secondary">
@@ -132,7 +132,7 @@ export function ProductMockup({ className }: { className?: string }) {
             <Bubble side="out" text="Keep this between us until the board receives the final version." time="14:30" />
             <Bubble side="in" text="Security moved tomorrow's arrival window to 08:30. Use the updated itinerary." time="14:31" />
 
-            {/* Cloaq AI answer */}
+            {/* Cloak Dagger AI answer */}
             <div
               className={cn(
                 "max-w-[92%] rounded-xl border border-cloak-gold/20 bg-cloak-gold-soft/50 p-3 transition-all duration-500 sm:max-w-[85%]",
@@ -144,7 +144,7 @@ export function ProductMockup({ className }: { className?: string }) {
                   <CloakMark size={11} />
                 </span>
                 <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cloak-gold">
-                  Cloaq AI
+                  Cloak Dagger AI
                 </span>
               </div>
               <p className="text-[12px] leading-relaxed text-cloak-text">
@@ -184,7 +184,7 @@ export function ProductMockup({ className }: { className?: string }) {
             <div className="flex items-center gap-2 rounded-xl border border-cloak-border bg-cloak-surface px-3.5 py-2.5">
               <span className="text-[12px] text-cloak-text-muted">Write a message</span>
               <span className="ml-auto rounded-md border border-cloak-gold/25 bg-cloak-gold-soft px-1.5 py-0.5 text-[9px] font-medium text-cloak-gold-bright">
-                @Cloaq
+                @CD
               </span>
               <CheckCheckIcon size={13} className="text-cloak-gold" />
             </div>

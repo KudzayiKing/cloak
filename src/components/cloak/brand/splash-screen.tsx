@@ -21,17 +21,35 @@ const WORDMARK = BRAND.name;
 const CIPHER_GLYPHS =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#$%&*+=<>";
 
-/* Letter i settles at 350ms + 130ms per position — fully decoded well
-   before the splash starts fading at 1500ms, leaving a beat of calm. */
-const resolveAt = (index: number) => 350 + index * 130;
+const DECODE_START_MS = 350;
+const DECODE_DURATION_MS = 650;
+
+type CipherSlot = {
+  ch: string;
+  resolveAt: number;
+};
+
+function buildCipherSlots(text: string): CipherSlot[] {
+  return text.split(/(\s+)/).flatMap((part) => {
+    if (/^\s+$/.test(part)) {
+      return part.split("").map((ch) => ({ ch, resolveAt: 0 }));
+    }
+    const letters = part.split("");
+    const last = Math.max(letters.length - 1, 1);
+    return letters.map((ch, i) => ({
+      ch,
+      resolveAt: DECODE_START_MS + Math.round((i / last) * DECODE_DURATION_MS),
+    }));
+  });
+}
 
 function CipherWordmark({ text }: { text: string }) {
   /* Initial state is the final text — deterministic on the server, so
      hydration matches; the scramble only starts in a client effect. */
   const [frame, setFrame] = useState<{
     chars: string[];
-    resolved: number;
-  }>(() => ({ chars: text.split(""), resolved: text.length }));
+    resolved: boolean[];
+  }>(() => ({ chars: text.split(""), resolved: text.split("").map(() => true) }));
   const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -39,19 +57,20 @@ function CipherWordmark({ text }: { text: string }) {
       window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
     if (reduced) return;
 
-    const chars = text.split("");
+    const slots = buildCipherSlots(text);
     const startedAt = performance.now();
     intervalRef.current = window.setInterval(() => {
       const elapsed = performance.now() - startedAt;
       let pending = false;
-      const next = chars.map((ch, i) => {
-        if (elapsed >= resolveAt(i)) return ch;
+      const resolved = slots.map((slot) => elapsed >= slot.resolveAt);
+      const next = slots.map((slot, i) => {
+        if (/^\s$/.test(slot.ch) || resolved[i]) return slot.ch;
         pending = true;
         return CIPHER_GLYPHS[(Math.random() * CIPHER_GLYPHS.length) | 0];
       });
       setFrame({
         chars: next,
-        resolved: chars.filter((_, i) => elapsed >= resolveAt(i)).length,
+        resolved,
       });
       if (!pending) {
         window.clearInterval(intervalRef.current ?? undefined);
@@ -66,7 +85,7 @@ function CipherWordmark({ text }: { text: string }) {
   }, [text]);
 
   return (
-    <span className="relative inline-block">
+    <span className="relative inline-block whitespace-nowrap">
       {/* Invisible final wordmark reserves the exact layout box so the
           scrambling glyphs never resize or shift the splash layout. */}
       <span className="invisible" aria-hidden="true">
@@ -76,7 +95,7 @@ function CipherWordmark({ text }: { text: string }) {
         {frame.chars.map((ch, i) => (
           <span
             key={i}
-            className={i < frame.resolved ? "opacity-100" : "opacity-40"}
+            className={frame.resolved[i] ? "opacity-100" : "opacity-40"}
           >
             {ch}
           </span>

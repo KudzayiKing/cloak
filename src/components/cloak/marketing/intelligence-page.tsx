@@ -35,8 +35,8 @@ const PIPELINE = [
   },
   {
     icon: BrainIcon,
-    title: "Reasoning — Cloaq AI on-device",
-    body: "Cloaq AI runs in a Web Worker over WebGPU. Synthesis happens only when a request needs it, and the model never searches memory itself.",
+    title: "Reasoning — Cloak Dagger AI on-device",
+    body: "Cloak Dagger AI runs in a Web Worker over WebGPU. Synthesis happens only when a request needs it, and the model never searches memory itself.",
   },
   {
     icon: RouteIcon,
@@ -52,7 +52,7 @@ const FAQS = [
   },
   {
     q: "What if my device cannot run local inference?",
-    a: "Messaging works normally, and Cloaq AI states precisely why local inference is unavailable — WebGPU, storage, or installation. Cloud is only ever an explicit choice.",
+    a: "Messaging works normally, and Cloak Dagger AI states precisely why local inference is unavailable — WebGPU, storage, or installation. Cloud is only ever an explicit choice.",
   },
   {
     q: "How do I know where an answer was processed?",
@@ -76,7 +76,7 @@ export function IntelligencePage() {
         <Container className="relative">
           <div className="mx-auto max-w-3xl text-center">
             <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.22em] text-cloak-gold">
-              Cloaq AI
+              Cloak Dagger AI
             </p>
             <h1 className="cloak-display text-balance text-4xl font-medium leading-tight text-cloak-text md:text-5xl">
               Intelligence that lives where your conversations live.
@@ -94,7 +94,7 @@ export function IntelligencePage() {
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-cloak-border bg-cloak-bg-elevated/80 px-2.5 py-1 text-[11px] text-cloak-text-secondary">
                 <CpuIcon size={12} />
-                Cloaq AI · WebGPU
+                Cloak Dagger AI · WebGPU
               </span>
             </div>
           </div>
@@ -105,7 +105,7 @@ export function IntelligencePage() {
         <Container>
           <SectionHeading
             eyebrow="Pipeline"
-            title="Cloaq AI is not your memory."
+            title="Cloak Dagger AI is not your memory."
             lead="Four layers with separate responsibilities keep the assistant precise and private — the model reasons, it does not rummage. It is deliberately not a chatbot bolted onto a messenger."
           />
           <div className="grid gap-4 md:grid-cols-2">
@@ -144,7 +144,7 @@ export function IntelligencePage() {
                 },
                 {
                   title: "Ask before cloud processing",
-                  body: "Cloaq requests your consent first, and labels the answer with the route it used.",
+                  body: "Cloak Dagger requests your consent first, and labels the answer with the route it used.",
                 },
                 {
                   title: "Allow cloud",

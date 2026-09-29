@@ -2,7 +2,7 @@
 
 /*
  * SettingsPage (spec §26, pricing & membership update §37) — Account,
- * Membership, Privacy, Security, Notifications, Cloaq AI, Storage,
+ * Membership, Privacy, Security, Notifications, Cloak Dagger AI, Storage,
  * Appearance, About. Nested hash routes: /settings, /settings/membership,
  * /settings/privacy, /settings/notifications, /settings/ai,
  * /settings/storage, /settings/appearance.
@@ -71,10 +71,10 @@ type SectionId = "account" | "membership" | "cloak" | "privacy" | "notifications
 const SECTIONS: { id: SectionId; label: string; path: string }[] = [
   { id: "account", label: "Account", path: "/app/settings" },
   { id: "membership", label: "Membership", path: "/app/settings/membership" },
-  { id: "cloak", label: "Cloaq Mode", path: "/app/settings/cloak" },
+  { id: "cloak", label: "Cloak Mode", path: "/app/settings/cloak" },
   { id: "privacy", label: "Privacy", path: "/app/settings/privacy" },
   { id: "notifications", label: "Notifications", path: "/app/settings/notifications" },
-  { id: "ai", label: "Cloaq AI", path: "/app/settings/ai" },
+  { id: "ai", label: "Cloak Dagger AI", path: "/app/settings/ai" },
   { id: "storage", label: "Storage", path: "/app/settings/storage" },
   { id: "appearance", label: "Appearance", path: "/app/settings/appearance" },
 ];
@@ -135,9 +135,9 @@ const MEMBERSHIP_NAMES: Record<string, string> = {
   none: "No membership",
   private: BRAND.cloakPrivate,
   reserve: BRAND.cloakReserve,
-  private_circle: "Cloaq Private Circle",
-  office: "Cloaq Office",
-  sovereign: "Cloaq Sovereign",
+  private_circle: "Cloak Dagger Private Circle",
+  office: "Cloak Dagger Office",
+  sovereign: "Cloak Dagger Sovereign",
 };
 
 function AccountSection({
@@ -237,11 +237,11 @@ function AccountSection({
   );
 }
 
-/* Cloaq Mode ----------------------------------------------------------------- */
+/* Cloak Mode ----------------------------------------------------------------- */
 
 /*
- * Cloaq Mode section (user feedback round 4): protection setup so turning
- * Cloaq Mode OFF requires a PIN or biometrics. Turning it ON never does.
+ * Cloak Mode section (user feedback round 4): protection setup so turning
+ * Cloak Mode OFF requires a PIN or biometrics. Turning it ON never does.
  */
 
 function CloakModeSection() {
@@ -300,10 +300,10 @@ function CloakModeSection() {
       <Surface className="p-5">
         <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-cloak-text">
           <ShieldCheckIcon size={15} className="text-cloak-gold" />
-          Turning Cloaq Mode off
+          Turning Cloak Mode off
         </h2>
         <p className="mb-4 text-[12px] leading-relaxed text-cloak-text-muted">
-          Require a PIN or biometrics to turn Cloaq Mode off. Turning it on is
+          Require a PIN or biometrics to turn Cloak Mode off. Turning it on is
           always immediate — protection only guards the way out.
         </p>
 
@@ -313,8 +313,8 @@ function CloakModeSection() {
           </p>
           <p className="mt-0.5 text-[11.5px] leading-relaxed text-cloak-text-muted">
             {protectedMode
-              ? "Turning Cloaq Mode off asks for "
-              : "Cloaq Mode turns off immediately. Add a PIN or biometrics to require "}
+              ? "Turning Cloak Mode off asks for "
+              : "Cloak Mode turns off immediately. Add a PIN or biometrics to require "}
             {pinSet && biometricSet
               ? "your PIN or biometrics."
               : pinSet
@@ -418,10 +418,10 @@ function CloakModeSection() {
       <Surface className="p-5">
         <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-cloak-text">
           <EyeOffIcon size={15} className="text-cloak-gold" />
-          What Cloaq Mode hides
+          What Cloak Mode hides
         </h2>
         <p className="mb-4 text-[12px] leading-relaxed text-cloak-text-muted">
-          Cloaq Mode redacts the surfaces around your conversations — enforced
+          Cloak Mode redacts the surfaces around your conversations — enforced
           before anything is displayed.
         </p>
         <ul className="space-y-2.5 text-[13px] text-cloak-text-secondary">
@@ -530,7 +530,7 @@ function PinForm({
           {replacing ? "Change device PIN" : "Set device PIN"}
         </DialogTitle>
         <DialogDescription className="text-cloak-text-secondary">
-          This PIN will be required to turn Cloaq Mode off. Use 4 to 8 digits.
+          This PIN will be required to turn Cloak Mode off. Use 4 to 8 digits.
         </DialogDescription>
       </DialogHeader>
 
@@ -719,7 +719,7 @@ function NotificationsSection() {
   const cloakMode = useCloakStore((s) => s.cloakMode);
 
   /* Live example of what a notification may show, using the enforced
-     notification pipeline (user feedback: Cloaq Mode hides previews and
+     notification pipeline (user feedback: Cloak Mode hides previews and
      sender names in notifications). */
   const example = notificationForIncomingMessage({
     senderName: "Sarah Mitchell",
@@ -731,7 +731,7 @@ function NotificationsSection() {
   return (
     <>
       {/* Web push (spec §62 transport): structural events delivered to the
-          OS notification surface while Cloaq is closed. */}
+          OS notification surface while Cloak Dagger is closed. */}
       <WebPushCard />
 
       <Surface className="p-5">
@@ -743,11 +743,11 @@ function NotificationsSection() {
               <div className="rounded-lg border border-cloak-gold/25 bg-cloak-gold-soft/30 px-4 py-3">
                 <div className="flex items-center gap-2 text-[13px] font-medium text-cloak-gold-bright">
                   <EyeOffIcon size={13} />
-                  Hidden by Cloaq Mode
+                  Hidden by Cloak Mode
                 </div>
                 <p className="mt-1 text-[11.5px] leading-relaxed text-cloak-text-secondary">
                   Notifications show no sender name and no message preview while
-                  Cloaq Mode is on.
+                  Cloak Mode is on.
                 </p>
               </div>
             ) : (
@@ -766,7 +766,7 @@ function NotificationsSection() {
               </Select>
             )}
             <p className="text-[11px] text-cloak-text-muted">
-              Cloaq Mode overrides this setting: while it is on, notifications
+              Cloak Mode overrides this setting: while it is on, notifications
               hide both message previews and sender names.
             </p>
           </div>
@@ -781,7 +781,7 @@ function NotificationsSection() {
         <h2 className="mb-1 text-sm font-semibold text-cloak-text">What a notification shows</h2>
         <p className="mb-4 text-[12px] leading-relaxed text-cloak-text-muted">
           Live preview of an incoming message notification under your current
-          settings{cloakMode ? " and Cloaq Mode" : ""}.
+          settings{cloakMode ? " and Cloak Mode" : ""}.
         </p>
         <div className="rounded-xl border border-cloak-border bg-cloak-bg px-4 py-3">
           <div className="flex items-center justify-between gap-3">
@@ -793,7 +793,7 @@ function NotificationsSection() {
         {cloakMode && (
           <div className="mt-3 flex items-start gap-2 text-[11.5px] leading-relaxed text-cloak-gold-bright">
             <EyeOffIcon size={13} className="mt-0.5 shrink-0" />
-            Cloaq Mode is on — the sender name and message preview are hidden.
+            Cloak Mode is on — the sender name and message preview are hidden.
           </div>
         )}
       </Surface>
@@ -810,9 +810,9 @@ function AISection() {
   return (
     <>
       <Surface className="p-5">
-        <h2 className="mb-4 text-sm font-semibold text-cloak-text">Cloaq AI</h2>
+        <h2 className="mb-4 text-sm font-semibold text-cloak-text">Cloak Dagger AI</h2>
         <div className="divide-y divide-cloak-border">
-          <ToggleRow label="Enable Cloaq AI" note="Local-first assistant inside the messenger" checked={ai.enabled} onChange={(v) => setAI({ enabled: v })} />
+          <ToggleRow label="Enable Cloak Dagger AI" note="Local-first assistant inside the messenger" checked={ai.enabled} onChange={(v) => setAI({ enabled: v })} />
           <ToggleRow label="Persistent memory" note="Keep allowed facts locally between sessions" checked={ai.persistentMemory} onChange={(v) => setAI({ persistentMemory: v })} />
           <ToggleRow label="Local translation" note="Translate with a local model where installed" checked={ai.translation} onChange={(v) => setAI({ translation: v })} />
         </div>
@@ -859,7 +859,7 @@ function StorageSection() {
         </h2>
         <div className="space-y-3 text-[13px]">
           <StorageRow label="Message store" note="Encrypted application data (app-controlled)" value="4.2 MB" />
-          <StorageRow label="Cloaq AI" note={MODEL_MANIFEST.gemma.url ? "Installed artifact" : "Not installed — nothing stored"} value={MODEL_MANIFEST.gemma.url ? formatBytes(MODEL_MANIFEST.gemma.sizeBytes) : "0 B"} />
+          <StorageRow label="Cloak Dagger AI" note={MODEL_MANIFEST.gemma.url ? "Installed artifact" : "Not installed — nothing stored"} value={MODEL_MANIFEST.gemma.url ? formatBytes(MODEL_MANIFEST.gemma.sizeBytes) : "0 B"} />
           <StorageRow label="Media cache" note="Cleared on session end" value="12.8 MB" />
         </div>
       </Surface>
@@ -994,7 +994,7 @@ function AppearanceSection() {
       </div>
       <div className="mt-4 flex items-start gap-2 text-[11.5px] leading-relaxed text-cloak-text-muted">
         <InfoIcon size={13} className="mt-0.5 shrink-0" />
-        Cloaq is dark-first by design, and both themes are built from the same
+        Cloak Dagger is dark-first by design, and both themes are built from the same
         palette tokens — the choice applies to every screen on this device.
       </div>
 
@@ -1064,7 +1064,7 @@ function AppearanceSection() {
         <div className="mt-3 flex max-w-xl items-start gap-2 text-[11.5px] leading-relaxed text-cloak-text-muted">
           <InfoIcon size={13} className="mt-0.5 shrink-0" />
           <span>
-            Translation runs entirely on this device with Cloaq AI — the
+            Translation runs entirely on this device with Cloak Dagger AI — the
             message text is never uploaded. The first translation downloads
             its local model once (about 3.9 GB, kept on this device) and needs
             a WebGPU browser.

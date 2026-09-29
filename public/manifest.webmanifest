@@ -1,7 +1,7 @@
 {
-  "name": "Cloaq",
-  "short_name": "Cloaq",
-  "description": "Private messaging and local-first AI. Your conversations stay yours.",
+  "name": "Cloak Dagger",
+  "short_name": "Cloak Dagger",
+  "description": "Hide what matters. Cut off the watchers.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

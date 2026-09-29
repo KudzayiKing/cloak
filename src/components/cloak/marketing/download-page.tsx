@@ -29,10 +29,10 @@ export function DownloadPage() {
               Install
             </p>
             <h1 className="cloak-display text-balance text-4xl font-medium leading-tight text-cloak-text md:text-5xl">
-              Cloaq belongs on your device.
+              Cloak Dagger belongs on your device.
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-cloak-text-secondary md:text-lg">
-              Install Cloaq as an app on the platforms it supports. It opens
+              Install Cloak Dagger as an app on the platforms it supports. It opens
               full-screen, keeps the same dark discipline, and never turns your
               home screen into a notification billboard.
             </p>
@@ -70,7 +70,7 @@ export function DownloadPage() {
                   "Full-screen, standalone window",
                   "Home screen / dock presence",
                   "Offline shell for the interface",
-                  "Cloaq AI stored on-device",
+                  "Cloak Dagger AI stored on-device",
                   "Same dark, quiet interface",
                   "Same privacy defaults",
                 ].map((item) => (
@@ -81,8 +81,8 @@ export function DownloadPage() {
                 ))}
               </ul>
               <p className="mt-5 text-xs leading-relaxed text-cloak-text-muted">
-                Installation is optional — Cloaq remains fully usable in the
-                browser. In the installed PWA, Cloaq AI downloads automatically
+                Installation is optional — Cloak Dagger remains fully usable in the
+                browser. In the installed PWA, Cloak Dagger AI downloads automatically
                 on first launch where the device supports it and keeps the
                 artifact on that device.
               </p>

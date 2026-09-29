@@ -1,14 +1,14 @@
-# Cloaq Production Launch Checklist
+# Cloak Dagger Production Launch Checklist
 
 ## Required Environment
 
 - `DATABASE_URL`: Supabase pooled PostgreSQL connection string for the runtime.
 - `DIRECT_URL`: direct or session-pooler PostgreSQL connection string for Prisma migrations.
 - `NEXT_PUBLIC_APP_URL`: canonical HTTPS origin, for example `https://cloaq.app`.
-- `CLOAQ_ADMIN_HANDLES` or `CLOAQ_ADMIN_USER_IDS`: comma-separated admin allowlist for adviser invitations.
+- `CLOAK_ADMIN_HANDLES` or `CLOAK_ADMIN_USER_IDS`: comma-separated admin allowlist for adviser invitations. Legacy `CLOAQ_ADMIN_*` aliases are still accepted.
 - `SOLANA_RPC_ENDPOINT`: production Solana RPC endpoint used by payment verification.
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`: Web Push credentials and a real contact mailbox.
-- `NEXT_PUBLIC_CLOAQ_AI_MODEL_URL`, `NEXT_PUBLIC_CLOAK_MODEL_EMBEDDING_URL`, `NEXT_PUBLIC_CLOAK_MODEL_TRANSLATION_URL`: public model artifact URLs when local AI is enabled.
+- `NEXT_PUBLIC_CLOAK_DAGGER_AI_MODEL_URL`, `NEXT_PUBLIC_CLOAQ_AI_MODEL_URL` (legacy alias), `NEXT_PUBLIC_CLOAK_MODEL_EMBEDDING_URL`, `NEXT_PUBLIC_CLOAK_MODEL_TRANSLATION_URL`: public model artifact URLs when local AI is enabled.
 
 Keep `CLOAK_ALLOW_DEV_ACTIVATION=0` in production. Leave `PRISMA_LOG_QUERIES` and `PRISMA_LOG_ERRORS` off unless debugging a live incident.
 

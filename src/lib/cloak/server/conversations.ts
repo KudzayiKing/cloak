@@ -49,7 +49,7 @@ export interface ServerConversationPayload {
   memberCount?: number;
   myRole?: GroupRole;
   /** Circle association (circles spec §53): set when this group belongs to
-   *  a Cloaq Circle. The circle surface + group header show it. */
+   *  a Cloak Dagger Circle. The circle surface + group header show it. */
   circleId?: string;
   circleName?: string;
   unreadCount: number;
@@ -60,7 +60,7 @@ export interface ServerConversationPayload {
   aiAccess: "allowed" | "blocked";
   /** EFFECTIVE AI access (spec §39 precedence): strictest of the group
    *  setting and the owning Circle's policy. "limited" = current request
-   *  only (circle current_request). The client gates @Cloak on this. */
+   *  only (circle current_request). The client gates @CD on this. */
   aiEffective: "allowed" | "limited" | "blocked";
   /** Present when a Circle clamps this group — the UI shows why. */
   aiCircleDefault?: "disabled" | "current_request" | "allowed";

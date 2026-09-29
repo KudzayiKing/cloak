@@ -17,6 +17,7 @@ import { ClosingCTA } from "./home-sections-b";
 import { ContactRequestDialog } from "@/components/cloak/membership/dialogs";
 import { Button } from "@/components/ui/button";
 import { navigate } from "@/hooks/use-hash-route";
+import { BRAND } from "@/lib/cloak/config";
 import {
   ShieldCheckIcon,
   ScanLineIcon,
@@ -37,7 +38,7 @@ const PHILOSOPHY = [
   {
     icon: EyeOffIcon,
     title: "No attention economy",
-    body: "Cloaq is funded by membership, not advertising. There is no engagement machinery because there is no ad model to feed.",
+    body: "Cloak Dagger is funded by membership, not advertising. There is no engagement machinery because there is no ad model to feed.",
   },
 ];
 
@@ -55,10 +56,10 @@ export function AboutPage() {
               About
             </p>
             <h1 className="cloak-display text-balance text-4xl font-medium leading-tight text-cloak-text md:text-5xl">
-              Private communications. Private intelligence.
+              {BRAND.tagline}
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-cloak-text-secondary md:text-lg">
-              Cloaq is built for conversations where exposure has consequences
+              Cloak Dagger is built for conversations where exposure has consequences
               — messaging and on-device intelligence designed to remain under
               your control.
             </p>
@@ -70,7 +71,7 @@ export function AboutPage() {
       <section className="pb-20 md:pb-24">
         <Container>
           <div className="mx-auto max-w-3xl">
-            <SectionHeading eyebrow="Mission" title="Why Cloaq exists." />
+            <SectionHeading eyebrow="Mission" title="Why Cloak Dagger exists." />
             <div className="space-y-4 text-base leading-relaxed text-cloak-text-secondary">
               <p>
                 Most communication tools are optimized for reach and attention.
@@ -81,7 +82,7 @@ export function AboutPage() {
                 already live.
               </p>
               <p>
-                Cloaq exists to build that product to a standard its users can
+                Cloak Dagger exists to build that product to a standard its users can
                 inspect: private messaging without a public identity graph,
                 local-first intelligence without default cloud exposure, and
                 membership without recurring card dependency.
@@ -94,7 +95,7 @@ export function AboutPage() {
       {/* Security philosophy */}
       <section className="border-y border-cloak-border bg-cloak-bg-elevated/40 py-20 md:py-24">
         <Container>
-          <SectionHeading eyebrow="Security philosophy" title="How Cloaq makes decisions." />
+          <SectionHeading eyebrow="Security philosophy" title="How Cloak Dagger makes decisions." />
           <div className="grid gap-4 md:grid-cols-3">
             {PHILOSOPHY.map((p) => (
               <Surface key={p.title} className="p-6">
@@ -126,7 +127,7 @@ export function AboutPage() {
               <Surface className="p-6">
                 <h3 className="text-base font-medium text-cloak-text">Company details</h3>
                 <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">
-                  Cloaq is operated as a private-launch product. Legal,
+                  Cloak Dagger is operated as a private-launch product. Legal,
                   billing, and company-verification requests are handled
                   directly through the onboarding or purchase channel used for
                   the account.

@@ -44,7 +44,7 @@ const EVIDENCE_CARDS = [
   {
     icon: FileSearchIcon,
     title: "Threat model",
-    body: "What Cloaq protects against — and what it does not.",
+    body: "What Cloak Dagger protects against — and what it does not.",
     path: "/security",
     anchor: "threat-model",
   },
@@ -57,7 +57,7 @@ const EVIDENCE_CARDS = [
   },
   {
     icon: BrainIcon,
-    title: "Cloaq AI",
+    title: "Cloak Dagger AI",
     body: "What stays local and when cloud processing can occur.",
     path: "/intelligence",
     anchor: undefined,
@@ -104,7 +104,7 @@ export function SecurityEvidenceSection() {
         <SectionHeading
           eyebrow="Trust"
           title="Security should be inspectable."
-          lead="Cloaq does not ask you to trust a slogan. Its security model, processing boundaries, and known limitations are clear enough to inspect."
+          lead="Cloak Dagger does not ask you to trust a slogan. Its security model, processing boundaries, and known limitations are clear enough to inspect."
         />
 
         <div className="grid items-start gap-8 lg:grid-cols-[1.15fr_1fr]">
@@ -211,7 +211,7 @@ export function SecurityEvidenceSection() {
 /* B. Identity (review spec §47, §48) --------------------------------------- */
 
 const IDENTITY_FEATURES: { icon: typeof QrCodeIcon; title: string; body: string }[] = [
-  { icon: UserRoundCheckIcon, title: "Cloaq ID", body: "Share a private identifier instead of publishing a phone number." },
+  { icon: UserRoundCheckIcon, title: "Cloak Dagger ID", body: "Share a private identifier instead of publishing a phone number." },
   { icon: QrCodeIcon, title: "Verify", body: "Confirm identity in person using QR verification." },
   { icon: MonitorSmartphoneIcon, title: "Devices", body: "See and revoke every authorized device." },
 ];
@@ -223,7 +223,7 @@ export function IdentitySection() {
         <SectionHeading
           eyebrow="Identity"
           title="Control who knows you and which devices you trust."
-          lead="No public phone-number identity. Cloaq IDs, explicit verification, and device control keep the edges of your network deliberate."
+          lead="No public phone-number identity. Cloak Dagger IDs, explicit verification, and device control keep the edges of your network deliberate."
         />
         <div className="grid gap-4 md:grid-cols-3">
           {IDENTITY_FEATURES.map((f, i) => (
@@ -247,9 +247,9 @@ export function IdentitySection() {
 /* C. Ghost Chats — compact (review spec §21, §20, §46) ---------------------- */
 
 const GHOST_FEATURES: { icon: typeof TimerIcon; title: string; body: string }[] = [
-  { icon: TimerIcon, title: "Timers you choose", body: "Conversations are configured to disappear from Cloaq after the period you set." },
-  { icon: EyeOffIcon, title: "View-once media", body: "View-once media can be opened once inside Cloaq." },
-  { icon: BrainIcon, title: "No AI memory by default", body: "Ghost Chats are excluded from Cloaq AI memory unless you allow it." },
+  { icon: TimerIcon, title: "Timers you choose", body: "Conversations are configured to disappear from Cloak Dagger after the period you set." },
+  { icon: EyeOffIcon, title: "View-once media", body: "View-once media can be opened once inside Cloak Dagger." },
+  { icon: BrainIcon, title: "No AI memory by default", body: "Ghost Chats are excluded from Cloak Dagger AI memory unless you allow it." },
   { icon: LockIcon, title: "Local retention controls", body: "History rules live on your device and follow your settings." },
 ];
 
@@ -330,17 +330,17 @@ const ORG_TIERS: {
   product: "private_circle" | "office" | "sovereign";
 }[] = [
   {
-    name: "Cloaq Private Circle",
+    name: "Cloak Dagger Private Circle",
     price: `From ${formatUSD(CLOAK_PRICING.privateCircle.startingAt)}`,
     product: "private_circle",
   },
   {
-    name: "Cloaq Office",
+    name: "Cloak Dagger Office",
     price: `From ${formatUSD(CLOAK_PRICING.office.startingAt)}/year`,
     product: "office",
   },
   {
-    name: "Cloaq Sovereign",
+    name: "Cloak Dagger Sovereign",
     price: "Custom",
     product: "sovereign",
   },
@@ -358,14 +358,14 @@ export function MembershipSection() {
         <SectionHeading
           eyebrow="Membership"
           title="Choose your level of assurance."
-          lead="Individual membership is one payment, settled in native USDC on Solana. Private environments are arranged directly with Cloaq."
+          lead="Individual membership is one payment, settled in native USDC on Solana. Private environments are arranged directly with Cloak Dagger."
         />
 
         {/* Two primary cards only (review spec §23) */}
         <div className="mx-auto grid max-w-3xl gap-4 sm:grid-cols-2">
-          {/* Cloaq Private */}
+          {/* Cloak Dagger Private */}
           <Surface className="flex flex-col p-6">
-            <p className="text-sm font-medium text-cloak-text">Cloaq Private</p>
+            <p className="text-sm font-medium text-cloak-text">Cloak Dagger Private</p>
             <p className="mt-1 text-[12px] text-cloak-text-muted">For individuals.</p>
             <p
               className="mt-4 cloak-display text-4xl font-medium text-cloak-text"
@@ -385,12 +385,12 @@ export function MembershipSection() {
                 className="cloak-cta-gold h-10 w-full border border-black/20 text-sm font-medium text-[#141310] hover:text-[#141310]"
                 onClick={() => setCheckoutPlan("private")}
               >
-                Get Cloaq Private
+                Get Cloak Dagger Private
               </Button>
             </div>
           </Surface>
 
-          {/* Cloaq Reserve — restrained gold hairline (review spec §24) */}
+          {/* Cloak Dagger Reserve — restrained gold hairline (review spec §24) */}
           <div className="relative flex flex-col overflow-hidden rounded-xl border border-cloak-gold/25 bg-cloak-bg-elevated/70 p-6">
             <div
               aria-hidden="true"
@@ -409,8 +409,8 @@ export function MembershipSection() {
               one-time · Native USDC on Solana
             </p>
             <p className="mt-3 text-[12.5px] leading-relaxed text-cloak-text-secondary">
-              Everything in Cloaq Private, plus advanced controls, priority
-              support, and 10 full Cloaq Private memberships to grant.
+              Everything in Cloak Dagger Private, plus advanced controls, priority
+              support, and 10 full Cloak Dagger Private memberships to grant.
             </p>
             <div className="mt-auto pt-5">
               <Button
@@ -448,7 +448,7 @@ export function MembershipSection() {
                   <span className="text-sm font-medium text-cloak-text">{tier.name}</span>
                   <span className="mt-1 text-[12px] text-cloak-text-muted">{tier.price}</span>
                   <span className="mt-2 inline-flex items-center gap-1 text-[11.5px] text-cloak-text-secondary transition-colors group-hover:text-cloak-gold">
-                    Contact Cloaq
+                    Contact Cloak Dagger
                     <ChevronRightIcon size={11} />
                   </span>
                 </button>
@@ -498,8 +498,8 @@ export function InstallSection() {
             <PackageIcon size={24} />
           </span>
           <SectionHeading
-            title="Cloaq belongs on your device."
-            lead="Install Cloaq to your home screen or desktop for a focused app experience using the same Cloaq security model."
+            title="Cloak Dagger belongs on your device."
+            lead="Install Cloak Dagger to your home screen or desktop for a focused app experience using the same Cloak Dagger security model."
           />
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
             <InstallPWAButton variant="gold" size="lg" />
@@ -517,11 +517,11 @@ export function InstallSection() {
 
 const FAQS: { q: string; a: string }[] = [
   {
-    q: "Is Cloaq Private a subscription?",
-    a: "No. Cloaq Private is a one-time individual membership. You pay once — there is no recurring billing and nothing to cancel.",
+    q: "Is Cloak Dagger Private a subscription?",
+    a: "No. Cloak Dagger Private is a one-time individual membership. You pay once — there is no recurring billing and nothing to cancel.",
   },
   {
-    q: "Does Cloaq AI upload my conversations?",
+    q: "Does Cloak Dagger AI upload my conversations?",
     a: "No. Retrieval and reasoning run on your device. Only a small, permissioned context reaches the local model — and cloud processing never happens without your explicit choice.",
   },
   {
@@ -529,16 +529,16 @@ const FAQS: { q: string; a: string }[] = [
     a: "Yes, and it is off by default. Processing can be set to local-only, ask-before-cloud, or allow-cloud — and any cloud use is clearly labeled.",
   },
   {
-    q: "Does my payment wallet become my Cloaq identity?",
-    a: "No. Payment verification and Cloaq identity are separate systems. Your paying wallet is never used as your username, profile, or login.",
+    q: "Does my payment wallet become my Cloak Dagger identity?",
+    a: "No. Payment verification and Cloak Dagger identity are separate systems. Your paying wallet is never used as your username, profile, or login.",
   },
   {
-    q: "What is a Cloaq Circle?",
+    q: "What is a Cloak Dagger Circle?",
     a: "A trusted, invite-only structure that organizes private groups around the people you rely on. A person can belong to a Circle without automatically seeing every group inside it.",
   },
   {
     q: "What is Dagger?",
-    a: "Dagger is Cloaq's emergency device control. It destroys Cloaq's local keys, clears sensitive Cloaq-controlled local data and revokes the selected device from your account.",
+    a: "Dagger is Cloak Dagger's emergency device control. It destroys Cloak Dagger's local keys, clears sensitive Cloak Dagger-controlled local data and revokes the selected device from your account.",
   },
   {
     q: "Does Dagger delete my account?",
@@ -546,15 +546,15 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "Does Dagger remove every trace?",
-    a: "No software running as a PWA can guarantee removal of every operating-system or browser artifact. Dagger destroys Cloaq's keys, private application data and device authorization that Cloaq controls.",
+    a: "No software running as a PWA can guarantee removal of every operating-system or browser artifact. Dagger destroys Cloak Dagger's keys, private application data and device authorization that Cloak Dagger controls.",
   },
   {
     q: "What if I remotely Dagger an offline device?",
-    a: "The device is revoked immediately on Cloaq's servers. Local deletion is attempted when the device next reconnects.",
+    a: "The device is revoked immediately on Cloak Dagger's servers. Local deletion is attempted when the device next reconnects.",
   },
   {
-    q: "Can Cloaq be installed as an app?",
-    a: "Yes. Cloaq is an installable app (PWA) on supported platforms — a focused app experience using the same Cloaq security model.",
+    q: "Can Cloak Dagger be installed as an app?",
+    a: "Yes. Cloak Dagger is an installable app (PWA) on supported platforms — a focused app experience using the same Cloak Dagger security model.",
   },
 ];
 
@@ -620,7 +620,7 @@ export function ClosingCTA({ children }: { children?: ReactNode }) {
               className="cloak-cta-gold h-12 border border-black/20 px-7 text-base font-medium text-[#141310] shadow-[0_1px_0_rgba(255,255,255,0.25)_inset,0_8px_24px_-12px_rgba(214,177,94,0.55)] hover:text-[#141310]"
               onClick={() => navigate("/app/messages")}
             >
-              Open Cloaq
+              Open Cloak Dagger
             </Button>
             <Button
               variant="outline"

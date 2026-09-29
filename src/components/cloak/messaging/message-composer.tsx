@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * MessageComposer (spec §18) — attachment, textarea, @Cloak trigger,
+ * MessageComposer (spec §18) — attachment, textarea, @CD trigger,
  * voice action, send. Multiline, robust, premium.
  */
 
@@ -106,7 +106,7 @@ export function MessageComposer({
         {invoked && (
           <span className="mb-2 hidden shrink-0 items-center gap-1 rounded-full border border-cloak-gold/30 bg-cloak-gold-soft px-2 py-1 text-[10px] font-medium text-cloak-gold-bright sm:inline-flex">
             <SparklesIcon size={10} />
-            Cloaq AI
+            Cloak Dagger AI
           </span>
         )}
 

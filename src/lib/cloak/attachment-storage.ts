@@ -4,7 +4,7 @@
  * Device-local attachment storage.
  *
  * Attachment bytes stay in the browser's origin storage (IndexedDB). Chat
- * transport sends only encrypted metadata, keeping file contents off Cloaq's
+ * transport sends only encrypted metadata, keeping file contents off Cloak Dagger's
  * API/database path. Dagger already clears IndexedDB as part of local wipe.
  */
 

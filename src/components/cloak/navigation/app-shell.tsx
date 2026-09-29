@@ -4,7 +4,7 @@
  * App shell (spec §15, §16, §33, user feedback round 2).
  * Desktop: left navigation rail. Tablet: icon rail. Mobile: fixed bottom
  * tabs (Chats / Contacts / Security / Settings) that never scroll, with
- * Cloaq AI reachable inline via @Cloak in any conversation.
+ * Cloak Dagger AI reachable inline via @CD in any conversation.
  */
 
 import {
@@ -69,7 +69,7 @@ const APP_NAV: NavItem[] = [
 
 /* Mobile bottom nav (owner de-clutter round): exactly four tabs — Chats,
    Circles, Contacts, Settings. Security moved into the mobile header's
-   three-dot overflow menu (with Cloaq Mode and Dagger); the desktop rail
+   three-dot overflow menu (with Cloak Mode and Dagger); the desktop rail
    keeps the full labelled set above. */
 const MOBILE_NAV: NavItem[] = [
   { label: "Chats", path: "/app/messages", icon: MessageCircleMoreIcon },
@@ -181,8 +181,8 @@ export function AppShell({
     setSidebarCollapsed(false);
   };
 
-  /* Cloaq Mode banner announces activation, then fades away after 5s
-     (user feedback round 4). Turning Cloaq Mode off hides it immediately.
+  /* Cloak Mode banner announces activation, then fades away after 5s
+     (user feedback round 4). Turning Cloak Mode off hides it immediately.
      Phase changes are scheduled in timer callbacks — never synchronously. */
   const [bannerPhase, setBannerPhase] = useState<"hidden" | "shown" | "fading">("hidden");
   useEffect(() => {
@@ -289,7 +289,7 @@ export function AppShell({
           <button
             onClick={toggleCloakGuarded}
             aria-pressed={cloakMode}
-            title={sidebarCollapsed ? "Cloaq Mode" : undefined}
+            title={sidebarCollapsed ? "Cloak Mode" : undefined}
             className={cn(
               "transition-colors",
               sidebarCollapsed
@@ -303,7 +303,7 @@ export function AppShell({
             {cloakMode ? <EyeOffIcon size={17} /> : <EyeIcon size={17} />}
             {!sidebarCollapsed && (
               <>
-                <span className="flex-1 whitespace-nowrap text-left">Cloaq Mode</span>
+                <span className="flex-1 whitespace-nowrap text-left">Cloak Mode</span>
                 <span
                   className={cn(
                     "rounded-full px-2 py-0.5 text-[10px] font-medium",
@@ -317,7 +317,7 @@ export function AppShell({
               </>
             )}
           </button>
-          {/* Dagger sits DIRECTLY between Cloaq Mode and Settings (§2);
+          {/* Dagger sits DIRECTLY between Cloak Mode and Settings (§2);
               the notifications bell sits between Dagger and Settings so
               structural events stay one tap away (§62). */}
           <DaggerButton variant="rail" />
@@ -367,7 +367,7 @@ export function AppShell({
             user feedback round 13). Content scrolls beneath it; each page's
             scroll container clears it with pt-14. Owner de-clutter round:
             the right side is ONLY the notifications bell (icon, no text)
-            and the three-dot overflow menu — Cloaq Mode, Dagger and
+            and the three-dot overflow menu — Cloak Mode, Dagger and
             Security live inside that menu. Hidden while inside a
             conversation. */}
         {mobileChrome && (
@@ -387,7 +387,7 @@ export function AppShell({
           </header>
         )}
 
-        {/* Cloaq Mode banner — desktop: in-flow bar (unchanged) */}
+        {/* Cloak Mode banner — desktop: in-flow bar (unchanged) */}
         {cloakMode && bannerPhase !== "hidden" && (
           <div
             className={cn(
@@ -396,11 +396,11 @@ export function AppShell({
             )}
           >
             <EyeOffIcon size={12} />
-            Cloaq Mode is on — previews and activity are hidden
+            Cloak Mode is on — previews and activity are hidden
           </div>
         )}
 
-        {/* Cloaq Mode banner — mobile: fixed glass toast under the header,
+        {/* Cloak Mode banner — mobile: fixed glass toast under the header,
             overlays the list for 5s and fades (no layout shift) */}
         {mobileChrome && cloakMode && bannerPhase !== "hidden" && (
           <div
@@ -410,7 +410,7 @@ export function AppShell({
             )}
           >
             <EyeOffIcon size={12} />
-            Cloaq Mode is on — previews and activity are hidden
+            Cloak Mode is on — previews and activity are hidden
           </div>
         )}
 
@@ -451,7 +451,7 @@ export function AppShell({
           />
         </nav>
       )}
-      {/* Cloaq Mode protection gate — PIN / biometric verification */}
+      {/* Cloak Mode protection gate — PIN / biometric verification */}
       <CloakGateDialog />
       {/* Dagger confirmation dialog — one host for rail, header, gesture
           and the security centre (codex §4). */}

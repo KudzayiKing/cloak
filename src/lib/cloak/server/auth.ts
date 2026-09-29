@@ -51,7 +51,7 @@ export function hashToken(token: string): string {
 }
 
 /**
- * One INSTALL (deviceId) may be shared by more than one Cloaq ID — a phone
+ * One INSTALL (deviceId) may be shared by more than one Cloak Dagger ID — a phone
  * PWA where the owner tests two admin accounts is the normal case, not an
  * attack. The registry therefore tracks which account the install is
  * CURRENTLY enrolled for, and allows the row to move between accounts when
@@ -461,7 +461,7 @@ export async function ensureDevAccounts(): Promise<void> {
         {
           conversationId: conversation.id,
           authorId: users[0].id,
-          body: "Aurora here. Cloaq is live.",
+          body: "Aurora here. Cloak Dagger is live.",
           createdAt: new Date(now - 1000 * 60 * 6),
         },
         {

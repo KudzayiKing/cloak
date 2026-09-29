@@ -104,7 +104,7 @@ function useSecurityRows(onConfigureFs: () => void): SecurityRow[] {
       label: "Identity",
       state: "protected",
       value: "Verified",
-      detail: "Your Cloaq ID is active. Contacts verify identity by QR or safety number.",
+      detail: "Your Cloak Dagger ID is active. Contacts verify identity by QR or safety number.",
       icon: UserRoundCheckIcon,
       action: { label: "Manage", onClick: () => navigate("/app/contacts") },
     },
@@ -148,8 +148,8 @@ function useSecurityRows(onConfigureFs: () => void): SecurityRow[] {
       state: aiSettings.enabled ? "protected" : "disabled",
       value: aiSettings.enabled ? "On-device" : "Disabled",
       detail: aiSettings.enabled
-        ? "Cloaq AI runs locally. Memory stays on this device."
-        : "Cloaq AI is disabled. Messaging works normally.",
+        ? "Cloak Dagger AI runs locally. Memory stays on this device."
+        : "Cloak Dagger AI is disabled. Messaging works normally.",
       icon: CpuIcon,
       action: { label: "Adjust", onClick: () => navigate("/app/settings/ai") },
     },
@@ -184,7 +184,7 @@ function useSecurityRows(onConfigureFs: () => void): SecurityRow[] {
       label: "Notifications",
       state: "protected",
       value: "Preview rules active",
-      detail: "Preview visibility follows your privacy settings, including Cloaq Mode.",
+      detail: "Preview visibility follows your privacy settings, including Cloak Mode.",
       icon: BellIcon,
       action: { label: "Adjust", onClick: () => navigate("/app/settings/notifications") },
     },

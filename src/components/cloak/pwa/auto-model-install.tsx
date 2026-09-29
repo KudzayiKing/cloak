@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * Starts the one-time Cloaq AI artifact install when the product is opened as
+ * Starts the one-time Cloak Dagger AI artifact install when the product is opened as
  * an installed PWA. It is deliberately quiet: the model card subscribes to the
  * same manager if the user wants progress, while messaging remains usable.
  */

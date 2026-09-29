@@ -56,7 +56,7 @@ function msg(partial: Omit<Message, "id">): Message {
 }
 
 export const DEMO_CONVERSATIONS: Conversation[] = [
-  /* Verified contact, normal chat with a view-once file and @Cloak answer */
+  /* Verified contact, normal chat with a view-once file and @CD answer */
   {
     id: "c-sarah",
     contactId: "sarah",
@@ -96,8 +96,8 @@ export const DEMO_CONVERSATIONS: Conversation[] = [
         createdAt: at(4, 10),
         status: "read",
         ai: {
-          provider: "Cloaq AI",
-          model: "Cloaq AI",
+          provider: "Cloak Dagger AI",
+          model: "Cloak Dagger AI",
           location: "This device",
           cloudUsed: false,
           memoryUploaded: false,

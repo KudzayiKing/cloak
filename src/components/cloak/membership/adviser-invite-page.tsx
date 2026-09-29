@@ -290,7 +290,7 @@ function RegisterRedeem({
       {error && <p className="text-xs text-cloak-warning">{error}</p>}
       <Button disabled={busy} className="h-11 w-full bg-cloak-gold text-black hover:bg-cloak-gold-bright">
         {busy && <LoaderCircleIcon size={14} className="mr-1.5 animate-spin" />}
-        Create Cloaq ID & accept
+        Create Cloak Dagger ID & accept
       </Button>
     </form>
   );
@@ -318,7 +318,7 @@ function SignInRedeem(props: {
     const result = await signIn(handle, password);
     setBusy(false);
     if (!result.ok) {
-      setError(result.error === "invalid_credentials" ? "That Cloaq ID and passphrase do not match." : "Sign-in failed. Try again.");
+      setError(result.error === "invalid_credentials" ? "That Cloak Dagger ID and passphrase do not match." : "Sign-in failed. Try again.");
       return;
     }
     setSignedIn(true);

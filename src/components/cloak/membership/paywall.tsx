@@ -3,7 +3,7 @@
 /*
  * Premium access screen — the paywall (pricing & membership update spec
  * §40-§41). Shown when the app is opened without an active membership.
- * Primary: Get Cloaq Private. Secondary: invitation redemption — Reserve
+ * Primary: Get Cloak Dagger Private. Secondary: invitation redemption — Reserve
  * invitees must be able to enter without paying.
  */
 
@@ -63,7 +63,7 @@ export function PremiumAccessScreen() {
             Membership
           </p>
           <h1 className="mt-4 cloak-display text-3xl font-medium text-cloak-text">
-            Cloaq Private
+            Cloak Dagger Private
           </h1>
           <p className="mt-4 text-sm leading-relaxed text-cloak-text-secondary">
             Private messaging. Private intelligence.
@@ -85,7 +85,7 @@ export function PremiumAccessScreen() {
             className="bg-cloak-gold/20 hover:bg-cloak-gold/25 mt-8 h-12 w-full border border-cloak-gold/30 text-[15px] font-medium text-cloak-gold hover:text-cloak-gold"
             onClick={() => setCheckoutOpen(true)}
           >
-            Get Cloaq Private
+            Get Cloak Dagger Private
           </Button>
 
           <div className="mt-3 flex items-center justify-center gap-1.5 text-[11.5px] text-cloak-text-muted">
@@ -94,7 +94,7 @@ export function PremiumAccessScreen() {
           </div>
 
           <div className="mt-8 border-t border-cloak-border pt-6">
-            <p className="text-[13px] font-medium text-cloak-text">Have a Cloaq invitation?</p>
+            <p className="text-[13px] font-medium text-cloak-text">Have a Cloak Dagger invitation?</p>
             <div className="mt-3 flex gap-2">
               <Input
                 value={token}
@@ -115,7 +115,7 @@ export function PremiumAccessScreen() {
               </Button>
             </div>
             <p className="mt-3 text-[11px] leading-relaxed text-cloak-text-muted">
-              A redeemed invitation grants full Cloaq Private membership — no
+              A redeemed invitation grants full Cloak Dagger Private membership — no
               purchase, no limited account. Your account stays private and
               independent.
             </p>

@@ -58,7 +58,7 @@ async function modelDirectory(create: boolean): Promise<FileSystemDirectoryHandl
     getDirectory?: () => Promise<FileSystemDirectoryHandleLike>;
   };
   if (!storage.getDirectory) {
-    throw new Error("Device storage for Cloaq AI is unavailable in this browser.");
+    throw new Error("Device storage for Cloak Dagger AI is unavailable in this browser.");
   }
   const root = await storage.getDirectory();
   return root.getDirectoryHandle(MODEL_DIR, { create });
@@ -103,10 +103,10 @@ export const modelStorage = {
     try {
       const res = await fetch(input.url, { cache: "no-store" });
       if (!res.ok) {
-        throw new Error(`Cloaq AI download failed (HTTP ${res.status}).`);
+        throw new Error(`Cloak Dagger AI download failed (HTTP ${res.status}).`);
       }
       if (!res.body) {
-        throw new Error("Cloaq AI download streaming is unavailable in this browser.");
+        throw new Error("Cloak Dagger AI download streaming is unavailable in this browser.");
       }
 
       const totalBytes =
@@ -131,7 +131,7 @@ export const modelStorage = {
       const expected = input.expectedBytes;
       if (expected && file.size !== expected) {
         await dir.removeEntry(filename).catch(() => undefined);
-        throw new Error("Cloaq AI download was incomplete. It will retry on the next launch.");
+        throw new Error("Cloak Dagger AI download was incomplete. It will retry on the next launch.");
       }
 
       this.markInstalled({

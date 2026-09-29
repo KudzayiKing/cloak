@@ -218,7 +218,7 @@ function AddMembersDialog({ circle, open, onOpenChange }: { circle: CircleDetail
     if (result.ok) {
       setNote(
         `Added ${result.added} member${result.added === 1 ? "" : "s"}.` +
-        (result.unknownHandles.length ? ` Unknown Cloaq IDs: ${result.unknownHandles.join(", ")}.` : "") +
+        (result.unknownHandles.length ? ` Unknown Cloak Dagger IDs: ${result.unknownHandles.join(", ")}.` : "") +
         " They see the Circle only — group access is granted separately."
       );
       setHandles("");
@@ -240,7 +240,7 @@ function AddMembersDialog({ circle, open, onOpenChange }: { circle: CircleDetail
           <DialogHeader>
             <DialogTitle className="cloak-display text-lg">Add members to {circle.name}</DialogTitle>
             <DialogDescription className="text-cloak-text-secondary">
-              Add existing Cloak members by Cloaq ID. Circle membership alone
+              Add existing Cloak members by Cloak Dagger ID. Circle membership alone
               grants no group access (spec §26) — that is a separate, explicit
               grant.
             </DialogDescription>
@@ -541,7 +541,7 @@ function GroupsSection({ circle, isManager, onCreateGroup }: { circle: CircleDet
             {assigning === g.id && (
               <div className="mt-3 rounded-xl border border-cloak-border bg-cloak-surface/60 p-3">
                 <p className="mb-2 text-[11.5px] text-cloak-text-muted">
-                  Add a Circle member to this group by Cloaq ID (spec §27 — they must already be a Circle member).
+                  Add a Circle member to this group by Cloak Dagger ID (spec §27 — they must already be a Circle member).
                 </p>
                 <div className="flex gap-2">
                   <Input
@@ -562,9 +562,9 @@ function GroupsSection({ circle, isManager, onCreateGroup }: { circle: CircleDet
                       } else {
                         setAssignError(
                           r.error === "not_a_member"
-                            ? "That Cloaq ID is not a member of this Circle yet."
+                            ? "That Cloak Dagger ID is not a member of this Circle yet."
                             : r.error === "unknown_handle"
-                              ? "No such Cloaq ID."
+                              ? "No such Cloak Dagger ID."
                               : "Could not assign. Try again."
                         );
                       }
@@ -669,9 +669,9 @@ function MembersSection({ circle, isManager }: { circle: CircleDetail; isManager
         </Surface>
       ))}
       <p className="px-1 text-[11.5px] leading-relaxed text-cloak-text-muted">
-        Directory shows name, Cloaq ID and Circle role — never membership
+        Directory shows name, Cloak Dagger ID and Circle role — never membership
         tier, wallet, or contact details (spec §42). Removing someone from
-        the Circle revokes its groups, never their Cloaq membership (§61).
+        the Circle revokes its groups, never their Cloak Dagger membership (§61).
       </p>
     </div>
   );
@@ -970,7 +970,7 @@ function IntelligenceSection({ circle }: { circle: CircleDetail }) {
     setAskBusy(true);
     setAnswer(null);
     try {
-      /* §65 first: deterministic metadata answers never invoke Cloaq AI. */
+      /* §65 first: deterministic metadata answers never invoke Cloak Dagger AI. */
       const meta = await answerCircleMetadata(q, circle, async (groupId) => {
         const r = await fetchGroupMembers(groupId);
         return r.ok ? r.members.map((m) => ({ name: m.name, role: m.role })) : null;
@@ -1046,7 +1046,7 @@ function IntelligenceSection({ circle }: { circle: CircleDetail }) {
       </Surface>
 
       <Surface className="p-4">
-        <p className="mb-2 text-[12px] font-medium uppercase tracking-wide text-cloak-text-muted">Ask Cloaq</p>
+        <p className="mb-2 text-[12px] font-medium uppercase tracking-wide text-cloak-text-muted">Ask Cloak Dagger</p>
         <div className="flex gap-2">
           <Input
             value={ask}
@@ -1061,7 +1061,7 @@ function IntelligenceSection({ circle }: { circle: CircleDetail }) {
             onClick={() => void runAsk()}
             disabled={askBusy || !ask.trim()}
             className="h-10 shrink-0 bg-cloak-gold text-black hover:bg-cloak-gold/90"
-            aria-label="Ask Cloaq"
+            aria-label="Ask Cloak Dagger"
           >
             <SendIcon size={15} />
           </Button>

@@ -3,12 +3,12 @@
  *
  * Order of operations for every intelligence request:
  *   1. Retrieve scoped memories (keyword now, semantic when available).
- *   2. Decide the execution route — deterministic first, Cloaq AI only when
+ *   2. Decide the execution route — deterministic first, Cloak Dagger AI only when
  *      synthesis is genuinely required.
  *   3. Execute and return an auditable result: route, retrieved items,
  *      provider, and where processing happened.
  *
- * Never invokes Cloaq AI merely because the user typed @Cloak (spec §6).
+ * Never invokes Cloak Dagger AI merely because the user typed @CD (spec §6).
  * Never falls back to cloud silently (spec §7).
  */
 
@@ -133,14 +133,14 @@ export class CloakOrchestrator {
         route === "cloud-fallback"
           ? "None (awaiting consent)"
           : route === "deterministic"
-            ? "Cloaq AI"
-            : "Cloaq AI",
+            ? "Cloak Dagger AI"
+            : "Cloak Dagger AI",
       model:
         route === "deterministic"
           ? "Structured retrieval"
           : route === "cloud-fallback"
             ? "Not run"
-            : "Cloaq AI",
+            : "Cloak Dagger AI",
       location: "This device",
       cloudUsed: false,
       memoryUploaded: false,

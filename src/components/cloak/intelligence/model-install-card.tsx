@@ -54,7 +54,7 @@ export function AIModelCard({ compact = false }: { compact?: boolean }) {
             <PackageIcon size={18} />
           </span>
           <div>
-            <p className="text-sm font-medium text-cloak-text">Cloaq AI</p>
+            <p className="text-sm font-medium text-cloak-text">Cloak Dagger AI</p>
             <p className="mt-0.5 text-xs text-cloak-text-muted">
               Local reasoning model · WebGPU
               {snapshot?.sizeBytes ? ` · approx. ${formatBytes(snapshot.sizeBytes)}` : ""}
@@ -84,7 +84,7 @@ export function AIModelCard({ compact = false }: { compact?: boolean }) {
               onClick={() => modelManager.install()}
             >
               <RefreshCwIcon size={14} className="mr-1.5" />
-              Install Cloaq AI
+              Install Cloak Dagger AI
             </Button>
           )}
           {state === "ready" && (
@@ -96,7 +96,7 @@ export function AIModelCard({ compact = false }: { compact?: boolean }) {
                 onClick={() => modelManager.remove()}
               >
                 <Trash2Icon size={13} className="mr-1.5" />
-                Remove Cloaq AI
+                Remove Cloak Dagger AI
               </Button>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-cloak-success/25 bg-cloak-success/10 px-2.5 py-1 text-[11px] text-cloak-success">
                 <CheckIcon size={11} />

@@ -9,12 +9,12 @@
  *
  * The commercial model (pricing & membership update spec §1, §66):
  *
- *   Cloaq Private          $499      one-time individual membership
- *   Cloaq Reserve          $2,500    one-time higher-assurance membership
- *                                    incl. 10 Cloaq Private membership grants
- *   Cloaq Private Circle   from $10,000      consultative
- *   Cloaq Office           from $15,000/year organizational, annual
- *   Cloaq Sovereign        custom            private deployment
+ *   Cloak Dagger Private          $499      one-time individual membership
+ *   Cloak Dagger Reserve          $2,500    one-time higher-assurance membership
+ *                                           incl. 10 Cloak Dagger Private grants
+ *   Cloak Dagger Private Circle   from $10,000      consultative
+ *   Cloak Dagger Office           from $15,000/year organizational, annual
+ *   Cloak Dagger Sovereign        custom            private deployment
  *
  * Reserve Concierge ($5,000) is an optional Reserve service, not a primary plan.
  *
@@ -23,11 +23,11 @@
  * retired; no persisted client state ever depended on it.
  */
 export const MEMBERSHIP_NAMES = {
-  private: "Cloaq Private",
-  reserve: "Cloaq Reserve",
-  privateCircle: "Cloaq Private Circle",
-  office: "Cloaq Office",
-  sovereign: "Cloaq Sovereign",
+  private: "Cloak Dagger Private",
+  reserve: "Cloak Dagger Reserve",
+  privateCircle: "Cloak Dagger Private Circle",
+  office: "Cloak Dagger Office",
+  sovereign: "Cloak Dagger Sovereign",
 } as const;
 
 export const CLOAK_PRICING = {
@@ -75,18 +75,18 @@ export function formatUSD(amount: number): string {
 }
 
 export const BRAND = {
-  name: "Cloaq",
-  uppercaseName: "CLOAQ",
+  name: "Cloak Dagger",
+  uppercaseName: "CLOAK DAGGER",
   baseUrl: process.env.NEXT_PUBLIC_APP_URL ?? "https://cloaq.app",
-  ai: "Cloaq AI",
-  cloakMode: "Cloaq Mode",
+  ai: "Cloak Dagger AI",
+  cloakMode: "Cloak Mode",
   ghostChat: "Ghost Chat",
-  cloakId: "Cloaq ID",
+  cloakId: "Cloak Dagger ID",
   membership: "Membership",
-  cloakPrivate: "Cloaq Private",
+  cloakPrivate: "Cloak Dagger Private",
   cloakReserve: MEMBERSHIP_NAMES.reserve,
   securityCentre: "Security Centre",
-  tagline: "Private communications. Private intelligence.",
+  tagline: "Hide what matters. Cut off the watchers.",
 } as const;
 
 export const APP_URL = BRAND.baseUrl;
@@ -118,7 +118,8 @@ export const SECURITY_AUDIT_STATUS: SecurityAuditStatus = "planned";
  * backend logic. The browser never receives R2 access keys.
  *
  * Provide URLs through environment variables:
- *   NEXT_PUBLIC_CLOAQ_AI_MODEL_URL
+ *   NEXT_PUBLIC_CLOAK_DAGGER_AI_MODEL_URL
+ *   NEXT_PUBLIC_CLOAQ_AI_MODEL_URL (legacy alias)
  *   NEXT_PUBLIC_CLOAK_MODEL_EMBEDDING_URL
  *   NEXT_PUBLIC_CLOAK_MODEL_TRANSLATION_URL
  *
@@ -146,10 +147,11 @@ export interface ModelManifestEntry {
 export const MODEL_MANIFEST: ModelManifestConfig = {
   gemma: {
     id: "gemma-4-e2b-it-qat",
-    displayName: "Cloaq AI",
+    displayName: "Cloak Dagger AI",
     /* Owner-provided R2 artifact (Sep 2026). The env var still wins so a
        different artifact can be swapped in without a code change. */
     url:
+      process.env.NEXT_PUBLIC_CLOAK_DAGGER_AI_MODEL_URL ??
       process.env.NEXT_PUBLIC_CLOAQ_AI_MODEL_URL ??
       process.env.NEXT_PUBLIC_CLOAK_MODEL_GEMMA_URL ??
       "https://pub-610daaff40ac42f18aa2de55bc3970b2.r2.dev/models/gemma-4-E2B-it-web.litertlm",
@@ -159,7 +161,7 @@ export const MODEL_MANIFEST: ModelManifestConfig = {
   },
   embedding: {
     id: "embedding-gemma-web",
-    displayName: "Cloaq AI Embeddings",
+    displayName: "Cloak Dagger AI Embeddings",
     /* Artifact is a folder of ONNX files; the exact public URL is pending
        from the owner — left unset until then (honest state in the UI). */
     url: process.env.NEXT_PUBLIC_CLOAK_MODEL_EMBEDDING_URL,
@@ -168,7 +170,7 @@ export const MODEL_MANIFEST: ModelManifestConfig = {
   },
   translation: {
     id: "translategemma-4b-it-int8-web",
-    displayName: "Cloaq AI Translation",
+    displayName: "Cloak Dagger AI Translation",
     /* Owner-provided R2 artifact, MediaPipe LLM Inference web format
        (.task). Powers the long-press message translation — the model runs
        in the browser via WebGPU and is cached on-device (OPFS). */
@@ -185,7 +187,7 @@ export const MODEL_MANIFEST: ModelManifestConfig = {
 export const CLOUD_FALLBACK_DEFAULT = false;
 
 /** The orchestrator handles these intents deterministically before any LLM call. */
-export const ORCHESTRATOR_TRIGGER = "@Cloaq";
+export const ORCHESTRATOR_TRIGGER = "@CD";
 
 export const SUPPORTED_PLATFORMS = [
   {

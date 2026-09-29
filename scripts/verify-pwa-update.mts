@@ -213,7 +213,7 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
   check("the prompt is mounted in the app root", /<PwaUpdatePrompt \/>/.test(cloakRoot), true);
 
   const layout = stripComments(read("src/app/layout.tsx"));
-  check("automatic Cloaq AI install is mounted", /<AutoModelInstall \/>/.test(layout), true);
+  check("automatic Cloak Dagger AI install is mounted", /<AutoModelInstall \/>/.test(layout), true);
 
   const register = stripComments(read("src/components/cloak/pwa/pwa-register.tsx"));
   check(
@@ -240,8 +240,8 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
   check("auto model install starts when not installed", /snapshot\.state === "not-installed"[\s\S]{0,80}modelManager\.install/.test(autoInstall), true);
 
   const manager = stripComments(read("src/ai/models/modelManager.ts"));
-  check("model manager downloads Cloaq AI with progress", /installArtifact[\s\S]{0,220}onProgress/.test(manager), true);
-  check("model manager exposes Cloaq AI copy", /displayName:\s*"Cloaq AI"/.test(manager), true);
+  check("model manager downloads Cloak Dagger AI with progress", /installArtifact[\s\S]{0,220}onProgress/.test(manager), true);
+  check("model manager exposes Cloak Dagger AI copy", /displayName:\s*"Cloak Dagger AI"/.test(manager), true);
 }
 
 {

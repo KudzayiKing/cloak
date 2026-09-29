@@ -1,7 +1,7 @@
 /*
  * Notification content rules (user feedback round 4).
  *
- * While Cloaq Mode is on, notifications hide BOTH the message preview and
+ * While Cloak Mode is on, notifications hide BOTH the message preview and
  * the sender name — every notification leaves this pipeline, so the
  * restriction cannot be bypassed by a caller forgetting to check state.
  */
@@ -21,7 +21,7 @@ export function notificationForIncomingMessage(options: {
   cloakMode: boolean;
   previews: PreviewVisibility;
 }): NotificationPayload {
-  /* Cloaq Mode: no sender name, no message preview — enforced. */
+  /* Cloak Mode: no sender name, no message preview — enforced. */
   if (options.cloakMode) {
     return { title: BRAND.name, body: "New message" };
   }

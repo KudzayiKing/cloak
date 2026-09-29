@@ -9,8 +9,8 @@ type Db = Prisma.TransactionClient | PrismaClient;
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,160}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const ADMIN_HANDLE_ENV = ["CLOAQ_ADMIN_HANDLES", "CLOAK_ADMIN_HANDLES", "ADMIN_HANDLES"];
-const ADMIN_ID_ENV = ["CLOAQ_ADMIN_USER_IDS", "CLOAK_ADMIN_USER_IDS", "ADMIN_USER_IDS"];
+const ADMIN_HANDLE_ENV = ["CLOAK_ADMIN_HANDLES", "CLOAQ_ADMIN_HANDLES", "ADMIN_HANDLES"];
+const ADMIN_ID_ENV = ["CLOAK_ADMIN_USER_IDS", "CLOAQ_ADMIN_USER_IDS", "ADMIN_USER_IDS"];
 
 export const ADVISER_INVITE_TYPE = "founding_adviser";
 export const ADVISER_INVITE_MEMBERSHIP_SKU = "private";

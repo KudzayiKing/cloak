@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * Cloaq AI translation engine — real on-device translation (user request:
+ * Cloak Dagger AI translation engine — real on-device translation (user request:
  * long-press a message -> Translate -> runs locally in the browser).
  *
  * Pipeline:
@@ -54,7 +54,7 @@ export interface TranslateRequest {
 }
 
 /**
- * Cloaq AI translation prompt, wrapped in the local model's
+ * Cloak Dagger AI translation prompt, wrapped in the local model's
  * turn markers because MediaPipe applies no chat template itself.
  * Two blank lines separate the instruction from the text (as shipped).
  */
@@ -132,7 +132,7 @@ class TranslateEngine {
     this.loadPromise = (async () => {
       if (!this.configured) {
         throw new Error(
-          "The translation model artifact is not configured. Ask the operator to set the Cloaq AI translation URL."
+          "The translation model artifact is not configured. Ask the operator to set the Cloak Dagger AI translation URL."
         );
       }
       if (!this.webGPUSupported) {

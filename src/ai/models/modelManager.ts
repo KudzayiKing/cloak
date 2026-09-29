@@ -44,7 +44,7 @@ class ModelManager {
       state,
       message,
       artifactId: manifest.id,
-      displayName: "Cloaq AI",
+      displayName: "Cloak Dagger AI",
       sizeBytes: manifest.sizeBytes,
       version: manifest.version,
       ...extra,
@@ -63,23 +63,23 @@ class ModelManager {
     if (!modelManifest.gemma.url) {
       this.emit(
         "not-installed",
-        "Cloaq AI delivery is not configured yet. Ask the operator to set the model artifact URL."
+        "Cloak Dagger AI delivery is not configured yet. Ask the operator to set the model artifact URL."
       );
       return this.snapshot!;
     }
 
     if (modelStorage.hasArtifact(modelManifest.gemma.id)) {
-      this.emit("ready", "Cloaq AI is ready on this device.");
+      this.emit("ready", "Cloak Dagger AI is ready on this device.");
       return this.snapshot!;
     }
 
     const est = availability.storageEstimate;
     if (est?.quota && modelManifest.gemma.sizeBytes && est.quota < modelManifest.gemma.sizeBytes * 1.2) {
-      this.emit("insufficient-storage", "Not enough free storage for Cloaq AI.");
+      this.emit("insufficient-storage", "Not enough free storage for Cloak Dagger AI.");
       return this.snapshot!;
     }
 
-    this.emit("not-installed", "Cloaq AI is not installed on this device yet.");
+    this.emit("not-installed", "Cloak Dagger AI is not installed on this device yet.");
     return this.snapshot!;
   }
 
@@ -100,10 +100,10 @@ class ModelManager {
     const snap = await this.probe();
     if (snap.state === "unsupported" || snap.state === "insufficient-storage" || snap.state === "ready") return;
     if (!modelManifest.gemma.url) {
-      this.emit("error", "No Cloaq AI artifact URL configured. Installation cannot start.");
+      this.emit("error", "No Cloak Dagger AI artifact URL configured. Installation cannot start.");
       return;
     }
-    this.emit("downloading", "Downloading Cloaq AI for this device…", { progress: 0 });
+    this.emit("downloading", "Downloading Cloak Dagger AI for this device…", { progress: 0 });
 
     try {
       await modelStorage.installArtifact({
@@ -112,15 +112,15 @@ class ModelManager {
         expectedBytes: modelManifest.gemma.sizeBytes,
         version: modelManifest.gemma.version,
         onProgress: (progress) => {
-          this.emit("downloading", "Downloading Cloaq AI for this device…", { progress });
+          this.emit("downloading", "Downloading Cloak Dagger AI for this device…", { progress });
         },
       });
-      this.emit("verifying", "Verifying Cloaq AI install…", { progress: 1 });
-      this.emit("ready", "Cloaq AI is ready on this device.", { progress: 1 });
+      this.emit("verifying", "Verifying Cloak Dagger AI install…", { progress: 1 });
+      this.emit("ready", "Cloak Dagger AI is ready on this device.", { progress: 1 });
     } catch (err) {
       this.emit(
         "error",
-        err instanceof Error ? err.message : "Cloaq AI download failed. Check the connection and try again."
+        err instanceof Error ? err.message : "Cloak Dagger AI download failed. Check the connection and try again."
       );
     }
   }

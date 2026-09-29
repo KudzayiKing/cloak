@@ -124,7 +124,7 @@ export class ServerMembershipService implements MembershipService {
       return {
         configured: false,
         message:
-          "This membership is arranged directly with Cloaq. Use the contact form and our team will follow up.",
+          "This membership is arranged directly with Cloak Dagger. Use the contact form and our team will follow up.",
       };
     }
     return { configured: true, message: "Direct settlement in USDC on Solana." };

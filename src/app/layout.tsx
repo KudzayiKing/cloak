@@ -28,8 +28,7 @@ const cloakSerif = EB_Garamond({
 
 export const metadata: Metadata = {
   title: `${BRAND.name} — Private Communications & Local-First Intelligence`,
-  description:
-    "Private messaging, trusted Circles and local-first AI designed for conversations that should remain under your control. No ads. No behavioral advertising.",
+  description: `${BRAND.tagline} Private messaging, trusted Circles and local-first AI designed for conversations that should remain under your control.`,
   applicationName: BRAND.name,
   manifest: "/manifest.webmanifest",
   keywords: [
@@ -54,8 +53,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: `${BRAND.name} — Private Communications & Local-First Intelligence`,
-    description:
-      "Private messaging, trusted Circles and local-first AI designed for conversations that should remain under your control.",
+    description: BRAND.tagline,
     siteName: BRAND.name,
     type: "website",
   },

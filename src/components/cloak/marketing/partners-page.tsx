@@ -93,9 +93,9 @@ export function PartnersPage() {
             ))}
           </div>
           <p className="mx-auto mt-8 max-w-2xl text-center text-[13px] leading-relaxed text-cloak-text-muted">
-            Cloaq does not run a public reseller program. Commercial terms,
+            Cloak Dagger does not run a public reseller program. Commercial terms,
             deployment scope, and support boundaries are agreed directly with
-            the Cloaq team.
+            the Cloak Dagger team.
           </p>
         </Container>
       </section>

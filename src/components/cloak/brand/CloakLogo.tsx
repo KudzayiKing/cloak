@@ -68,8 +68,8 @@ export function CloakLogo({
   className?: string;
   onClick?: () => void;
 }) {
-  /* sm and md are both 3xl (user feedback rounds 4/6); lg is display size. */
-  const textClass = size === "lg" ? "text-4xl md:text-5xl" : "text-3xl";
+  /* Header wordmark size is intentionally fixed at 2xl on web and mobile. */
+  const textClass = size === "lg" ? "text-4xl md:text-5xl" : "text-2xl";
 
   return (
     <button

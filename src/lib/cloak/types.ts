@@ -82,7 +82,7 @@ export interface IssueGuestPassInput {
   passId?: string;
   recipient?: GuestPassRecipient;
   /** Delivery hint for the pass record — the token itself is never stored here.
-   *  Only secure link + QR exist: a pre-payment guest cannot have a Cloaq ID. */
+   *  Only secure link + QR exist: a pre-payment guest cannot have a Cloak Dagger ID. */
   method?: "secure_link" | "qr";
 }
 
@@ -134,7 +134,7 @@ export type ContactVerification = "verified" | "unverified" | "pending";
 export interface Contact {
   id: string;
   name: string;
-  /** Cloaq ID — the primary identity. Phone numbers are never primary. */
+  /** Cloak Dagger ID — the primary identity. Phone numbers are never primary. */
   cloakId: string;
   verification: ContactVerification;
   avatarInitials: string;
@@ -249,7 +249,7 @@ export interface Conversation {
   aiAccess: "allowed" | "blocked";
   /** EFFECTIVE AI access (spec §39): strictest of the group setting and
    *  the owning Circle's policy. "limited" = current request only. The
-   *  client gates @Cloak and the composer hint on this. */
+   *  client gates @CD and the composer hint on this. */
   aiEffective?: "allowed" | "limited" | "blocked";
   /** Present when a Circle clamps this group — the UI shows why. */
   aiCircleDefault?: "disabled" | "current_request" | "allowed";
@@ -258,7 +258,7 @@ export interface Conversation {
    *  "none" hides pre-join history from members added later, "all"
    *  shares it. Drives key rotation vs. re-wrap on member adds. */
   historyPolicy?: "none" | "all";
-  /** Cloaq Circle association (circles spec §53): set when this group
+  /** Cloak Dagger Circle association (circles spec §53): set when this group
    *  belongs to a Circle. Shown in the group header + details panel. */
   circleId?: string;
   circleName?: string;
@@ -315,7 +315,7 @@ export interface ModelArtifact {
 
 export type PreviewVisibility = "name-and-message" | "name-only" | "off";
 
-/* ---------- Cloaq Circles (groups & circles spec §23-§68) ----------
+/* ---------- Cloak Dagger Circles (groups & circles spec §23-§68) ----------
  * Mirror payloads of /api/circles — the server is authoritative (§80);
  * these types only describe what the client may display. */
 

@@ -1,7 +1,7 @@
 /*
  * Founding Adviser invitation contract checks.
  *
- * These are static guards for the pieces that should not drift: Cloaq brand
+ * These are static guards for the pieces that should not drift: Cloak Dagger brand
  * config, production invite URL, hash-only storage, protected routes, and the
  * membership origin used by redemption.
  */
@@ -14,8 +14,8 @@ import { APP_URL, BRAND, appUrl } from "../src/lib/cloak/config";
 const root = process.cwd();
 const read = (path: string) => readFileSync(join(root, path), "utf8");
 
-assert.equal(BRAND.name, "Cloaq");
-assert.equal(BRAND.uppercaseName, "CLOAQ");
+assert.equal(BRAND.name, "Cloak Dagger");
+assert.equal(BRAND.uppercaseName, "CLOAK DAGGER");
 assert.equal(APP_URL, "https://cloaq.app");
 assert.equal(appUrl("/invite/adviser/token-test"), "https://cloaq.app/invite/adviser/token-test");
 

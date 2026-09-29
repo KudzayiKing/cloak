@@ -1,5 +1,5 @@
 /*
- * Ensures user-facing AI copy is branded as Cloaq AI. Internal provider names
+ * Ensures user-facing AI copy is branded as Cloak Dagger AI. Internal provider names
  * and artifact identifiers may still exist in implementation files; they must
  * not leak through UI copy, demo processing details, or model status messages.
  */
@@ -55,6 +55,7 @@ const uiFiles = [
 
 const forbidden = [
   /\bGemma\b/i,
+  /Cloaq AI/i,
   /Cloaq Intelligence/i,
   /Cloak Intelligence/i,
   /TranslateGemma/i,
@@ -72,8 +73,9 @@ for (const file of uiFiles) {
 }
 
 const config = read("src/lib/cloak/config.ts");
-check("public Cloaq AI env var exists", /NEXT_PUBLIC_CLOAQ_AI_MODEL_URL/.test(config));
-check("Cloaq AI is the public display name", /displayName:\s*"Cloaq AI"/.test(config));
+check("public Cloak Dagger AI env var exists", /NEXT_PUBLIC_CLOAK_DAGGER_AI_MODEL_URL/.test(config));
+check("legacy Cloaq AI env alias is still accepted", /NEXT_PUBLIC_CLOAQ_AI_MODEL_URL/.test(config));
+check("Cloak Dagger AI is the public display name", /displayName:\s*"Cloak Dagger AI"/.test(config));
 
 for (const c of checks) {
   console.log(`${c.pass ? "PASS" : "FAIL"}  ${c.label}${c.pass ? "" : `  [${c.detail}]`}`);

@@ -4,9 +4,9 @@
  * Settings > Membership (pricing & membership update spec §11-§14, §37-§38,
  * §62-§63).
  *
- * Shows the current entitlement and, for Cloaq Reserve members, the Private
+ * Shows the current entitlement and, for Cloak Dagger Reserve members, the Private
  * pass management area: 10 included passes, invite flow (secure link or QR
- * — a pre-payment guest cannot have a Cloaq ID), pending/redeemed lists,
+ * — a pre-payment guest cannot have a Cloak Dagger ID), pending/redeemed lists,
  * revocation before redemption only. All state is a mirror of the server
  * registry (/api/membership/*); nothing here is authoritative. Membership
  * is private — nothing in this surface leaks to chats, contacts, or
@@ -55,9 +55,9 @@ const MEMBERSHIP_LABELS: Record<CloakMembership, string> = {
   none: "No membership",
   private: BRAND.cloakPrivate,
   reserve: BRAND.cloakReserve,
-  private_circle: "Cloaq Private Circle",
-  office: "Cloaq Office",
-  sovereign: "Cloaq Sovereign",
+  private_circle: "Cloak Dagger Private Circle",
+  office: "Cloak Dagger Office",
+  sovereign: "Cloak Dagger Sovereign",
 };
 
 const ORIGIN_LABELS: Record<string, string> = {
@@ -109,7 +109,7 @@ export function MembershipSection() {
           <p className="text-[12.5px] leading-relaxed text-cloak-text-secondary">
             {membership.membership === "office"
               ? "Your organization's membership renews annually and is managed under your organization agreement."
-              : "This environment is arranged directly with Cloaq under your agreement."}
+              : "This environment is arranged directly with Cloak Dagger under your agreement."}
           </p>
         </Surface>
       )}
@@ -189,7 +189,7 @@ function EntitlementCard() {
             className="bg-cloak-gold/20 hover:bg-cloak-gold/25 h-10 flex-1 border border-cloak-gold/30 text-[13px] font-medium text-cloak-gold hover:text-cloak-gold"
             onClick={() => navigate("/pricing")}
           >
-            Get Cloaq Private — {formatUSD(CLOAK_PRICING.private.amount)}
+            Get Cloak Dagger Private — {formatUSD(CLOAK_PRICING.private.amount)}
           </Button>
         </div>
       )}
@@ -204,7 +204,7 @@ function GuestGrantedCard() {
     <Surface className="p-5">
       <h2 className="mb-2 text-sm font-semibold text-cloak-text">About your membership</h2>
       <p className="text-[13px] leading-relaxed text-cloak-text-secondary">
-        Your membership was granted through a Cloaq Reserve invitation.
+        Your membership was granted through a Cloak Dagger Reserve invitation.
       </p>
       <p className="mt-3 text-[12.5px] leading-relaxed text-cloak-text-muted">
         Your account remains private and independent. The person who invited
@@ -235,7 +235,7 @@ function FoundingAdviserCard() {
       </dl>
       <p className="mt-3 text-[12.5px] leading-relaxed text-cloak-text-muted">
         Your adviser access is private. It is not shown on your profile,
-        contacts, messages, groups, Circles, or Cloaq ID lookup.
+        contacts, messages, groups, Circles, or Cloak Dagger ID lookup.
       </p>
     </Surface>
   );
@@ -252,7 +252,7 @@ function UpgradeCard() {
         <h2 className="mb-2 text-sm font-semibold text-cloak-text">{BRAND.cloakReserve}</h2>
         <p className="text-[12.5px] leading-relaxed text-cloak-text-secondary">
           Higher assurance, advanced device controls, priority security
-          support — and 10 Cloaq Private memberships to grant to the people
+          support — and 10 Cloak Dagger Private memberships to grant to the people
           you trust.
         </p>
         <Button
@@ -295,7 +295,7 @@ function ReservePassManager() {
         </span>
       </div>
       <p className="text-[12px] text-cloak-text-muted">
-        Each pass grants one person full Cloaq Private lifetime core access.
+        Each pass grants one person full Cloak Dagger Private lifetime core access.
         Redeemed passes cannot be reused.
       </p>
 
@@ -382,7 +382,7 @@ function PassRow({ pass }: { pass: { id: string; status: string; expiresAt?: str
           {status === "redeemed" ? (
             <>
               <CheckIcon size={10} className="text-cloak-success" />
-              Redeemed — Cloaq Private
+              Redeemed — Cloak Dagger Private
             </>
           ) : status === "issued" ? (
             <>
@@ -488,7 +488,7 @@ function InviteDialog() {
               <DialogHeader>
                 <DialogTitle className="cloak-display text-xl">Invite someone</DialogTitle>
                 <DialogDescription className="text-cloak-text-secondary">
-                  Grant Cloaq Private to one person — no purchase, wallet, or
+                  Grant Cloak Dagger Private to one person — no purchase, wallet, or
                   card required for them, ever.
                 </DialogDescription>
               </DialogHeader>
@@ -517,11 +517,11 @@ function InviteDialog() {
                 <div className="rounded-lg border border-cloak-gold/25 bg-cloak-gold-soft/20 p-4">
                   <div className="flex items-center gap-2 text-[13px] font-medium text-cloak-text">
                     <KeyRoundIcon size={14} className="text-cloak-gold" />
-                    Grant Cloaq Private?
+                    Grant Cloak Dagger Private?
                   </div>
                   <p className="mt-1.5 text-[12px] leading-relaxed text-cloak-text-secondary">
                     This will reserve one of your {CLOAK_PRICING.reserve.includedPrivatePasses}{" "}
-                    included Cloaq Private passes. Once the recipient accepts,
+                    included Cloak Dagger Private passes. Once the recipient accepts,
                     the pass is permanently used.
                   </p>
                 </div>
@@ -559,7 +559,7 @@ function InviteDialog() {
                 <DialogDescription className="text-cloak-text-secondary">
                   {method === "qr"
                     ? "Show this QR code, or share the link below."
-                    : "Share this link with the person you are granting Cloaq Private to."}
+                    : "Share this link with the person you are granting Cloak Dagger Private to."}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -570,7 +570,7 @@ function InviteDialog() {
                         { }
                         <img
                           src={issued.qrDataUrl}
-                          alt="Invitation QR code — grants one Cloaq Private membership when redeemed"
+                          alt="Invitation QR code — grants one Cloak Dagger Private membership when redeemed"
                           width={168}
                           height={168}
                           className="h-[168px] w-[168px]"
