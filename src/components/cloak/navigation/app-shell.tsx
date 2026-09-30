@@ -356,17 +356,26 @@ export function AppShell({
       {/* Main column — min-h-0 lets it shrink inside the h-dvh root so
           the page itself never scrolls on mobile */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-cloak-bg">
-        {/* Mobile header — fixed glass overlay (homepage glassmorphism,
-            user feedback round 13). The status-bar inset lives INSIDE this
-            panel, so the status bar is painted by the header's own glass: same
-            colour, same blur, and no separate strip that can drift out of step
-            with it. Content scrolls beneath the header; each page's scroll
-            container clears it with --cloak-top-chrome-h. Owner de-clutter
-            round: the right side is ONLY the notifications bell (icon, no text)
-            and the three-dot overflow menu — Cloak Mode, Dagger and Security
-            live inside that menu. Hidden while inside a conversation. */}
+        {/* Mobile header — fixed, OPAQUE chrome (round 20). It was glass until
+            round 19; the glass is precisely what stopped it matching the status
+            bar. A translucent panel composites with whatever is behind it, so
+            the header resolved to #0f0f11 over the page while the OS status-bar
+            strip resolved to its own theme_color — a 2/255 seam, and one that
+            drifted with whatever scrolled underneath it. Chrome has to be a
+            known colour to agree with a colour the platform paints, so the
+            header now lays --cloak-bg-elevated down flat.
+
+            The status-bar inset lives INSIDE this panel and carries no
+            background of its own, so the strip above the wordmark is the same
+            single colour as the row below it by construction — there is no
+            separate strip that can drift out of step. Content scrolls beneath
+            the header; each page's scroll container clears it with
+            --cloak-top-chrome-h. Owner de-clutter round: the right side is ONLY
+            the notifications bell (icon, no text) and the three-dot overflow
+            menu — Cloak Mode, Dagger and Security live inside that menu.
+            Hidden while inside a conversation. */}
         {mobileChrome && (
-          <header className="fixed inset-x-0 top-0 z-40 border-b border-cloak-border bg-cloak-bg-elevated backdrop-blur-xl supports-[backdrop-filter]:bg-cloak-bg-elevated/70 md:hidden">
+          <header className="fixed inset-x-0 top-0 z-40 border-b border-cloak-border bg-cloak-bg-elevated md:hidden">
             {/* Status-bar inset. Zero-height when the device reports no inset
                 (plain browser tabs) — no visual change there. */}
             <div aria-hidden className="h-[env(safe-area-inset-top)]" />
@@ -423,10 +432,9 @@ export function AppShell({
             is provided inside each page's scroll area (round 13). */}
       </div>
 
-      {/* Mobile bottom nav — fixed glass overlay (homepage glassmorphism,
-          user feedback round 13). Content scrolls beneath it. Four tabs
-          (owner de-clutter round): Chats / Circles / Contacts / Settings.
-          Hidden while inside a conversation.
+      {/* Mobile bottom nav — fixed, OPAQUE chrome (round 20). Content scrolls
+          beneath it. Four tabs (owner de-clutter round): Chats / Circles /
+          Contacts / Settings. Hidden while inside a conversation.
 
           The gesture area is NOT reserved with a spacer of its own (round 19).
           On the owner's device the nav measures exactly 57px — the 1px border
@@ -434,28 +442,28 @@ export function AppShell({
           the strip below the bar is Android's own gesture navigation bar (24dp,
           with Android's 108x4dp pill inside it), sitting OUTSIDE the viewport,
           so nothing in the document can paint it. A spacer would therefore be
-          0-height anyway. Instead the bar BLEEDS into that area with Chrome's
-          documented pattern (.cloak-bottom-nav): the bar is grown by the
-          MAXIMUM inset upfront and pulled back down by the live one, so its
-          surface reaches past the viewport bottom wherever the browser honours
-          it, while its content stays exactly where it was.
+          0-height anyway, and the round-19 bleed never fired — it grows the bar
+          by the MAXIMUM inset upfront, and safe-area-max-inset-bottom measures
+          0 there too. The pattern is kept (it is correct, and costs nothing
+          where it does not apply) but the seam is closed from the app's side
+          instead: the chrome adopts the platform's own band colour, which is
+          what --cloak-bg-elevated now holds.
 
-          The opaque backing is --cloak-bg-ELEVATED, not --cloak-bg (round 17).
-          It was the last thing keeping the two chromes apart: the panel's
-          translucent surface composites over its own backing, so a --cloak-bg
-          backing resolved to #0f0f11 while the header — which has no backing and
-          sits over the page — resolved to #111113. Backing it with the elevated
-          surface makes the bottom bar the header's colour exactly, and keeps it
-          deterministic instead of drifting with whatever scrolls underneath.
-          The bleed is painted by that same opaque backing (the glass panel is a
-          child of it and does not reach the padding), so the tab row and the
-          strip below it are one colour by construction. */}
+          The backing is --cloak-bg-ELEVATED, not --cloak-bg, and the panel is
+          OPAQUE (round 20). Both matter, for one reason: this bar has to be a
+          known colour, because the thing it sits against is painted by Android
+          and cannot be negotiated with. A translucent panel over a --cloak-bg
+          backing resolves to a blend (#0f0f11), not to the token — which is
+          exactly how the two chromes came to disagree. The outer <nav> carries
+          the surface AND the bleed (it is what reaches into the padding), so
+          the tab row and the strip below it are one colour by construction;
+          the inner row adds only the hairline border. */}
       {mobileChrome && (
         <nav
           aria-label="Primary"
           className="cloak-bottom-nav fixed inset-x-0 z-40 bg-cloak-bg-elevated md:hidden"
         >
-          <div className="border-t border-cloak-border bg-cloak-bg-elevated backdrop-blur-xl supports-[backdrop-filter]:bg-cloak-bg-elevated/70">
+          <div className="border-t border-cloak-border">
             <div className="grid grid-cols-4">
               {MOBILE_NAV.map((item) => (
                 <MobileNavItem

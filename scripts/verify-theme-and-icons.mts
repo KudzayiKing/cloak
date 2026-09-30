@@ -466,6 +466,28 @@ check("selection colours follow the theme", /var\(--cloak-selection\)/.test(css)
   );
 
   /*
+   * The layout's viewport.themeColor is the FOURTH copy of this value, and the
+   * one the browser reads FIRST: it is server-rendered into the initial HTML,
+   * before any script runs. theme.ts overwrites it once the stored preference
+   * is known, so a drift here does not show as a wrong colour so much as a
+   * status bar that snaps to a different one after hydration.
+   */
+  const layoutSrc = stripComments(read("src/app/layout.tsx"));
+  const layoutDark = layoutSrc.match(
+    /media:\s*"\(prefers-color-scheme: dark\)",\s*color:\s*"(#[0-9a-fA-F]{6})"/
+  )?.[1] ?? "";
+  check(
+    "the layout's server-rendered status-bar tint is the header's surface",
+    layoutDark.toLowerCase(),
+    darkElevated.toLowerCase()
+  );
+  check(
+    "  ... and it ships a light counterpart rather than one tint for both",
+    /media:\s*"\(prefers-color-scheme: light\)",\s*color:\s*"#[0-9a-fA-F]{6}"/.test(layoutSrc),
+    true
+  );
+
+  /*
    * Launching from the home screen must land in the chat app, not on the
    * marketing homepage. `id` stays "/" on purpose: it is the install's
    * identity, so moving it would strand every existing install as a second,
@@ -683,10 +705,11 @@ check(
    * Safe areas are painted by the chrome they belong to, not by a strip of
    * their own.
    *
-   * The status bar is the header's glass, so its inset spacer has to live
-   * INSIDE the header panel. A spacer that carries its own background is the
-   * bug this guards: a separate solid strip painted --cloak-bg under a header
-   * that is translucent leaves a visible seam at the top.
+   * The status-bar inset lives INSIDE the header panel and carries no
+   * background of its own, so the strip above the wordmark is the header's own
+   * surface. A spacer that carries its own background is the bug this guards:
+   * a separate solid strip painted --cloak-bg under the header leaves a visible
+   * seam at the top.
    *
    * The bottom is a different shape (round 19) — see the bleed checks below.
    */
@@ -718,7 +741,28 @@ check(
   const navBlock = navStart === -1 || navEnd === -1 ? "" : shell.slice(navStart, navEnd);
 
   const headerOpen = shell.match(/<header className="([^"]*)"/)?.[1] ?? "";
-  check("the mobile header is itself the glass panel", /bg-cloak-bg-elevated/.test(headerOpen) && /backdrop-blur-xl/.test(headerOpen), true);
+  /*
+   * The chrome must be OPAQUE (round 20) — the invariant the recolour rests on.
+   *
+   * The header and the nav both have to render one known colour, because the
+   * bands they sit against (the OS status bar, and Android's gesture bar) are
+   * painted by the platform and cannot be negotiated with. A translucent panel
+   * resolves to a blend with whatever is behind it: the header did exactly that
+   * over the page and came out #0f0f11 against the nav's #111113 — a 2/255
+   * seam, and one that drifted with scroll. So both panels must carry the
+   * surface token with no `/NN` alpha modifier and no backdrop blur.
+   */
+  const opaqueChrome = (classes: string): boolean =>
+    /bg-cloak-bg-elevated/.test(classes) &&
+    !/bg-cloak-bg-elevated\/\d/.test(classes) &&
+    !/backdrop-blur/.test(classes);
+
+  check("the mobile header wears the chrome surface", /bg-cloak-bg-elevated/.test(headerOpen), true);
+  check(
+    "  ... painted opaque, so it is that colour and not a blend",
+    opaqueChrome(headerOpen),
+    true
+  );
   check(
     "  ... so the status-bar inset sits inside it",
     headerBlock.includes("h-[env(safe-area-inset-top)]"),
@@ -730,16 +774,21 @@ check(
     true
   );
 
-  const navGlass = navBlock.match(/className="([^"]*backdrop-blur-xl[^"]*)"/)?.[1] ?? "";
-  check("the mobile nav tab row is a glass panel", /bg-cloak-bg-elevated/.test(navGlass), true);
+  /* The tab row is a child of the bar's opaque backing, so it must stay
+     transparent and must not smuggle the glass back in. */
+  const navInner = navBlock.match(/<div className="([^"]*)"/)?.[1] ?? "";
+  check(
+    "the mobile nav tab row adds only its hairline border",
+    navInner.length > 0 && !/\bbg-/.test(navInner) && !/backdrop-blur/.test(navInner),
+    true
+  );
 
   /*
-   * The bottom bar's opaque backing decides its colour. The panel is
-   * translucent, so it composites over whatever the backing paints: a
-   * --cloak-bg backing resolves to #0f0f11 while the header — which has no
-   * backing and sits over the page — resolves to #111113. That 2/255 gap is
-   * the "the two chromes don't match" report. Backing it with the elevated
-   * surface makes the bottom bar the header's colour by construction.
+   * The bar's backing decides its colour, and it has to be the same surface the
+   * header paints — that is what makes the two chromes one colour instead of
+   * two 2/255 apart. --cloak-bg is the trap: it is the page, and a bar backed
+   * by the page stops being chrome. The outer <nav> also carries the bleed, so
+   * the tab row and the strip below it are one colour by construction.
    */
   const navOpen = navBlock.match(/className="([^"]*)"/)?.[1] ?? "";
   check(
@@ -747,6 +796,7 @@ check(
     /bg-cloak-bg-elevated/.test(navOpen) && !/(^|\s)bg-cloak-bg(\s|$)/.test(navOpen),
     true
   );
+  check("  ... and the bar itself is opaque too", opaqueChrome(navOpen), true);
 
   /*
    * The gesture area is not something a spacer can reserve (round 19).

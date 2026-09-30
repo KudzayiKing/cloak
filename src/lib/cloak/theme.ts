@@ -36,11 +36,15 @@ export function isCloakTheme(value: unknown): value is CloakTheme {
  * This is the ELEVATED surface, not the app background: the mobile header is
  * `bg-cloak-bg-elevated` and paints the status-bar inset itself, so the OS tint
  * has to agree with the header or the top of an installed app shows a seam.
- * Keep these in step with `--cloak-bg-elevated` in globals.css (dark #111113,
+ * Keep these in step with `--cloak-bg-elevated` in globals.css (dark #131313,
  * light #ffffff) and with `theme_color` in public/manifest.webmanifest.
+ *
+ * Dark is #131313 — Android's own gesture-navigation-bar colour on the owner's
+ * device. See the comment on --cloak-bg-elevated in globals.css for why the app
+ * adopts the platform's value rather than the platform adopting the app's.
  */
 export const CLOAK_THEME_COLORS: Record<CloakTheme, string> = {
-  dark: "#111113",
+  dark: "#131313",
   light: "#ffffff",
 };
 

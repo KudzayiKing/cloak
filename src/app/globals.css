@@ -70,7 +70,27 @@
 
   /* Cloak core palette (spec §11) */
   --cloak-bg: #0b0b0c;
-  --cloak-bg-elevated: #111113;
+  /*
+   * The elevated surface — and, deliberately, the exact colour Android paints
+   * its own gesture navigation bar with on the owner's device (#131313).
+   *
+   * The mobile chrome (header, bottom nav) wears this token and the manifest's
+   * theme_color is derived from it, so this one value decides the whole ring
+   * around an installed app. Adopting the platform's value is the only way to
+   * make that ring seamless: the gesture strip sits OUTSIDE the viewport on this
+   * device — env(safe-area-inset-bottom) measures 0, and so does
+   * safe-area-max-inset-bottom, which is why the round-19 bleed was a no-op —
+   * so nothing in the document can paint it. The app has to come to it instead.
+   *
+   * That only holds while the chrome is OPAQUE. A translucent panel resolves to
+   * a blend with whatever sits behind it, not to its own token — which is how
+   * the header (#0f0f11, glass over --cloak-bg) and the nav (#111113, its own
+   * opaque backing) drifted 2/255 apart in the first place. See app-shell.tsx.
+   *
+   * Tuned to Android's default dark navigation-bar colour. If a platform update
+   * repaints that band, re-measure and move this token with it.
+   */
+  --cloak-bg-elevated: #131313;
   --cloak-surface: #151517;
   --cloak-surface-hover: #1b1b1e;
   --cloak-border: rgba(255, 255, 255, 0.08);
@@ -380,13 +400,14 @@
   --cloak-bottom-nav-h: 0px;
 
   /*
-   * Mobile top chrome — the fixed glass header.
+   * Mobile top chrome — the fixed header.
    *
-   * The header is one glass panel containing BOTH the status-bar inset and its
-   * own 56px content row. That is deliberate: the status bar is then painted by
-   * the header itself, so it can never drift from the header's colour, and its
-   * glassmorphism comes for free. The same shape is used at the bottom, where
-   * the nav's glass panel contains the gesture-bar inset.
+   * The header is one panel containing BOTH the status-bar inset and its own
+   * 56px content row. That is deliberate: the status bar is then painted by the
+   * header itself, so it can never drift from the header's colour. It is OPAQUE
+   * (round 20) — a translucent panel resolves to a blend with whatever is behind
+   * it, which is exactly how the header and the bottom nav came to disagree by
+   * 2/255 while both claimed to be the same surface.
    *
    * Anything that clears the header (page scroll containers, the Cloak Mode
    * banner) reads this rather than hardcoding 56px, or it will sit under the
@@ -430,6 +451,14 @@
    * live inset is 34px). Where the live inset is 0 — a plain browser tab, or
    * any device Chrome is not running edge-to-edge on — the whole padding hangs
    * below the viewport bottom and is simply clipped, so nothing moves there.
+   *
+   * Round 20: on the owner's device this never fires at all —
+   * safe-area-max-inset-bottom measures 0 there too, so the padding is 0 and the
+   * rule is inert. It is kept because it is correct and costs nothing where it
+   * does not apply: the day Android 15's forced edge-to-edge (or a regenerated
+   * WebAPK) hands the band back to the web layer, the nav already reaches into
+   * it. Until then the seam is closed from the app's side instead, by the chrome
+   * adopting the colour the platform paints that band with.
    */
   --cloak-gesture-max: env(safe-area-max-inset-bottom, 36px);
 }

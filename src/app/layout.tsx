@@ -135,7 +135,7 @@ export const viewport: Viewport = {
      header. Kept in step with CLOAK_THEME_COLORS in src/lib/cloak/theme.ts,
      which overwrites these once the stored theme is known. */
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#111113" },
+    { media: "(prefers-color-scheme: dark)", color: "#131313" },
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
   ],
   colorScheme: "dark light",
