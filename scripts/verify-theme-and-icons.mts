@@ -471,20 +471,27 @@ check("selection colours follow the theme", /var\(--cloak-selection\)/.test(css)
    * before any script runs. theme.ts overwrites it once the stored preference
    * is known, so a drift here does not show as a wrong colour so much as a
    * status bar that snaps to a different one after hydration.
+   *
+   * It is pinned to the TOKEN rather than to a literal, and it must stay
+   * UN-media-scoped (round 21). A media-scoped theme-color is resolved against
+   * the DEVICE's colour scheme, never the app's, so the old dark/light pair was
+   * wrong in both directions: a light-mode app on a dark-mode phone was handed
+   * #131313 (a dark bar above a white header — the seam the owner read as a
+   * border), and, because the app's default is dark, a dark app on a light-mode
+   * phone was handed #ffffff. Only one tint can be right, and the pre-paint
+   * script is what corrects it. Asserting the ABSENCE of the media pair is the
+   * point: this check used to require the pair, which is how the bug survived.
    */
   const layoutSrc = stripComments(read("src/app/layout.tsx"));
-  const layoutDark = layoutSrc.match(
-    /media:\s*"\(prefers-color-scheme: dark\)",\s*color:\s*"(#[0-9a-fA-F]{6})"/
-  )?.[1] ?? "";
   check(
     "the layout's server-rendered status-bar tint is the header's surface",
-    layoutDark.toLowerCase(),
-    darkElevated.toLowerCase()
+    /themeColor:\s*CLOAK_THEME_COLORS\.dark\b/.test(layoutSrc),
+    true
   );
   check(
-    "  ... and it ships a light counterpart rather than one tint for both",
-    /media:\s*"\(prefers-color-scheme: light\)",\s*color:\s*"#[0-9a-fA-F]{6}"/.test(layoutSrc),
-    true
+    "  ... and is NOT media-scoped, so it cannot follow the device's scheme",
+    /prefers-color-scheme/.test(layoutSrc),
+    false
   );
 
   /*
@@ -577,10 +584,69 @@ check(
       else classes.delete(name);
     },
   };
-  const meta = { content: "#0b0b0c", setAttribute: (_: string, v: string) => { meta.content = v; } };
+  /*
+   * The head is modelled with real INSERTION and REMOVAL, not as one mutable
+   * object, because the theme-color handling depends on the element being
+   * replaced: Chrome on Android ignores `content` written onto an existing meta
+   * and only re-reads the colour when a node is inserted. A stub that merely
+   * recorded the last attribute write would stay green while the phone showed a
+   * stale status bar — the exact bug this guards.
+   */
+  interface MetaEl {
+    name: string;
+    content: string;
+    /** The media descriptor, if any. Tracked so a test can prove the colour the
+        app ships is NOT scoped to the device's scheme (round 21). */
+    media: string;
+    parentNode: HeadStub | null;
+    setAttribute: (k: string, v: string) => void;
+    remove: () => void;
+  }
+  interface HeadStub {
+    querySelectorAll: (sel: string) => MetaEl[];
+    appendChild: (el: MetaEl) => MetaEl;
+    removeChild: (el: MetaEl) => MetaEl;
+  }
+
+  const metas: MetaEl[] = [];
+  const head: HeadStub = {
+    querySelectorAll: (sel) =>
+      sel.includes("theme-color") ? metas.filter((m) => m.name === "theme-color") : [],
+    appendChild: (el) => {
+      metas.push(el);
+      el.parentNode = head;
+      return el;
+    },
+    removeChild: (el) => {
+      const i = metas.indexOf(el);
+      if (i >= 0) metas.splice(i, 1);
+      el.parentNode = null;
+      return el;
+    },
+  };
+  const makeMeta = (): MetaEl => {
+    const el: MetaEl = {
+      name: "",
+      content: "",
+      media: "",
+      parentNode: null,
+      setAttribute(k, v) {
+        if (k === "name") el.name = v;
+        if (k === "content") el.content = v;
+        if (k === "media") el.media = v;
+      },
+      remove() {
+        head.removeChild(el);
+      },
+    };
+    return el;
+  };
+
   defineGlobal("document", {
     documentElement: { classList },
-    querySelector: (sel: string) => (sel.includes("theme-color") ? meta : null),
+    head,
+    createElement: () => makeMeta(),
+    querySelector: () => null,
   });
 
   const {
@@ -593,17 +659,84 @@ check(
     THEME_STORAGE_KEY,
   } = await import("../src/lib/cloak/theme.ts");
 
+  /** What the browser would read: every surviving theme-color meta, in order. */
+  const themeColors = () => metas.map((m) => m.content);
+
+  /** What Next server-renders now: ONE tint, with no media descriptor. */
+  const seedServerMetas = () => {
+    metas.length = 0;
+    const m = makeMeta();
+    m.setAttribute("name", "theme-color");
+    m.setAttribute("content", CLOAK_THEME_COLORS.dark);
+    /* Through appendChild, so parentNode is real: the bootstrap script walks
+       parentNode.removeChild, and a hand-pushed node would make that throw
+       into the script's own try/catch and silently do nothing. */
+    head.appendChild(m);
+  };
+
+  /** What an OLDER deployed document — or a cached one — still carries: the
+      media-scoped pair that round 21 removed. The swap has to clean up that
+      shape too, because a browser can hold the old HTML for a while. */
+  const seedLegacyMediaMetas = () => {
+    metas.length = 0;
+    const legacy: ReadonlyArray<readonly [string, string]> = [
+      [CLOAK_THEME_COLORS.dark, "(prefers-color-scheme: dark)"],
+      [CLOAK_THEME_COLORS.light, "(prefers-color-scheme: light)"],
+    ];
+    for (const [color, media] of legacy) {
+      const m = makeMeta();
+      m.setAttribute("name", "theme-color");
+      m.setAttribute("content", color);
+      m.setAttribute("media", media);
+      head.appendChild(m);
+    }
+  };
+
   check("dark is the default theme", DEFAULT_CLOAK_THEME, "dark");
+
+  seedServerMetas();
+  check("the server ships ONE tint as the starting state", themeColors().length, 1);
+  check(
+    "  ... with no media descriptor, so the device's scheme cannot pick it",
+    metas[0].media,
+    ""
+  );
+  const serverMeta = metas[0];
 
   applyCloakTheme("light");
   check("light adds .light", classes.has("light"), true);
   check("light removes .dark", classes.has("dark"), false);
-  check("light updates the status-bar colour", meta.content, CLOAK_THEME_COLORS.light);
+  /* Joined, so this asserts the COUNT as well as the value: two surviving metas
+     would read "#ffffff,#ffffff" and fail. */
+  check("light collapses them to the one tint that applies", themeColors().join(","), CLOAK_THEME_COLORS.light);
+  check(
+    "  ... by replacing the element, which is the only thing Chrome re-reads",
+    metas.length === 1 && metas[0] !== serverMeta,
+    true
+  );
 
+  const lightMeta = metas[0];
   applyCloakTheme("dark");
   check("dark adds .dark", classes.has("dark"), true);
   check("dark removes .light", classes.has("light"), false);
-  check("dark updates the status-bar colour", meta.content, CLOAK_THEME_COLORS.dark);
+  check("dark collapses them to the one tint that applies", themeColors().join(","), CLOAK_THEME_COLORS.dark);
+  check("  ... and replaces it again, not mutating the live node", metas.length === 1 && metas[0] !== lightMeta, true);
+
+  /*
+   * The same swap has to clean up the media-scoped PAIR that an older deployed
+   * document — or a cached one — still carries. On a dark-mode phone that pair
+   * is precisely what painted #131313 above a white header, so proving the
+   * runtime collapses it is proving the seam is closed for documents that
+   * predate this fix.
+   */
+  seedLegacyMediaMetas();
+  check("an older document's media-scoped pair is the legacy starting state", themeColors().length, 2);
+  applyCloakTheme("light");
+  check(
+    "  ... and light still collapses it to the one unscoped light tint",
+    `${themeColors().join(",")}|${metas[0].media}`,
+    `${CLOAK_THEME_COLORS.light}|`
+  );
 
   check("isCloakTheme accepts light", isCloakTheme("light"), true);
   check("isCloakTheme rejects nonsense", isCloakTheme("sepia"), false);
@@ -642,20 +775,32 @@ check(
     });
     classes.clear();
     classes.add("dark");
-    meta.content = "#0b0b0c";
+    seedServerMetas();
+    const beforeBootstrap = metas[0];
 
     new Function(THEME_BOOTSTRAP_SCRIPT)();
     check("the bootstrap script applies light before paint", classes.has("light"), true);
     check("  ... and drops dark", classes.has("dark"), false);
-    check("  ... and fixes the status bar", meta.content, CLOAK_THEME_COLORS.light);
+    check("  ... and fixes the status bar", themeColors().join(","), CLOAK_THEME_COLORS.light);
+    check(
+      "  ... by inserting a fresh meta, the only thing Chrome re-reads",
+      metas.length === 1 && metas[0] !== beforeBootstrap,
+      true
+    );
 
     /* And it must do nothing when the choice is dark. */
     store[THEME_STORAGE_KEY] = '{"state":{"theme":"dark"},"version":2}';
     classes.clear();
     classes.add("dark");
+    seedServerMetas();
     new Function(THEME_BOOTSTRAP_SCRIPT)();
     check("the bootstrap script leaves dark alone", classes.has("dark"), true);
     check("  ... and does not add light", classes.has("light"), false);
+    check(
+      "  ... but still collapses the metas to the dark tint",
+      themeColors().join(","),
+      CLOAK_THEME_COLORS.dark
+    );
 
     /* And it must never throw, whatever storage holds. */
     store[THEME_STORAGE_KEY] = "{{{";

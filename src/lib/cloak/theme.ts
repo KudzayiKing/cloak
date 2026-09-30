@@ -54,29 +54,42 @@ export const CLOAK_STATUS_BAR_STYLES: Record<CloakTheme, string> = {
   light: "default",
 };
 
+/**
+ * Points the OS chrome at `color`.
+ *
+ * Chrome on Android does NOT re-read a `theme-color` meta whose `content` was
+ * changed in place: `setAttribute` is silently ignored and the status bar keeps
+ * whatever colour it read first. The value is only picked up when the element is
+ * INSERTED, so the old nodes have to go and a fresh one be appended.
+ *
+ * It also collapses any surviving metas into the single one that now applies,
+ * which is the point. The tint has to follow the APP's theme, and the app's
+ * theme is a stored preference, not `prefers-color-scheme`; tying it to the
+ * media query is what let a light-mode app keep a dark status bar. The server no
+ * longer emits the media-scoped pair (see layout.tsx), but a browser can still
+ * be holding the old document, so the cleanup stays.
+ */
+export function applyThemeColor(color: string) {
+  const head = document.head;
+  head
+    .querySelectorAll('meta[name="theme-color"]')
+    .forEach((meta) => meta.remove());
+
+  const meta = document.createElement("meta");
+  meta.setAttribute("name", "theme-color");
+  meta.setAttribute("content", color);
+  head.appendChild(meta);
+}
+
 /** Swaps the class on <html>. Exactly one theme class is present at a time. */
 export function applyCloakTheme(theme: CloakTheme) {
   const root = document.documentElement;
   root.classList.toggle("dark", theme === "dark");
   root.classList.toggle("light", theme === "light");
-  /* Keep Android/iOS browser chrome in step with the theme the user actually
-     chose. Next may emit multiple theme-color metas when the viewport uses
-     media descriptors, so update all of them. */
-  const themeColorMetas =
-    typeof document.querySelectorAll === "function"
-      ? Array.from(document.querySelectorAll('meta[name="theme-color"]'))
-      : [];
 
-  if (themeColorMetas.length > 0) {
-    themeColorMetas.forEach((meta) =>
-      meta.setAttribute("content", CLOAK_THEME_COLORS[theme])
-    );
-  } else {
-    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeColorMeta) {
-      themeColorMeta.setAttribute("content", CLOAK_THEME_COLORS[theme]);
-    }
-  }
+  /* Keep Android/iOS browser chrome in step with the theme the user actually
+     chose. Replaces the element rather than mutating it — see applyThemeColor. */
+  applyThemeColor(CLOAK_THEME_COLORS[theme]);
 
   const appleStatus = document.querySelector(
     'meta[name="apple-mobile-web-app-status-bar-style"]'
@@ -109,6 +122,12 @@ export function readStoredTheme(raw: string | null): CloakTheme {
  * Runs before first paint, from a plain <script> before the app UI.
  * Deliberately dependency-free and defensive — it must never throw, because an
  * exception here would leave the document unstyled.
+ *
+ * The theme-color handling deliberately mirrors applyThemeColor: it REMOVES the
+ * meta Next server-rendered and appends a fresh one, because Chrome on Android
+ * ignores `content` written onto an existing element. Without that, a stored
+ * light theme would paint a light app under a dark status bar until the user
+ * happened to toggle the theme.
  */
 export const THEME_BOOTSTRAP_SCRIPT = `(function(){try{var r=localStorage.getItem(${JSON.stringify(
   THEME_STORAGE_KEY
@@ -116,7 +135,7 @@ export const THEME_BOOTSTRAP_SCRIPT = `(function(){try{var r=localStorage.getIte
   CLOAK_THEME_COLORS.light
 )}:${JSON.stringify(
   CLOAK_THEME_COLORS.dark
-)};var a=document.querySelectorAll?document.querySelectorAll('meta[name="theme-color"]'):null;if(a&&a.length){a.forEach(function(m){m.setAttribute("content",c);});}else{var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",c);}var s=document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');if(s)s.setAttribute("content",t==="light"?${JSON.stringify(
+)};var h=document.head;var a=h.querySelectorAll('meta[name="theme-color"]');for(var i=0;i<a.length;i++){a[i].parentNode.removeChild(a[i]);}var tc=document.createElement("meta");tc.setAttribute("name","theme-color");tc.setAttribute("content",c);h.appendChild(tc);var s=document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');if(s)s.setAttribute("content",t==="light"?${JSON.stringify(
   CLOAK_STATUS_BAR_STYLES.light
 )}:${JSON.stringify(
   CLOAK_STATUS_BAR_STYLES.dark

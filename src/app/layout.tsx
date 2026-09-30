@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { PwaRegister } from "@/components/cloak/pwa/pwa-register";
 import { AutoModelInstall } from "@/components/cloak/pwa/auto-model-install";
 import { ThemeSync } from "@/components/cloak/theme/theme-sync";
-import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/cloak/theme";
+import { CLOAK_THEME_COLORS, THEME_BOOTSTRAP_SCRIPT } from "@/lib/cloak/theme";
 import { APP_URL, BRAND } from "@/lib/cloak/config";
 import { SEO, absoluteUrl } from "@/lib/cloak/seo";
 
@@ -133,11 +133,18 @@ export const viewport: Viewport = {
   /* The elevated surface, not the app background: the mobile header owns the
      status-bar inset and paints it, so the OS chrome has to agree with the
      header. Kept in step with CLOAK_THEME_COLORS in src/lib/cloak/theme.ts,
-     which overwrites these once the stored theme is known. */
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#131313" },
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-  ],
+     which overwrites it once the stored theme is known.
+
+     ONE colour, deliberately NOT a prefers-color-scheme pair (round 21).
+     A media-scoped theme-color is resolved against the DEVICE's colour scheme,
+     never the app's, so the pair was actively wrong in both directions: a
+     light-mode app on a dark-mode phone was handed the dark tint, and — since
+     the app's default is dark — a dark app on a light-mode phone was handed
+     #ffffff. The status bar then disagreed with the header it sits on and the
+     seam read as a border above the header. The app's theme is a stored
+     preference, so only one tint can be right here; the pre-paint script
+     corrects it for light-mode users a few bytes later. */
+  themeColor: CLOAK_THEME_COLORS.dark,
   colorScheme: "dark light",
   width: "device-width",
   initialScale: 1,
