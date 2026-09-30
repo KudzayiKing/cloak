@@ -7,7 +7,7 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0B0B0C",
+  "background_color": "#111113",
   "theme_color": "#111113",
   "categories": ["social", "productivity", "security"],
   "icons": [

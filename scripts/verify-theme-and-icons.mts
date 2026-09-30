@@ -447,10 +447,20 @@ check("selection colours follow the theme", /var\(--cloak-selection\)/.test(css)
     (manifest.theme_color ?? "").toLowerCase(),
     darkElevated.toLowerCase()
   );
+  /*
+   * `background_color` is not only the splash. In an installed Android app the
+   * manifest drives the native system bars, and the navigation bar is the one
+   * the web layer cannot paint for itself: the app's viewport stops above it,
+   * so whatever Android picks there is what the user sees under the bottom nav.
+   * Leaving `background_color` on --cloak-bg was the last colour signal still
+   * disagreeing with the chrome. Every manifest colour now names the same
+   * surface — a splash 2/255 off the app background is invisible, a system bar
+   * 4/255 off the nav is not.
+   */
   check(
-    "  ... while the splash keeps the app background",
+    "  ... and the manifest's other colour, which Android may use for the navigation bar",
     (manifest.background_color ?? "").toLowerCase(),
-    (css.match(/--cloak-bg:\s*(#[0-9a-fA-F]{6})/)?.[1] ?? "").toLowerCase()
+    darkElevated.toLowerCase()
   );
 }
 
@@ -695,6 +705,21 @@ check(
   check(
     "  ... and the gesture-bar inset paints no background of its own",
     gestureSpacers.length > 0 && gestureSpacers.every((c) => !/\bbg-/.test(c)),
+    true
+  );
+
+  /*
+   * The bottom bar's opaque backing decides its colour. The panel is
+   * translucent, so it composites over whatever the backing paints: a
+   * --cloak-bg backing resolves to #0f0f11 while the header — which has no
+   * backing and sits over the page — resolves to #111113. That 2/255 gap is
+   * the "the two chromes don't match" report. Backing it with the elevated
+   * surface makes the bottom bar the header's colour by construction.
+   */
+  const navOpen = navBlock.match(/className="([^"]*)"/)?.[1] ?? "";
+  check(
+    "the bottom bar's opaque backing is the header's surface",
+    /bg-cloak-bg-elevated/.test(navOpen) && !/(^|\s)bg-cloak-bg(\s|$)/.test(navOpen),
     true
   );
 

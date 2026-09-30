@@ -429,16 +429,22 @@ export function AppShell({
           Hidden while inside a conversation.
 
           The gesture-bar inset is INSIDE the glass panel, below the tab row
-          (round 16). It used to be a separate solid strip, which painted
-          --cloak-bg (#0b0b0c) under a tab row that composites to ~#0f0f10 and
-          left a visible seam across the bottom of the app. Sharing the panel
-          means the gesture bar is the nav's colour by construction — the same
+          (round 16), so the bar is the nav's colour by construction — the same
           shape the header uses for the status bar. Zero-height when the device
-          reports no inset (plain browser tabs) — no visual change there. */}
+          reports no inset (plain browser tabs, and any device Chrome is not
+          running edge-to-edge on) — no visual change there.
+
+          The opaque backing is --cloak-bg-ELEVATED, not --cloak-bg (round 17).
+          It was the last thing keeping the two chromes apart: the panel's
+          translucent surface composites over its own backing, so a --cloak-bg
+          backing resolved to #0f0f11 while the header — which has no backing and
+          sits over the page — resolved to #111113. Backing it with the elevated
+          surface makes the bottom bar the header's colour exactly, and keeps it
+          deterministic instead of drifting with whatever scrolls underneath. */}
       {mobileChrome && (
         <nav
           aria-label="Primary"
-          className="fixed inset-x-0 bottom-0 z-40 bg-cloak-bg md:hidden"
+          className="fixed inset-x-0 bottom-0 z-40 bg-cloak-bg-elevated md:hidden"
         >
           <div className="border-t border-cloak-border bg-cloak-bg-elevated backdrop-blur-xl supports-[backdrop-filter]:bg-cloak-bg-elevated/70">
             <div className="grid grid-cols-4">
