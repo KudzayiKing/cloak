@@ -234,7 +234,7 @@ export function CirclesPage() {
 
   return (
     <AppShell active="/app/circles">
-      <div className="cloak-scroll h-full overflow-y-auto pt-14 md:pt-0">
+      <div className="cloak-scroll h-full overflow-y-auto pt-[var(--cloak-top-chrome-h)] md:pt-0">
         <div className="mx-auto max-w-3xl px-5 pb-[calc(56px+env(safe-area-inset-bottom))] pt-8 md:px-8 md:pb-8">
           <div className="mb-6 flex items-center justify-between gap-4">
             <div>

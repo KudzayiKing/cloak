@@ -378,6 +378,22 @@
  */
 :root {
   --cloak-bottom-nav-h: 0px;
+
+  /*
+   * Mobile top chrome — the fixed glass header.
+   *
+   * The header is one glass panel containing BOTH the status-bar inset and its
+   * own 56px content row. That is deliberate: the status bar is then painted by
+   * the header itself, so it can never drift from the header's colour, and its
+   * glassmorphism comes for free. The same shape is used at the bottom, where
+   * the nav's glass panel contains the gesture-bar inset.
+   *
+   * Anything that clears the header (page scroll containers, the Cloak Mode
+   * banner) reads this rather than hardcoding 56px, or it will sit under the
+   * header on an edge-to-edge device. On a device with no inset this is exactly
+   * 3.5rem, so nothing moves.
+   */
+  --cloak-top-chrome-h: calc(3.5rem + env(safe-area-inset-top));
 }
 .cloak-update-prompt,
 .cloak-install-prompt {

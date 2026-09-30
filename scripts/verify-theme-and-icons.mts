@@ -16,7 +16,7 @@
  * Run: node_modules/.bin/tsx scripts/verify-theme-and-icons.mts
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 
@@ -51,6 +51,17 @@ function defineGlobal(name: string, value: unknown) {
 
 function stripComments(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+}
+
+/** Every .tsx under `dir`, so a source scan can cover the whole tree. */
+function tsxFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...tsxFiles(full));
+    else if (entry.name.endsWith(".tsx")) out.push(full);
+  }
+  return out;
 }
 
 const root = process.cwd();
@@ -401,6 +412,48 @@ check(
 check("the scrollbar thumb follows the theme", /var\(--cloak-scroll-thumb\)/.test(css), true);
 check("selection colours follow the theme", /var\(--cloak-selection\)/.test(css), true);
 
+/*
+ * The OS status-bar tint must be the header's surface.
+ *
+ * The mobile header is `bg-cloak-bg-elevated` and paints the status-bar inset
+ * itself, so a tint taken from --cloak-bg leaves a seam across the top of an
+ * installed app. Tying the tint to the token (rather than to a literal) means
+ * changing the header's surface can never silently desync the OS chrome.
+ */
+{
+  const { CLOAK_THEME_COLORS } = await import("../src/lib/cloak/theme.ts");
+  const darkElevated = css.match(/--cloak-bg-elevated:\s*(#[0-9a-fA-F]{6})/)?.[1] ?? "";
+  const lightBlock = css.match(/\.light\s*\{([^}]*)\}/)?.[1] ?? "";
+  const lightElevated = lightBlock.match(/--cloak-bg-elevated:\s*(#[0-9a-fA-F]{6})/)?.[1] ?? "";
+
+  check("the dark elevated surface was found", darkElevated.length, 7);
+  check(
+    "the dark status-bar tint is the header's surface",
+    CLOAK_THEME_COLORS.dark.toLowerCase(),
+    darkElevated.toLowerCase()
+  );
+  check(
+    "the light status-bar tint is the header's surface",
+    CLOAK_THEME_COLORS.light.toLowerCase(),
+    lightElevated.toLowerCase()
+  );
+
+  const manifest = JSON.parse(read("public/manifest.webmanifest")) as {
+    theme_color?: string;
+    background_color?: string;
+  };
+  check(
+    "the manifest tints the status bar with the header's surface",
+    (manifest.theme_color ?? "").toLowerCase(),
+    darkElevated.toLowerCase()
+  );
+  check(
+    "  ... while the splash keeps the app background",
+    (manifest.background_color ?? "").toLowerCase(),
+    (css.match(/--cloak-bg:\s*(#[0-9a-fA-F]{6})/)?.[1] ?? "").toLowerCase()
+  );
+}
+
 /* The logo must be black in light mode. */
 check(
   "the logo mark is forced black in light mode",
@@ -579,21 +632,91 @@ check(
     /onMouseEnter=\{onMouseEnter\}[\s\S]{0,120}onMouseLeave=\{onMouseLeave\}/.test(shell),
     true
   );
+  /*
+   * Safe areas are painted by the chrome they belong to, not by a strip of
+   * their own.
+   *
+   * The status bar is the header's glass and the gesture bar is the nav's, so
+   * each inset spacer has to live INSIDE its panel. A spacer that carries its
+   * own background is the bug this guards: a separate solid strip painted
+   * --cloak-bg under a nav that composites to ~#0f0f10 (and over a header that
+   * is translucent), leaving a visible seam at the bottom and a status bar that
+   * did not match the header at all.
+   */
+  /* A safe-area spacer must be painted BY its chrome, never by a background of
+     its own. "Spacer appears somewhere after the panel" is not enough — the old
+     strip satisfied that and still painted a solid band, so the assertions are:
+     the spacer lives between the chrome's own tags, and its className carries no
+     `bg-*` at all. */
+  const spacerClasses = (needle: string): string[] =>
+    [...shell.matchAll(/className="([^"]*)"/g)]
+      .map((m) => m[1])
+      .filter((c) => c.includes(needle));
+
+  /** The source from an opening tag to its first matching close tag. */
+  const elementBlock = (open: RegExp, close: string): string => {
+    const m = shell.match(open);
+    if (!m || m.index === undefined) return "";
+    const end = shell.indexOf(close, m.index);
+    return end === -1 ? "" : shell.slice(m.index, end + close.length);
+  };
+
+  const statusSpacers = spacerClasses("h-[env(safe-area-inset-top)]");
+  const gestureSpacers = spacerClasses("h-[env(safe-area-inset-bottom)]");
+  const headerBlock = elementBlock(/<header\b/, "</header>");
+
+  /* The mobile nav is identified by its aria-label, not by tag order: the
+     desktop sidebar is also a <nav> and comes first in the file. */
+  const navStart = shell.indexOf('aria-label="Primary"');
+  const navEnd = navStart === -1 ? -1 : shell.indexOf("</nav>", navStart);
+  const navBlock = navStart === -1 || navEnd === -1 ? "" : shell.slice(navStart, navEnd);
+
+  const headerOpen = shell.match(/<header className="([^"]*)"/)?.[1] ?? "";
+  check("the mobile header is itself the glass panel", /bg-cloak-bg-elevated/.test(headerOpen) && /backdrop-blur-xl/.test(headerOpen), true);
   check(
-    "mobile chrome paints the status-bar safe area",
-    /h-\[env\(safe-area-inset-top\)\][^"]*bg-cloak-bg-elevated/.test(shell),
+    "  ... so the status-bar inset sits inside it",
+    headerBlock.includes("h-[env(safe-area-inset-top)]"),
     true
   );
   check(
-    "mobile chrome paints the gesture-bar safe area",
-    /h-\[env\(safe-area-inset-bottom\)\][^"]*bg-cloak-bg/.test(shell),
+    "  ... and the status-bar inset paints no background of its own",
+    statusSpacers.length > 0 && statusSpacers.every((c) => !/\bbg-/.test(c)),
+    true
+  );
+
+  const navGlass = navBlock.match(/className="([^"]*backdrop-blur-xl[^"]*)"/)?.[1] ?? "";
+  check("the mobile nav tab row is a glass panel", /bg-cloak-bg-elevated/.test(navGlass), true);
+  check(
+    "  ... and the gesture-bar inset sits inside that same panel",
+    navBlock.includes("h-[env(safe-area-inset-bottom)]") &&
+      navBlock.indexOf("backdrop-blur-xl") < navBlock.indexOf("h-[env(safe-area-inset-bottom)]"),
     true
   );
   check(
-    "mobile bottom nav wrapper also carries the gesture-bar theme background",
-    /className="[^"]*fixed inset-x-0 bottom-0[^"]*bg-cloak-bg/.test(shell),
+    "  ... and the gesture-bar inset paints no background of its own",
+    gestureSpacers.length > 0 && gestureSpacers.every((c) => !/\bbg-/.test(c)),
     true
   );
+
+  /* Clearance must read the shared token: a hardcoded 56px sits under the
+     header on any device that reports a status-bar inset. */
+  check(
+    "the header's clearance height is a shared token",
+    /--cloak-top-chrome-h:\s*calc\(3\.5rem \+ env\(safe-area-inset-top\)\)/.test(css),
+    true
+  );
+  {
+    const offenders = tsxFiles(root).filter((f) =>
+      /pt-14[^"]*md:pt-0/.test(readFileSync(f, "utf8"))
+    );
+    check("no page hardcodes the old 56px header clearance", offenders.length, 0);
+    if (offenders.length) {
+      console.log(
+        "  hardcoded pt-14:",
+        offenders.map((f) => f.slice(root.length + 1)).join(", ")
+      );
+    }
+  }
 
   const marketingHeader = stripComments(read("src/components/cloak/navigation/MarketingHeader.tsx"));
   check("marketing header reads the shared theme", /useCloakStore\(\(s\)\s*=>\s*s\.theme\)/.test(marketingHeader), true);

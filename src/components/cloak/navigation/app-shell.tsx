@@ -356,33 +356,33 @@ export function AppShell({
       {/* Main column — min-h-0 lets it shrink inside the h-dvh root so
           the page itself never scrolls on mobile */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-cloak-bg">
-        {mobileChrome && (
-          <div
-            aria-hidden
-            className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[env(safe-area-inset-top)] bg-cloak-bg-elevated md:hidden"
-          />
-        )}
-
         {/* Mobile header — fixed glass overlay (homepage glassmorphism,
-            user feedback round 13). Content scrolls beneath it; each page's
-            scroll container clears it with pt-14. Owner de-clutter round:
-            the right side is ONLY the notifications bell (icon, no text)
-            and the three-dot overflow menu — Cloak Mode, Dagger and
-            Security live inside that menu. Hidden while inside a
-            conversation. */}
+            user feedback round 13). The status-bar inset lives INSIDE this
+            panel, so the status bar is painted by the header's own glass: same
+            colour, same blur, and no separate strip that can drift out of step
+            with it. Content scrolls beneath the header; each page's scroll
+            container clears it with --cloak-top-chrome-h. Owner de-clutter
+            round: the right side is ONLY the notifications bell (icon, no text)
+            and the three-dot overflow menu — Cloak Mode, Dagger and Security
+            live inside that menu. Hidden while inside a conversation. */}
         {mobileChrome && (
-          <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-cloak-border bg-cloak-bg-elevated px-4 backdrop-blur-xl supports-[backdrop-filter]:bg-cloak-bg-elevated/70 md:hidden">
-            {/* Emergency gesture (§21): hold the wordmark 5s when enabled. */}
-            <span
-              className="cloak-wordmark text-2xl text-cloak-text"
-              {...(emergencyGesture ? gesture.longPressHandlers : {})}
-            >
-              {BRAND.name}
-            </span>
-            <div className="flex items-center gap-1">
-              {headerAction}
-              <NotificationsBell variant="header" />
-              <MobileHeaderMenu />
+          <header className="fixed inset-x-0 top-0 z-40 border-b border-cloak-border bg-cloak-bg-elevated backdrop-blur-xl supports-[backdrop-filter]:bg-cloak-bg-elevated/70 md:hidden">
+            {/* Status-bar inset. Zero-height when the device reports no inset
+                (plain browser tabs) — no visual change there. */}
+            <div aria-hidden className="h-[env(safe-area-inset-top)]" />
+            <div className="flex h-14 items-center justify-between px-4">
+              {/* Emergency gesture (§21): hold the wordmark 5s when enabled. */}
+              <span
+                className="cloak-wordmark text-2xl text-cloak-text"
+                {...(emergencyGesture ? gesture.longPressHandlers : {})}
+              >
+                {BRAND.name}
+              </span>
+              <div className="flex items-center gap-1">
+                {headerAction}
+                <NotificationsBell variant="header" />
+                <MobileHeaderMenu />
+              </div>
             </div>
           </header>
         )}
@@ -405,7 +405,7 @@ export function AppShell({
         {mobileChrome && cloakMode && bannerPhase !== "hidden" && (
           <div
             className={cn(
-              "cloak-message-in fixed inset-x-0 top-14 z-40 flex items-center justify-center gap-2 border-b border-cloak-gold/20 bg-cloak-gold-soft px-4 py-1.5 text-[11px] font-medium text-cloak-gold-bright backdrop-blur-md transition-opacity duration-500 supports-[backdrop-filter]:bg-cloak-gold-soft/70 md:hidden",
+              "cloak-message-in fixed inset-x-0 top-[var(--cloak-top-chrome-h)] z-40 flex items-center justify-center gap-2 border-b border-cloak-gold/20 bg-cloak-gold-soft px-4 py-1.5 text-[11px] font-medium text-cloak-gold-bright backdrop-blur-md transition-opacity duration-500 supports-[backdrop-filter]:bg-cloak-gold-soft/70 md:hidden",
               bannerPhase === "fading" && "opacity-0"
             )}
           >
@@ -426,29 +426,32 @@ export function AppShell({
       {/* Mobile bottom nav — fixed glass overlay (homepage glassmorphism,
           user feedback round 13). Content scrolls beneath it. Four tabs
           (owner de-clutter round): Chats / Circles / Contacts / Settings.
-          Hidden while inside a conversation. The safe-area strip BELOW the
-          tab row is solid app background (round 15): on edge-to-edge
-          devices the gesture-bar zone shows this strip, so it must read as
-          the app background, not translucent glass. Zero-height when the
-          device reports no inset (plain browser tabs) — no visual change. */}
+          Hidden while inside a conversation.
+
+          The gesture-bar inset is INSIDE the glass panel, below the tab row
+          (round 16). It used to be a separate solid strip, which painted
+          --cloak-bg (#0b0b0c) under a tab row that composites to ~#0f0f10 and
+          left a visible seam across the bottom of the app. Sharing the panel
+          means the gesture bar is the nav's colour by construction — the same
+          shape the header uses for the status bar. Zero-height when the device
+          reports no inset (plain browser tabs) — no visual change there. */}
       {mobileChrome && (
         <nav
           aria-label="Primary"
           className="fixed inset-x-0 bottom-0 z-40 bg-cloak-bg md:hidden"
         >
-          <div className="grid grid-cols-4 border-t border-cloak-border bg-cloak-bg-elevated backdrop-blur-xl supports-[backdrop-filter]:bg-cloak-bg-elevated/70">
-            {MOBILE_NAV.map((item) => (
-              <MobileNavItem
-                key={item.path}
-                item={item}
-                active={active === item.path}
-              />
-            ))}
+          <div className="border-t border-cloak-border bg-cloak-bg-elevated backdrop-blur-xl supports-[backdrop-filter]:bg-cloak-bg-elevated/70">
+            <div className="grid grid-cols-4">
+              {MOBILE_NAV.map((item) => (
+                <MobileNavItem
+                  key={item.path}
+                  item={item}
+                  active={active === item.path}
+                />
+              ))}
+            </div>
+            <div aria-hidden className="h-[env(safe-area-inset-bottom)]" />
           </div>
-          <div
-            aria-hidden
-            className="h-[env(safe-area-inset-bottom)] bg-cloak-bg"
-          />
         </nav>
       )}
       {/* Cloak Mode protection gate — PIN / biometric verification */}

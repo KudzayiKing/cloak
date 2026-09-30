@@ -130,8 +130,12 @@ const structuredData = [
 ];
 
 export const viewport: Viewport = {
+  /* The elevated surface, not the app background: the mobile header owns the
+     status-bar inset and paints it, so the OS chrome has to agree with the
+     header. Kept in step with CLOAK_THEME_COLORS in src/lib/cloak/theme.ts,
+     which overwrites these once the stored theme is known. */
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0b0b0c" },
+    { media: "(prefers-color-scheme: dark)", color: "#111113" },
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
   ],
   colorScheme: "dark light",

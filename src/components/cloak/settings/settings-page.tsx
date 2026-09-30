@@ -85,7 +85,7 @@ export function SettingsPage({ section = "account" }: { section?: SectionId }) {
 
   return (
     <AppShell active="/app/settings">
-      <div className="cloak-scroll h-full overflow-y-auto pt-14 md:pt-0">
+      <div className="cloak-scroll h-full overflow-y-auto pt-[var(--cloak-top-chrome-h)] md:pt-0">
         <div className="mx-auto max-w-4xl px-5 pb-[calc(56px+env(safe-area-inset-bottom))] pt-8 md:px-8 md:pb-8">
           <h1 className="cloak-display mb-6 text-2xl font-medium text-cloak-text">Settings</h1>
 

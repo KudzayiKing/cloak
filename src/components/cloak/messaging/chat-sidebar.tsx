@@ -112,7 +112,7 @@ export function ChatSidebar({
   return (
     <aside
       className={cn(
-        "relative flex min-h-0 flex-col border-r border-cloak-border bg-cloak-bg-elevated pt-14 md:pt-0",
+        "relative flex min-h-0 flex-col border-r border-cloak-border bg-cloak-bg-elevated pt-[var(--cloak-top-chrome-h)] md:pt-0",
         className
       )}
       aria-label="Conversations"

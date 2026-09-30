@@ -30,9 +30,17 @@ export function isCloakTheme(value: unknown): value is CloakTheme {
   return value === "dark" || value === "light";
 }
 
-/** Status-bar / browser-chrome colour per theme. */
+/**
+ * Status-bar / browser-chrome colour per theme.
+ *
+ * This is the ELEVATED surface, not the app background: the mobile header is
+ * `bg-cloak-bg-elevated` and paints the status-bar inset itself, so the OS tint
+ * has to agree with the header or the top of an installed app shows a seam.
+ * Keep these in step with `--cloak-bg-elevated` in globals.css (dark #111113,
+ * light #ffffff) and with `theme_color` in public/manifest.webmanifest.
+ */
 export const CLOAK_THEME_COLORS: Record<CloakTheme, string> = {
-  dark: "#0b0b0c",
+  dark: "#111113",
   light: "#ffffff",
 };
 
