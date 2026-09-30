@@ -134,7 +134,11 @@ export function SplashScreen() {
         <span className="cloak-message-in grid h-24 w-24 place-items-center">
           <CloakLogoImage size={96} className="block" />
         </span>
-        <span className="cloak-wordmark cloak-message-in mt-5 block leading-none text-3xl text-cloak-text">
+        {/* Wordmark scale (owner round 18): text-xl, not text-3xl. The logo is
+            the hero of this lockup, and at 30px the wordmark ran ~1.8x the
+            logo's width — it read as a second, competing headline. At 20px it
+            is ~1.2x the logo and sits under it as a caption. */}
+        <span className="cloak-wordmark cloak-message-in mt-5 block leading-none text-xl text-cloak-text">
           <CipherWordmark text={WORDMARK} />
         </span>
       </div>

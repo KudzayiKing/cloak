@@ -439,6 +439,8 @@ check("selection colours follow the theme", /var\(--cloak-selection\)/.test(css)
   );
 
   const manifest = JSON.parse(read("public/manifest.webmanifest")) as {
+    id?: string;
+    start_url?: string;
     theme_color?: string;
     background_color?: string;
   };
@@ -461,6 +463,32 @@ check("selection colours follow the theme", /var\(--cloak-selection\)/.test(css)
     "  ... and the manifest's other colour, which Android may use for the navigation bar",
     (manifest.background_color ?? "").toLowerCase(),
     darkElevated.toLowerCase()
+  );
+
+  /*
+   * Launching from the home screen must land in the chat app, not on the
+   * marketing homepage. `id` stays "/" on purpose: it is the install's
+   * identity, so moving it would strand every existing install as a second,
+   * separate app instead of updating the one the user already has.
+   */
+  check(
+    "the installed app opens the chat app, not the marketing homepage",
+    manifest.start_url ?? "",
+    "/#/app/messages"
+  );
+  check("  ... and the install's identity is left alone", manifest.id ?? "", "/");
+
+  const appRouter = stripComments(read("src/components/cloak/router/cloak-app.tsx"));
+  check(
+    "  ... with a cold-launch fallback for installs that predate the change",
+    /useInstalledEntryRedirect/.test(appRouter) &&
+      /display-mode: \$\{mode\}/.test(appRouter),
+    true
+  );
+  check(
+    "  ... which fires once, so the marketing pages stay reachable",
+    /if \(entryResolved\) return;\s*\n\s*entryResolved = true;/.test(appRouter),
+    true
   );
 }
 
@@ -498,6 +526,15 @@ check(
 
   const splash = stripComments(read("src/components/cloak/brand/splash-screen.tsx"));
   check("the splash logo needs no translate nudge", /translate-x/.test(splash), false);
+
+  /*
+   * The splash is a lockup, not two headlines: the logo is the hero and the
+   * wordmark sits under it as a caption. At text-3xl the wordmark ran about
+   * 1.8x the logo's width and read as a competing headline.
+   */
+  const splashWordmark =
+    splash.match(/cloak-wordmark[^"]*?\btext-(xs|sm|base|lg|xl|[2-9]xl)\b/)?.[1] ?? "";
+  check("the splash wordmark is a caption, not a second headline", splashWordmark, "xl");
 
   const cta = css.match(/\.light\s+\.cloak-cta-gold\s*\{([^}]*)\}/)?.[1] ?? "";
   check("the gold CTA has a light-mode ramp", /#b99343/.test(cta), true);

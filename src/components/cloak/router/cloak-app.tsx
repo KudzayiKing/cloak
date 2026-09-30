@@ -73,6 +73,36 @@ function isCircleInviteRoute(segments: string[]): boolean {
   return segments[0] === "circles" && segments[1] === "invite" && !!segments[2];
 }
 
+/*
+ * Installed-app entry (owner round 18).
+ *
+ * The manifest's start_url is /#/app/messages, but an install already sitting
+ * on a home screen keeps whatever start_url its WebAPK was generated with, and
+ * Android only regenerates that on its own schedule. So a cold launch of an
+ * older install would still open the marketing homepage.
+ *
+ * This closes that gap: one launch, one redirect. The module flag latches on
+ * the first effect run, so only the route the app actually opened on is
+ * considered — the marketing pages stay reachable afterwards. That matters:
+ * the sign-in screen links back to "/", and bouncing it straight out again
+ * would strand a signed-out user with no way to read the site.
+ */
+let entryResolved = false;
+
+function useInstalledEntryRedirect(path: string) {
+  useEffect(() => {
+    if (entryResolved) return;
+    entryResolved = true;
+    if (path !== "/") return;
+    const nav = window.navigator as Navigator & { standalone?: boolean };
+    const installed =
+      ["standalone", "fullscreen", "minimal-ui"].some(
+        (mode) => window.matchMedia?.(`(display-mode: ${mode})`)?.matches === true
+      ) || nav.standalone === true;
+    if (installed) navigate("/app/messages");
+  }, [path]);
+}
+
 export function CloakApp({ route }: { route: RouteInfo }) {
   const { path, segments } = route;
   const membership = useCloakStore((s) => s.membership.membership);
@@ -80,6 +110,10 @@ export function CloakApp({ route }: { route: RouteInfo }) {
   const authUser = useCloakStore((s) => s.auth.user);
   const authChecked = useCloakStore((s) => s.auth.checked);
   const bootstrapAuth = useCloakStore((s) => s.bootstrapAuth);
+
+  /* Declared first so it sees the launch route before the unknown-route
+     fallback below can rewrite the hash to "/". */
+  useInstalledEntryRedirect(path);
 
   /* Restore the session (cookie is the truth) once on mount. */
   useEffect(() => {
