@@ -374,7 +374,7 @@ export function AppShell({
           <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-cloak-border bg-cloak-bg-elevated px-4 backdrop-blur-xl supports-[backdrop-filter]:bg-cloak-bg-elevated/70 md:hidden">
             {/* Emergency gesture (§21): hold the wordmark 5s when enabled. */}
             <span
-              className="cloak-wordmark text-3xl text-cloak-text"
+              className="cloak-wordmark text-2xl text-cloak-text"
               {...(emergencyGesture ? gesture.longPressHandlers : {})}
             >
               {BRAND.name}
