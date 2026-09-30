@@ -2,7 +2,6 @@
 
 import { useSyncExternalStore } from "react";
 import { LoaderCircleIcon, RefreshCwIcon } from "@animateicons/react/lucide";
-import { CloakLogoImage } from "@/components/cloak/brand/CloakLogo";
 import {
   applyUpdate,
   dismissUpdate,
@@ -10,6 +9,7 @@ import {
   subscribeUpdate,
   updatePhase,
 } from "@/lib/cloak/pwa-update";
+import { PwaPromptLogoBadge } from "./pwa-prompt-logo-badge";
 
 /*
  * PwaUpdatePrompt — docks at the bottom of the installed app when a new bundle
@@ -42,9 +42,7 @@ export function PwaUpdatePrompt() {
       aria-live="polite"
       className="cloak-update-prompt cloak-message-in fixed inset-x-0 z-50 mx-auto flex w-[min(26rem,calc(100%-1.5rem))] items-start gap-3 rounded-2xl border border-cloak-border-strong bg-cloak-bg-elevated/95 p-3.5 shadow-2xl shadow-black/50 backdrop-blur-xl"
     >
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cloak-border bg-cloak-surface">
-        <CloakLogoImage size={26} />
-      </span>
+      <PwaPromptLogoBadge />
 
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-medium text-cloak-text">

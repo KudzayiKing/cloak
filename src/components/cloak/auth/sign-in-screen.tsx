@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { navigate } from "@/hooks/use-hash-route";
 import { useCloakStore } from "@/stores/cloak-store";
 import { BRAND } from "@/lib/cloak/config";
+import { CLOAK_LOGO_SRC } from "@/components/cloak/brand/CloakLogo";
 import { KeyRoundIcon, LoaderCircleIcon, TriangleAlertIcon } from "@animateicons/react/lucide";
 
 const ERROR_COPY: Record<string, string> = {
@@ -93,7 +94,7 @@ export function SignInScreen() {
           {/* Brand mark — the C-bubble artwork (upload/cloak_logo.svg).
               cloak-logo-mark renders it black in light mode. */}
           <img
-            src="/cloak-logo.svg"
+            src={CLOAK_LOGO_SRC}
             alt=""
             aria-hidden="true"
             className="cloak-logo-mark h-9 w-9 object-contain"

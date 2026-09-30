@@ -11,6 +11,8 @@ import { BRAND } from "@/lib/cloak/config";
  * PWA icon. CloakMark remains exported for gold AI accents only.
  */
 
+export const CLOAK_LOGO_SRC = "/cloak-logo.svg?v=centered-20260930";
+
 export function CloakMark({ size = 22, className }: { size?: number; className?: string }) {
   return (
     <svg
@@ -44,7 +46,7 @@ export function CloakLogoImage({
 }) {
   return (
     <img
-      src="/cloak-logo.svg"
+      src={CLOAK_LOGO_SRC}
       alt=""
       width={size}
       height={size}

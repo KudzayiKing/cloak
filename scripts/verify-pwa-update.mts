@@ -193,8 +193,7 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
   const prompt = stripComments(
     read("src/components/cloak/pwa/pwa-update-prompt.tsx")
   );
-  check("the prompt renders the Cloak logo", /CloakLogoImage/.test(prompt), true);
-  check("  ... at an explicit size", /<CloakLogoImage size=\{\d+\}/.test(prompt), true);
+  check("the prompt renders the Cloak logo badge", /PwaPromptLogoBadge/.test(prompt), true);
   check("the prompt can apply the update", /applyUpdate/.test(prompt), true);
   check("the prompt can be dismissed", /dismissUpdate/.test(prompt), true);
   check("the prompt docks via the shared class", /cloak-update-prompt/.test(prompt), true);
@@ -215,12 +214,19 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
   const installPrompt = stripComments(
     read("src/components/cloak/pwa/pwa-install-prompt.tsx")
   );
-  check("the install prompt renders the Cloak logo", /CloakLogoImage/.test(installPrompt), true);
+  check("the install prompt renders the Cloak logo badge", /PwaPromptLogoBadge/.test(installPrompt), true);
   check("the install prompt uses the PWA install hook", /usePWAInstall/.test(installPrompt), true);
   check("the install prompt is mobile-only", /md:hidden/.test(installPrompt), true);
   check("the install prompt hides when already installed", /installed[\s\S]{0,120}return null/.test(installPrompt), true);
   check("the install prompt docks via the shared class", /cloak-install-prompt/.test(installPrompt), true);
   check("the install prompt is mounted in the app root", /<PwaInstallPrompt \/>/.test(cloakRoot), true);
+
+  const logoBadge = stripComments(
+    read("src/components/cloak/pwa/pwa-prompt-logo-badge.tsx")
+  );
+  check("the prompt logo badge renders the Cloak logo", /CloakLogoImage/.test(logoBadge), true);
+  check("  ... larger than the tile stage for tight centering", /size=\{34\}/.test(logoBadge), true);
+  check("  ... inside a clipped centered stage", /h-8 w-8[\s\S]{0,80}overflow-hidden/.test(logoBadge), true);
 
   const layout = stripComments(read("src/app/layout.tsx"));
   check("automatic Cloak Dagger AI install is mounted", /<AutoModelInstall \/>/.test(layout), true);
