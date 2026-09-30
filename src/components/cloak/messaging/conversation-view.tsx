@@ -262,8 +262,22 @@ export function ConversationView({
           composer bottom edges (user feedback round 4). Desktop keeps the
           floating rounded card. */}
       <div className="cloak-light-shadowless flex min-h-0 flex-1 flex-col overflow-hidden bg-cloak-bg md:rounded-3xl md:border md:border-cloak-border md:shadow-xl md:shadow-black/25">
-      {/* Header */}
-      <header className="flex items-center gap-2 border-b border-cloak-border bg-cloak-bg-elevated/60 px-3 py-2.5 md:px-4">
+      {/* Header — the chat-list chrome treatment, applied here (round 22).
+          Inside a conversation AppShell hides BOTH its header and its bottom
+          nav (fullscreen chat), so this panel is what sits against the status
+          bar and the composer below is what sits against the gesture area.
+          Neither was painted as chrome, so the chat screen kept showing the
+          platform's own tint while the chat list followed the theme.
+
+          OPAQUE, for the reason round 20 established: a translucent panel
+          resolves to a blend of whatever is behind it, so /60 over --cloak-bg
+          produced a colour matching neither the token nor the status bar.
+
+          It also owns the status-bar inset, as extra top padding rather than a
+          spacer div — this header is already the topmost box, so growing its
+          own padding is what makes its background cover the strip. Where the
+          device reports no inset the calc is exactly the old 0.625rem. */}
+      <header className="flex items-center gap-2 border-b border-cloak-border bg-cloak-bg-elevated px-3 pb-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] md:px-4">
         <button
           onClick={onBack}
           aria-label="Back to conversations"

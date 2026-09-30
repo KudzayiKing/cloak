@@ -54,7 +54,18 @@ export function MessageComposer({
   return (
     <div
       className={cn(
-        "bg-cloak-bg-elevated/60 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:p-4",
+        /* Opaque, like the chat-list bottom nav (round 22). Inside a
+           conversation the nav is hidden, so this bar is what sits against the
+           gesture area — and a surface that has to match something the platform
+           paints has to be a known colour, not a blend of whatever is behind it.
+
+           No gesture-area bleed here, unlike the nav: the composer is IN FLOW,
+           so its box already ends at the viewport bottom and its background
+           already owns that strip. The nav is `fixed`, which is why it needs
+           the documented grow-then-pull-down pattern instead. The safe-area
+           padding keeps the content clear of the gesture bar either way, and
+           resolves to 0 where there is no inset. */
+        "bg-cloak-bg-elevated p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:p-4",
         /* Ghost chats: no separator line above the input (user feedback) */
         !ghost && "border-t border-cloak-border"
       )}

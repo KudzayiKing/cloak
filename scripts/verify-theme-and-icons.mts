@@ -944,6 +944,49 @@ check(
   check("  ... and the bar itself is opaque too", opaqueChrome(navOpen), true);
 
   /*
+   * The chat screen hides the chrome above, so it needs its own (round 22).
+   *
+   * Inside a conversation AppShell renders NEITHER its header NOR its nav — the
+   * chat is fullscreen. The panel against the status bar is then the
+   * conversation's own header, and the bar against the gesture area is the
+   * composer. Both were `bg-cloak-bg-elevated/60`, so the chat screen kept
+   * showing a blend of the page (and the platform's own tint above it) while
+   * the chat list followed the theme. The same two rules apply, and they are
+   * asserted here for the same reason: these surfaces are only visible when the
+   * chrome above is gone, which is precisely when nobody is looking at them.
+   */
+  const convo = stripComments(read("src/components/cloak/messaging/conversation-view.tsx"));
+  const composer = stripComments(read("src/components/cloak/messaging/message-composer.tsx"));
+
+  const convoHeader = convo.match(/<header className="([^"]*)"/)?.[1] ?? "";
+  check(
+    "the chat screen's header wears the same chrome surface",
+    /bg-cloak-bg-elevated/.test(convoHeader),
+    true
+  );
+  check("  ... painted opaque, not a /60 blend", opaqueChrome(convoHeader), true);
+  check(
+    "  ... and it owns the status-bar inset, so the strip above it is its own colour",
+    /pt-\[calc\([^\]]*env\(safe-area-inset-top\)\)\]/.test(convoHeader),
+    true
+  );
+
+  /* The composer's classes are the first argument of cn(), after a block
+     comment that stripComments has already removed. */
+  const composerOpen = composer.match(/className=\{cn\(\s*"([^"]*)"/)?.[1] ?? "";
+  check(
+    "the chat screen's composer wears the same chrome surface",
+    /bg-cloak-bg-elevated/.test(composerOpen),
+    true
+  );
+  check("  ... painted opaque, not a /60 blend", opaqueChrome(composerOpen), true);
+  check(
+    "  ... and keeps its content clear of the gesture bar",
+    /pb-\[calc\([^\]]*env\(safe-area-inset-bottom\)\)\]/.test(composerOpen),
+    true
+  );
+
+  /*
    * The gesture area is not something a spacer can reserve (round 19).
    *
    * The nav measures exactly 57px on the owner's device — the 1px border plus
