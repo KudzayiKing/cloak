@@ -1,14 +1,12 @@
 /*
  * Guards the brand icon geometry and the light theme.
  *
- * Icons: the Cloak artwork (723x806) is asymmetric — the thick arc of the C
- * sits to the upper-left, and the speech-bubble notch extends the silhouette
- * down-left. Bbox-centring the PNG inside the 943x943 viewBox (x=110, y=68.5)
- * leaves the mark visibly 42.5px to the upper-left on the home screen. The
- * <use> offset therefore has to put the visual centroid on the canvas
- * centre: x=147, y=76. These checks parse the SVG geometry rather than
- * trusting a diff, and they pin the canvas dimensions the owner asked NOT
- * to change.
+ * Icons: the Cloak artwork is used at very small sizes in prompt tiles and as
+ * the installed PWA icon. The readable invariant is geometric centering: the
+ * artwork's visible bounds should sit in the middle of its square container.
+ * These checks parse the SVG geometry and raster PNG bounds rather than
+ * trusting a diff, and they pin the canvas dimensions the owner asked NOT to
+ * change.
  *
  * Theme: the light palette is the owner's, supplied verbatim. The valuable
  * invariant is completeness — every token the dark theme defines must also be
@@ -19,7 +17,11 @@
  */
 
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
+
+const require = createRequire(import.meta.url);
+const { PNG } = require("pngjs");
 
 type Check = { label: string; pass: boolean; detail?: string };
 const checks: Check[] = [];
@@ -68,23 +70,18 @@ function iconGeometry(svg: string) {
   };
 }
 
-/**
- * Visual-centre offset for the artwork. The C mark is asymmetric (the
- * "thick" part of the C sits to the upper-left, and the speech-bubble notch
- * extends the silhouette down-left), so its centroid is offset from the
- * artwork's bbox centre by about (-36.9, -7.3) px. To make the mark LOOK
- * centred on the home screen, the <use> offset has to compensate.
- *
- * This number is computed from the embedded PNG once (see note above the
- * 1. geometry block) and pinned here so the SVG can't drift back to
- * bbox-centred, which leaves the mark visibly upper-left in the dock.
- */
-const VISUAL_CENTRE_OFFSET = { x: 147, y: 76 };
+const GEOMETRIC_CENTRE_OFFSET = { x: 110, y: 68.5 };
 
 const iconFiles = [
   "public/icons/icon.svg",
   "public/cloak-logo.svg",
-  "upload/cloak_logo.svg",
+];
+
+const pngIconFiles: Array<[string, number]> = [
+  ["public/icons/icon-192.png", 192],
+  ["public/icons/icon-512.png", 512],
+  ["public/icons/icon-maskable-512.png", 512],
+  ["public/icons/apple-touch-icon.png", 180],
 ];
 
 for (const file of iconFiles) {
@@ -100,19 +97,14 @@ for (const file of iconFiles) {
 
   check(`${file}: canvas is still 943x943`, `${g.vbW}x${g.vbH}`, "943x943");
   check(`${file}: artwork is still 723x806`, `${g.imgW}x${g.imgH}`, "723x806");
-  /* The artwork is asymmetric (a C with the bubble notch down-left), so the
-     <use> offset has to put the VISUAL centre — the white-pixel centroid —
-     on the SVG centre, not the bbox centre. The pinned value was derived
-     from the embedded PNG once and is stable across regenerations of the
-     raster artwork. */
   check(
-    `${file}: use offset pins the visual centre`,
+    `${file}: use offset pins the geometric centre`,
     `${g.x},${g.y}`,
-    `${VISUAL_CENTRE_OFFSET.x},${VISUAL_CENTRE_OFFSET.y}`
+    `${GEOMETRIC_CENTRE_OFFSET.x},${GEOMETRIC_CENTRE_OFFSET.y}`
   );
 }
 
-/* The three copies must agree, or the app logo and the home-screen icon drift. */
+/* The tracked SVG copies must agree, or the app logo and the manifest icon drift. */
 {
   const geometries = iconFiles
     .map((f) => {
@@ -143,17 +135,65 @@ for (const file of iconFiles) {
 
 /* Canvas sizes the owner asked not to change (read straight from IHDR). */
 {
-  const expected: Array<[string, number]> = [
-    ["public/icons/icon-192.png", 192],
-    ["public/icons/icon-512.png", 512],
-    ["public/icons/icon-maskable-512.png", 512],
-    ["public/icons/apple-touch-icon.png", 180],
-  ];
-  for (const [file, size] of expected) {
+  for (const [file, size] of pngIconFiles) {
     const buf = readFileSync(join(root, file));
     const w = buf.readUInt32BE(16);
     const h = buf.readUInt32BE(20);
     check(`${file} is still ${size}x${size}`, `${w}x${h}`, `${size}x${size}`);
+  }
+}
+
+function visiblePngBounds(file: string) {
+  const png = PNG.sync.read(readFileSync(join(root, file)));
+  const bg = [png.data[0], png.data[1], png.data[2], png.data[3]];
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < png.height; y += 1) {
+    for (let x = 0; x < png.width; x += 1) {
+      const i = (png.width * y + x) * 4;
+      const r = png.data[i];
+      const g = png.data[i + 1];
+      const b = png.data[i + 2];
+      const a = png.data[i + 3];
+      const differsFromBg =
+        Math.abs(r - bg[0]) +
+          Math.abs(g - bg[1]) +
+          Math.abs(b - bg[2]) +
+          Math.abs(a - bg[3]) >
+        24;
+      const visible = bg[3] < 250 ? a > 0 : differsFromBg;
+      if (!visible) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+
+  return {
+    centerX: (minX + maxX) / 2,
+    centerY: (minY + maxY) / 2,
+    canvasX: (png.width - 1) / 2,
+    canvasY: (png.height - 1) / 2,
+  };
+}
+
+{
+  for (const [file] of pngIconFiles) {
+    const bounds = visiblePngBounds(file);
+    check(
+      `${file} visible glyph is horizontally centered`,
+      Math.abs(bounds.centerX - bounds.canvasX) <= 0.5,
+      true
+    );
+    check(
+      `${file} visible glyph is vertically centered`,
+      Math.abs(bounds.centerY - bounds.canvasY) <= 0.5,
+      true
+    );
   }
 }
 
