@@ -132,7 +132,7 @@ export function SplashScreen() {
     >
       <div className="flex w-full flex-col items-center text-center">
         <span className="cloak-message-in grid h-24 w-24 place-items-center">
-          <CloakLogoImage size={96} className="block -translate-x-1" />
+          <CloakLogoImage size={96} className="block" />
         </span>
         <span className="cloak-wordmark cloak-message-in mt-5 block leading-none text-3xl text-cloak-text">
           <CipherWordmark text={WORDMARK} />

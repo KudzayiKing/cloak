@@ -225,8 +225,20 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
     read("src/components/cloak/pwa/pwa-prompt-logo-badge.tsx")
   );
   check("the prompt logo badge renders the Cloak logo", /CloakLogoImage/.test(logoBadge), true);
-  check("  ... larger than the tile stage for tight centering", /size=\{34\}/.test(logoBadge), true);
-  check("  ... inside a clipped centered stage", /h-8 w-8[\s\S]{0,80}overflow-hidden/.test(logoBadge), true);
+  /* The mark is centred inside the artwork itself, so the badge just centres a
+     plain square image. It used to over-size the image past a clipped 32px
+     stage to fake the centring; that hack is what made the C sit off-centre,
+     and the geometry is now guarded in verify-theme-and-icons.mts. */
+  check(
+    "  ... as a plain square image in a 40px tile",
+    /grid h-10 w-10[\s\S]{0,120}CloakLogoImage/.test(logoBadge),
+    true
+  );
+  check(
+    "  ... with no oversized-image or clipping hack",
+    /overflow-hidden|h-\[34px\]|size=\{34\}/.test(logoBadge),
+    false
+  );
 
   const layout = stripComments(read("src/app/layout.tsx"));
   check("automatic Cloak Dagger AI install is mounted", /<AutoModelInstall \/>/.test(layout), true);

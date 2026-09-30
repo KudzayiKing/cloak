@@ -23,6 +23,10 @@ node_modules
 !/scripts/verify-reaction-sizing.mts
 !/scripts/verify-pwa-update.mts
 !/scripts/verify-theme-and-icons.mts
+# The icon generator is the source of truth for the committed brand assets in
+# public/icons/, and verify-theme-and-icons.mts asserts on it — so it is source,
+# not scratch.
+!/scripts/generate-icons-from-logo.py
 
 # next.js
 /.next/

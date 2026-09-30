@@ -2,11 +2,11 @@
  * Guards the brand icon geometry and the light theme.
  *
  * Icons: the Cloak artwork is used at very small sizes in prompt tiles and as
- * the installed PWA icon. The readable invariant is geometric centering: the
- * artwork's visible bounds should sit in the middle of its square container.
- * These checks parse the SVG geometry and raster PNG bounds rather than
- * trusting a diff, and they pin the canvas dimensions the owner asked NOT to
- * change.
+ * the installed PWA icon. The readable invariant is geometric centring of the
+ * MARK — the artwork's own circle — which is not the same thing as centring its
+ * bounding box, because a C's box is lopsided by design. These checks parse the
+ * SVG geometry and measure the raster rather than trusting a diff, and they pin
+ * the canvas dimensions the owner asked NOT to change.
  *
  * Theme: the light palette is the owner's, supplied verbatim. The valuable
  * invariant is completeness — every token the dark theme defines must also be
@@ -31,6 +31,17 @@ function check(label: string, actual: unknown, expected: unknown) {
     label,
     pass: actual === expected,
     detail: `got ${String(actual)}, want ${String(expected)}`,
+  });
+}
+
+/* Centring is a measurement, so it needs a tolerance — but a tight one. The
+   bug this guards against displaced the mark by 4.35% of the artwork (41px on
+   the 943 canvas, ~7px on a 192 icon), orders of magnitude above this. */
+function checkClose(label: string, actual: number, expected: number, tol: number) {
+  checks.push({
+    label,
+    pass: Number.isFinite(actual) && Math.abs(actual - expected) <= tol,
+    detail: `got ${actual.toFixed(2)}, want ${expected.toFixed(2)} ±${tol}`,
   });
 }
 
@@ -70,7 +81,132 @@ function iconGeometry(svg: string) {
   };
 }
 
-const GEOMETRIC_CENTRE_OFFSET = { x: 110, y: 68.5 };
+/*
+ * The <use> offset that puts the MARK — not the image rectangle — at the centre
+ * of the canvas.
+ *
+ * The mark is a ring whose opening faces right, so its alpha bounding box is
+ * NOT symmetric: the left edge is the ring, but the right edge is the tip of an
+ * arm that stops well short of the ring's rightmost point. Centring that box
+ * reads as correct in the numbers and wrong on screen, which is precisely the
+ * "the C is not centred" bug: at the old x=110 the image rectangle was centred
+ * while the mark sat 41/943 (4.35%) to the right of it.
+ *
+ * The eye centres the mark's own circle, and that circle is tangent to the top,
+ * bottom and left of the artwork at x=402.5 / y=402.5 (radius 402.5). So the
+ * offset is 943/2 - 402.5 = 69 on both axes.
+ */
+const GEOMETRIC_CENTRE_OFFSET = { x: 69, y: 69 };
+
+type Point = [number, number];
+type Circle = { x: number; y: number; r: number };
+
+function circleFromTwo(a: Point, b: Point): Circle {
+  return {
+    x: (a[0] + b[0]) / 2,
+    y: (a[1] + b[1]) / 2,
+    r: Math.hypot(a[0] - b[0], a[1] - b[1]) / 2,
+  };
+}
+
+function circleFromThree(a: Point, b: Point, c: Point): Circle {
+  const d =
+    2 * (a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1]));
+  if (Math.abs(d) < 1e-12) {
+    /* Collinear: the widest of the three pairwise circles is the enclosing one. */
+    return [circleFromTwo(a, b), circleFromTwo(a, c), circleFromTwo(b, c)].reduce(
+      (best, cand) => (cand.r > best.r ? cand : best)
+    );
+  }
+  const sa = a[0] ** 2 + a[1] ** 2;
+  const sb = b[0] ** 2 + b[1] ** 2;
+  const sc = c[0] ** 2 + c[1] ** 2;
+  const ux = (sa * (b[1] - c[1]) + sb * (c[1] - a[1]) + sc * (a[1] - b[1])) / d;
+  const uy = (sa * (c[0] - b[0]) + sb * (a[0] - c[0]) + sc * (b[0] - a[0])) / d;
+  return { x: ux, y: uy, r: Math.hypot(a[0] - ux, a[1] - uy) };
+}
+
+/**
+ * Minimal enclosing circle (Welzl). For this artwork that circle IS the mark's
+ * outer ring, so its centre is the point the eye reads as "the middle of the C".
+ *
+ * The order is fixed by a small LCG rather than Math.random: Welzl needs a
+ * shuffled input for its expected linear bound, but a verifier has to give the
+ * same answer every run.
+ */
+function minimalEnclosingCircle(input: Point[]): Circle {
+  const pts = input.slice();
+  let seed = 0x2f6e2b1;
+  const rand = () => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  for (let i = pts.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rand() * (i + 1));
+    const t = pts[i];
+    pts[i] = pts[j];
+    pts[j] = t;
+  }
+
+  const inside = (c: Circle, p: Point) =>
+    Math.hypot(p[0] - c.x, p[1] - c.y) <= c.r + 1e-9;
+
+  const welzl = (count: number, boundary: Point[]): Circle => {
+    if (count === 0 || boundary.length === 3) {
+      if (boundary.length === 0) return { x: 0, y: 0, r: -1 };
+      if (boundary.length === 1) return { x: boundary[0][0], y: boundary[0][1], r: 0 };
+      if (boundary.length === 2) return circleFromTwo(boundary[0], boundary[1]);
+      return circleFromThree(boundary[0], boundary[1], boundary[2]);
+    }
+    const p = pts[count - 1];
+    const c = welzl(count - 1, boundary);
+    if (inside(c, p)) return c;
+    return welzl(count - 1, [...boundary, p]);
+  };
+
+  return welzl(pts.length, []);
+}
+
+/**
+ * The mark's visible ink, as boundary points only. The convex hull of a mask is
+ * the hull of its boundary, so this pins the mark's circle while keeping the
+ * point count in the thousands instead of the hundreds of thousands.
+ *
+ * `ox`/`oy` place the raster inside a larger canvas (the SVG's own frame).
+ */
+function inkBoundaryPoints(png: PNG, ox = 0, oy = 0): Point[] {
+  const bg = [png.data[0], png.data[1], png.data[2], png.data[3]];
+  const transparentBg = bg[3] < 250;
+  const visible = (x: number, y: number): boolean => {
+    if (x < 0 || y < 0 || x >= png.width || y >= png.height) return false;
+    const i = (png.width * y + x) * 4;
+    const a = png.data[i + 3];
+    if (transparentBg) return a > 128;
+    return (
+      Math.abs(png.data[i] - bg[0]) +
+        Math.abs(png.data[i + 1] - bg[1]) +
+        Math.abs(png.data[i + 2] - bg[2]) +
+        Math.abs(a - bg[3]) >
+      24
+    );
+  };
+
+  const pts: Point[] = [];
+  for (let y = 0; y < png.height; y += 1) {
+    for (let x = 0; x < png.width; x += 1) {
+      if (!visible(x, y)) continue;
+      if (
+        !visible(x - 1, y) ||
+        !visible(x + 1, y) ||
+        !visible(x, y - 1) ||
+        !visible(x, y + 1)
+      ) {
+        pts.push([x + ox, y + oy]);
+      }
+    }
+  }
+  return pts;
+}
 
 const iconFiles = [
   "public/icons/icon.svg",
@@ -83,6 +219,19 @@ const pngIconFiles: Array<[string, number]> = [
   ["public/icons/icon-maskable-512.png", 512],
   ["public/icons/apple-touch-icon.png", 180],
 ];
+
+/** The raster the SVG wraps, decoded straight out of the data: URI. */
+const pngCache = new Map<string, PNG>();
+function embeddedPng(svg: string): PNG {
+  const b64 = svg.match(/base64,([A-Za-z0-9+/=]+)/)?.[1];
+  if (!b64) throw new Error("no embedded base64 image");
+  let png = pngCache.get(b64);
+  if (!png) {
+    png = PNG.sync.read(Buffer.from(b64, "base64"));
+    pngCache.set(b64, png);
+  }
+  return png;
+}
 
 for (const file of iconFiles) {
   let svg: string;
@@ -102,6 +251,15 @@ for (const file of iconFiles) {
     `${g.x},${g.y}`,
     `${GEOMETRIC_CENTRE_OFFSET.x},${GEOMETRIC_CENTRE_OFFSET.y}`
   );
+
+  /* Pinning the offset is not enough on its own — it is only correct while the
+     artwork stays where we measured it. So place the raster at the offset and
+     require the mark's own circle to land on the canvas centre. */
+  const mark = minimalEnclosingCircle(
+    inkBoundaryPoints(embeddedPng(svg), g.x, g.y)
+  );
+  checkClose(`${file}: mark circle is centred horizontally`, mark.x, g.vbW / 2, 0.5);
+  checkClose(`${file}: mark circle is centred vertically`, mark.y, g.vbH / 2, 0.5);
 }
 
 /* The tracked SVG copies must agree, or the app logo and the manifest icon drift. */
@@ -122,15 +280,36 @@ for (const file of iconFiles) {
   }
 }
 
-/* The generator must keep centring: a future regeneration should not undo this. */
+/* The generator must keep centring the MARK: a future regeneration must not
+   quietly go back to centring the alpha bounding box. */
 {
-  const gen = read("scripts/generate-icons-from-logo.py");
-  check("the raster generator centres via paste_center", /def paste_center/.test(gen), true);
-  check(
-    "  ... and every raster goes through it",
-    (gen.match(/paste_center\(/g) ?? []).length >= 2,
-    true
-  );
+  let gen: string | null = null;
+  try {
+    gen = read("scripts/generate-icons-from-logo.py");
+  } catch {
+    /* Fall through to a FAIL rather than throwing: a missing generator means
+       the committed icons have no reproducible source, which is a real defect,
+       but it should read as a failed check and not a stack trace. */
+  }
+  check("the icon generator is present and tracked", gen !== null, true);
+  if (gen) {
+    check("the raster generator measures the mark's own circle", /def mark_circle/.test(gen), true);
+    check(
+      "  ... and every raster goes through paste_center",
+      (gen.match(/paste_center\(/g) ?? []).length >= 2,
+      true
+    );
+    check(
+      "  ... and it refuses to write icons when the mark is off-centre",
+      /refusing to write icons/.test(gen),
+      true
+    );
+    check(
+      "  ... and it reads the offset from the SVG rather than assuming one",
+      /<use\[\^>\]\*\\bx="/.test(gen),
+      true
+    );
+  }
 }
 
 /* Canvas sizes the owner asked not to change (read straight from IHDR). */
@@ -143,57 +322,21 @@ for (const file of iconFiles) {
   }
 }
 
-function visiblePngBounds(file: string) {
-  const png = PNG.sync.read(readFileSync(join(root, file)));
-  const bg = [png.data[0], png.data[1], png.data[2], png.data[3]];
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -1;
-  let maxY = -1;
-
-  for (let y = 0; y < png.height; y += 1) {
-    for (let x = 0; x < png.width; x += 1) {
-      const i = (png.width * y + x) * 4;
-      const r = png.data[i];
-      const g = png.data[i + 1];
-      const b = png.data[i + 2];
-      const a = png.data[i + 3];
-      const differsFromBg =
-        Math.abs(r - bg[0]) +
-          Math.abs(g - bg[1]) +
-          Math.abs(b - bg[2]) +
-          Math.abs(a - bg[3]) >
-        24;
-      const visible = bg[3] < 250 ? a > 0 : differsFromBg;
-      if (!visible) continue;
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x);
-      maxY = Math.max(maxY, y);
-    }
-  }
-
-  return {
-    centerX: (minX + maxX) / 2,
-    centerY: (minY + maxY) / 2,
-    canvasX: (png.width - 1) / 2,
-    canvasY: (png.height - 1) / 2,
-  };
-}
-
+/*
+ * The installed icon is the one the user actually stares at on the home screen,
+ * so the same invariant is measured on the raster the generator wrote.
+ *
+ * This used to compare the visible bounding box against the canvas centre. That
+ * check passed on every broken icon ever shipped here, because the box of a C
+ * is the full frame whether or not the mark inside it is off-centre — a check
+ * that cannot fail is worse than no check.
+ */
 {
-  for (const [file] of pngIconFiles) {
-    const bounds = visiblePngBounds(file);
-    check(
-      `${file} visible glyph is horizontally centered`,
-      Math.abs(bounds.centerX - bounds.canvasX) <= 0.5,
-      true
-    );
-    check(
-      `${file} visible glyph is vertically centered`,
-      Math.abs(bounds.centerY - bounds.canvasY) <= 0.5,
-      true
-    );
+  for (const [file, size] of pngIconFiles) {
+    const png = PNG.sync.read(readFileSync(join(root, file)));
+    const mark = minimalEnclosingCircle(inkBoundaryPoints(png));
+    checkClose(`${file}: mark circle is centred horizontally`, mark.x, (size - 1) / 2, 0.5);
+    checkClose(`${file}: mark circle is centred vertically`, mark.y, (size - 1) / 2, 0.5);
   }
 }
 
@@ -275,6 +418,23 @@ check(
     /cloak-logo-mark/.test(signIn),
     true
   );
+
+  /* Centring must live in the asset, never in a nudge. A translate here, or a
+     clipped oversized image there, means someone is compensating for an
+     off-centre asset again instead of fixing the asset — which is exactly how
+     the prompt badge ended up "centred" and visibly not. */
+  const badge = stripComments(
+    read("src/components/cloak/pwa/pwa-prompt-logo-badge.tsx")
+  );
+  check("the prompt badge renders the shared logo image", /CloakLogoImage/.test(badge), true);
+  check(
+    "  ... and does not fake centring with a clipped oversized image",
+    /overflow-hidden/.test(badge),
+    false
+  );
+
+  const splash = stripComments(read("src/components/cloak/brand/splash-screen.tsx"));
+  check("the splash logo needs no translate nudge", /translate-x/.test(splash), false);
 
   const cta = css.match(/\.light\s+\.cloak-cta-gold\s*\{([^}]*)\}/)?.[1] ?? "";
   check("the gold CTA has a light-mode ramp", /#b99343/.test(cta), true);

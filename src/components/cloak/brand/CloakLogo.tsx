@@ -11,7 +11,12 @@ import { BRAND } from "@/lib/cloak/config";
  * PWA icon. CloakMark remains exported for gold AI accents only.
  */
 
-export const CLOAK_LOGO_SRC = "/cloak-logo.svg?v=centered-20260930";
+/*
+ * The cache-buster must change whenever the SVG's bytes change: the artwork is
+ * a raster wrapped in an <svg>, so a stale copy is served silently and the mark
+ * renders off-centre with no error anywhere.
+ */
+export const CLOAK_LOGO_SRC = "/cloak-logo.svg?v=mark-centred-20260930";
 
 export function CloakMark({ size = 22, className }: { size?: number; className?: string }) {
   return (
