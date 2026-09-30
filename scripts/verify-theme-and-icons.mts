@@ -683,12 +683,12 @@ check(
    * Safe areas are painted by the chrome they belong to, not by a strip of
    * their own.
    *
-   * The status bar is the header's glass and the gesture bar is the nav's, so
-   * each inset spacer has to live INSIDE its panel. A spacer that carries its
-   * own background is the bug this guards: a separate solid strip painted
-   * --cloak-bg under a nav that composites to ~#0f0f10 (and over a header that
-   * is translucent), leaving a visible seam at the bottom and a status bar that
-   * did not match the header at all.
+   * The status bar is the header's glass, so its inset spacer has to live
+   * INSIDE the header panel. A spacer that carries its own background is the
+   * bug this guards: a separate solid strip painted --cloak-bg under a header
+   * that is translucent leaves a visible seam at the top.
+   *
+   * The bottom is a different shape (round 19) — see the bleed checks below.
    */
   /* A safe-area spacer must be painted BY its chrome, never by a background of
      its own. "Spacer appears somewhere after the panel" is not enough — the old
@@ -709,7 +709,6 @@ check(
   };
 
   const statusSpacers = spacerClasses("h-[env(safe-area-inset-top)]");
-  const gestureSpacers = spacerClasses("h-[env(safe-area-inset-bottom)]");
   const headerBlock = elementBlock(/<header\b/, "</header>");
 
   /* The mobile nav is identified by its aria-label, not by tag order: the
@@ -733,17 +732,6 @@ check(
 
   const navGlass = navBlock.match(/className="([^"]*backdrop-blur-xl[^"]*)"/)?.[1] ?? "";
   check("the mobile nav tab row is a glass panel", /bg-cloak-bg-elevated/.test(navGlass), true);
-  check(
-    "  ... and the gesture-bar inset sits inside that same panel",
-    navBlock.includes("h-[env(safe-area-inset-bottom)]") &&
-      navBlock.indexOf("backdrop-blur-xl") < navBlock.indexOf("h-[env(safe-area-inset-bottom)]"),
-    true
-  );
-  check(
-    "  ... and the gesture-bar inset paints no background of its own",
-    gestureSpacers.length > 0 && gestureSpacers.every((c) => !/\bbg-/.test(c)),
-    true
-  );
 
   /*
    * The bottom bar's opaque backing decides its colour. The panel is
@@ -757,6 +745,42 @@ check(
   check(
     "the bottom bar's opaque backing is the header's surface",
     /bg-cloak-bg-elevated/.test(navOpen) && !/(^|\s)bg-cloak-bg(\s|$)/.test(navOpen),
+    true
+  );
+
+  /*
+   * The gesture area is not something a spacer can reserve (round 19).
+   *
+   * The nav measures exactly 57px on the owner's device — the 1px border plus
+   * the 56px tab row — so env(safe-area-inset-bottom) is 0 there and the 24dp
+   * strip below the bar is Android's own gesture navigation bar, sitting
+   * outside the viewport. A spacer would be 0-height and could never have
+   * helped. The fix is Chrome's documented bleed: grow the bar by the MAXIMUM
+   * inset upfront and pull it back down by the live one, so the bar's surface
+   * reaches into that strip. The two cancel exactly, so the bar's content never
+   * moves — which is also why no page's clearance had to change.
+   */
+  check(
+    "the bottom bar bleeds into the gesture area (Chrome's documented pattern)",
+    /bottom:\s*calc\(env\(safe-area-inset-bottom,\s*0px\)\s*-\s*var\(--cloak-gesture-max\)\)/.test(
+      css
+    ),
+    true
+  );
+  check(
+    "  ... grown upfront by the MAXIMUM inset, not the live one",
+    /\.cloak-bottom-nav\s*\{[^}]*padding-bottom:\s*var\(--cloak-gesture-max\)/.test(css),
+    true
+  );
+  check(
+    "  ... which is safe-area-max-inset-bottom, with the documented 36px fallback",
+    /--cloak-gesture-max:\s*env\(safe-area-max-inset-bottom,\s*36px\)/.test(css),
+    true
+  );
+  check("  ... and the nav actually wears it", /\bcloak-bottom-nav\b/.test(navOpen), true);
+  check(
+    "  ... with no fixed inset spacer left to double-count the inset",
+    !navBlock.includes("h-[env(safe-area-inset-bottom)]"),
     true
   );
 

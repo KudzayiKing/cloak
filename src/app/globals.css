@@ -394,6 +394,54 @@
    * 3.5rem, so nothing moves.
    */
   --cloak-top-chrome-h: calc(3.5rem + env(safe-area-inset-top));
+
+  /*
+   * Mobile bottom chrome — the gesture-area bleed (round 19).
+   *
+   * The nav is anchored to the bottom of the viewport, but on an edge-to-edge
+   * device the bottom of the viewport is covered by Android's gesture
+   * navigation bar, so a plain `bottom: 0` leaves the bar's surface ending
+   * ABOVE that strip with the platform's own colour showing below it. That is
+   * the owner's report: "the bottom nav is #111113, the gesture bar is
+   * #131313" — measured at 24dp, with Android's own 108x4dp pill inside it.
+   *
+   * Chrome documents the remedy for exactly this shape
+   * (developer.chrome.com/docs/css-ui/edge-to-edge): grow the bar UPFRONT by
+   * the MAXIMUM bottom inset, then pull it back down by the live one —
+   *
+   *     bottom: calc(env(safe-area-inset-bottom) - <max inset>);
+   *     padding-bottom: <max inset>;
+   *
+   * The two cancel exactly, so the bar's CONTENT never moves: its top edge
+   * stays (live inset + 57px) above the viewport bottom in every
+   * configuration. That is why the pages' existing
+   * `pb-[calc(56px+env(safe-area-inset-bottom))]` clearance is still correct
+   * and none of them change. Only the background's EXTENT changes — it now
+   * reaches <max inset> below the viewport bottom, so the bar's own surface
+   * owns the gesture area instead of a separate strip.
+   *
+   * Chrome has a fast path for this exact calc() shape, which is why the live
+   * inset must stay inside a calc() and must never become a padding value
+   * (padding on the live inset is explicitly discouraged — it re-lays-out the
+   * bar every time the chin moves).
+   *
+   * 36px is the fallback Chrome's guide uses, for browsers without
+   * safe-area-max-inset-bottom (Safari on iOS in single-tab mode, where the
+   * live inset is 34px). Where the live inset is 0 — a plain browser tab, or
+   * any device Chrome is not running edge-to-edge on — the whole padding hangs
+   * below the viewport bottom and is simply clipped, so nothing moves there.
+   */
+  --cloak-gesture-max: env(safe-area-max-inset-bottom, 36px);
+}
+
+/*
+ * The mobile bottom nav's anchor. `bottom` lives here rather than in Tailwind's
+ * `bottom-0` because the bleed has to win, and the two are both single-class
+ * selectors — source order would decide it.
+ */
+.cloak-bottom-nav {
+  bottom: calc(env(safe-area-inset-bottom, 0px) - var(--cloak-gesture-max));
+  padding-bottom: var(--cloak-gesture-max);
 }
 .cloak-update-prompt,
 .cloak-install-prompt {

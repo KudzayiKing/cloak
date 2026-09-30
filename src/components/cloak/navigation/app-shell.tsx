@@ -428,11 +428,17 @@ export function AppShell({
           (owner de-clutter round): Chats / Circles / Contacts / Settings.
           Hidden while inside a conversation.
 
-          The gesture-bar inset is INSIDE the glass panel, below the tab row
-          (round 16), so the bar is the nav's colour by construction — the same
-          shape the header uses for the status bar. Zero-height when the device
-          reports no inset (plain browser tabs, and any device Chrome is not
-          running edge-to-edge on) — no visual change there.
+          The gesture area is NOT reserved with a spacer of its own (round 19).
+          On the owner's device the nav measures exactly 57px — the 1px border
+          plus the 56px tab row — which proves env(safe-area-inset-bottom) is 0:
+          the strip below the bar is Android's own gesture navigation bar (24dp,
+          with Android's 108x4dp pill inside it), sitting OUTSIDE the viewport,
+          so nothing in the document can paint it. A spacer would therefore be
+          0-height anyway. Instead the bar BLEEDS into that area with Chrome's
+          documented pattern (.cloak-bottom-nav): the bar is grown by the
+          MAXIMUM inset upfront and pulled back down by the live one, so its
+          surface reaches past the viewport bottom wherever the browser honours
+          it, while its content stays exactly where it was.
 
           The opaque backing is --cloak-bg-ELEVATED, not --cloak-bg (round 17).
           It was the last thing keeping the two chromes apart: the panel's
@@ -440,11 +446,14 @@ export function AppShell({
           backing resolved to #0f0f11 while the header — which has no backing and
           sits over the page — resolved to #111113. Backing it with the elevated
           surface makes the bottom bar the header's colour exactly, and keeps it
-          deterministic instead of drifting with whatever scrolls underneath. */}
+          deterministic instead of drifting with whatever scrolls underneath.
+          The bleed is painted by that same opaque backing (the glass panel is a
+          child of it and does not reach the padding), so the tab row and the
+          strip below it are one colour by construction. */}
       {mobileChrome && (
         <nav
           aria-label="Primary"
-          className="fixed inset-x-0 bottom-0 z-40 bg-cloak-bg-elevated md:hidden"
+          className="cloak-bottom-nav fixed inset-x-0 z-40 bg-cloak-bg-elevated md:hidden"
         >
           <div className="border-t border-cloak-border bg-cloak-bg-elevated backdrop-blur-xl supports-[backdrop-filter]:bg-cloak-bg-elevated/70">
             <div className="grid grid-cols-4">
@@ -456,7 +465,6 @@ export function AppShell({
                 />
               ))}
             </div>
-            <div aria-hidden className="h-[env(safe-area-inset-bottom)]" />
           </div>
         </nav>
       )}
