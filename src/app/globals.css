@@ -371,7 +371,7 @@
 }
 
 /*
- * Bottom-docked update prompt (PwaUpdatePrompt). --cloak-bottom-nav-h is
+ * Bottom-docked PWA prompts (update + mobile install). --cloak-bottom-nav-h is
  * published by AppShell: the mobile bottom nav's height, or 0px inside a
  * conversation where the nav is hidden. Desktop has no bottom nav at all, so
  * the media query replaces the whole calculation with a plain margin.
@@ -379,11 +379,13 @@
 :root {
   --cloak-bottom-nav-h: 0px;
 }
-.cloak-update-prompt {
+.cloak-update-prompt,
+.cloak-install-prompt {
   bottom: calc(var(--cloak-bottom-nav-h) + env(safe-area-inset-bottom) + 12px);
 }
 @media (min-width: 768px) {
-  .cloak-update-prompt {
+  .cloak-update-prompt,
+  .cloak-install-prompt {
     bottom: 24px;
   }
 }

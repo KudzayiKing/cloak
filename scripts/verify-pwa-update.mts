@@ -212,6 +212,16 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
   const cloakRoot = stripComments(read("src/components/cloak/router/cloak-root.tsx"));
   check("the prompt is mounted in the app root", /<PwaUpdatePrompt \/>/.test(cloakRoot), true);
 
+  const installPrompt = stripComments(
+    read("src/components/cloak/pwa/pwa-install-prompt.tsx")
+  );
+  check("the install prompt renders the Cloak logo", /CloakLogoImage/.test(installPrompt), true);
+  check("the install prompt uses the PWA install hook", /usePWAInstall/.test(installPrompt), true);
+  check("the install prompt is mobile-only", /md:hidden/.test(installPrompt), true);
+  check("the install prompt hides when already installed", /installed[\s\S]{0,120}return null/.test(installPrompt), true);
+  check("the install prompt docks via the shared class", /cloak-install-prompt/.test(installPrompt), true);
+  check("the install prompt is mounted in the app root", /<PwaInstallPrompt \/>/.test(cloakRoot), true);
+
   const layout = stripComments(read("src/app/layout.tsx"));
   check("automatic Cloak Dagger AI install is mounted", /<AutoModelInstall \/>/.test(layout), true);
 
@@ -246,7 +256,8 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
 
 {
   const css = stripComments(read("src/app/globals.css"));
-  check("the docking rule exists", /\.cloak-update-prompt\s*\{/.test(css), true);
+  check("the docking rule exists", /\.cloak-update-prompt/.test(css), true);
+  check("the install prompt uses the docking rule", /\.cloak-install-prompt/.test(css), true);
   check(
     "  ... it clears the mobile bottom nav",
     /--cloak-bottom-nav-h/.test(css),
