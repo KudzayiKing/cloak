@@ -90,14 +90,6 @@ const MOBILE_NAV: NavItem[] = [
    that point, so it is not the only cue, just a different sense. */
 function MobileNavItem({ item, active }: { item: NavItem; active: boolean }) {
   const { iconRef, onPointerDown } = useIconPressAnimation(2000, item.path);
-  /* Re-keying the class re-triggers the CSS animation only when the tab
-     BECOMES active, so it plays on the way in and never on re-render. */
-  const [activeTick, setActiveTick] = useState(0);
-  useEffect(() => {
-    if (!active) return;
-    const id = window.setTimeout(() => setActiveTick((t) => t + 1), 0);
-    return () => window.clearTimeout(id);
-  }, [active]);
 
   return (
     <button
@@ -108,23 +100,22 @@ function MobileNavItem({ item, active }: { item: NavItem; active: boolean }) {
       }}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "relative flex h-[56px] flex-col items-center justify-center gap-1 py-2 text-[10px] transition-colors",
+        "flex h-[56px] flex-col items-center justify-center gap-1 py-2 text-[10px] transition-colors",
         active ? "text-cloak-gold" : "text-cloak-text-muted"
       )}
     >
-      {/* The active highlight sits behind the icon and label, so the icon can
-          pop without the surface scaling with it. DOM order, not a negative
-          z-index, puts it behind — see DesktopNavItem for why. */}
-      {active && (
-        <span
-          key={activeTick}
-          aria-hidden="true"
-          className="cloak-tab-indicator absolute inset-x-2 inset-y-1.5 rounded-lg bg-cloak-gold-soft"
-        />
-      )}
+      {/* No active pill on mobile. The selection is carried by the gold icon and
+          label alone (owner round 6): a filled surface behind a tab that already
+          has its own icon, its own label and a 2s press animation reads as a
+          button being held down, not a tab being selected — and it adds a third
+          block of gold to a bar that is mostly empty space. The desktop rail
+          keeps its indicator; it is a wide row where the fill aids scanning,
+          whereas here the four tabs are equal-width and the fill would instead
+          shift the visual centre of the bar. The icon still pops on
+          activation via cloak-tab-active, so the state change is not silent. */}
       <span
         key={active ? "on" : "off"}
-        className={cn("relative flex flex-col items-center", active && "cloak-tab-active")}
+        className={cn("flex flex-col items-center", active && "cloak-tab-active")}
       >
         <item.icon ref={iconRef} size={22} />
       </span>
