@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
+import { RateLimitBuckets } from "@/lib/cloak/rate-limit";
 import { appUrl, BRAND } from "@/lib/cloak/config";
 import { entitlementForUser, generateInviteTokenServer, grantMembership, hashInviteTokenServer } from "@/lib/cloak/server/membership-server";
 import type { SessionUser } from "@/lib/cloak/server/auth";
@@ -139,20 +140,27 @@ function firstHeaderValue(value: string | null): string | null {
   return first || null;
 }
 
-const inviteRateLimits = new Map<string, { count: number; resetAt: number }>();
+/*
+ * Invitation throttling.
+ *
+ * NOT redundant with `src/proxy.ts`: the middleware only inspects write
+ * methods, so the public token lookup (a GET) is covered here and nowhere
+ * else. The middleware's invites policy also does not match these paths —
+ * `/api/adviser-invitations/…` contains `-invitations`, not `/invitations`.
+ *
+ * The previous hand-rolled Map was never pruned: an entry survived until the
+ * same key happened to be checked again after expiry, so the map retained one
+ * row per distinct caller for the life of the process. `RateLimitBuckets`
+ * sweeps, and is shared with the login limiter so there is one implementation
+ * to reason about.
+ */
+const inviteRateLimits = new RateLimitBuckets();
+
+const INVITE_WINDOW_MS = 5 * 60_000;
+const INVITE_MAX_ATTEMPTS = 40;
 
 export function checkInviteRateLimit(key: string): { allowed: boolean; retryAfterSec: number } {
-  const now = Date.now();
-  const entry = inviteRateLimits.get(key);
-  if (!entry || entry.resetAt < now) {
-    inviteRateLimits.set(key, { count: 1, resetAt: now + 5 * 60_000 });
-    return { allowed: true, retryAfterSec: 0 };
-  }
-  entry.count += 1;
-  if (entry.count > 40) {
-    return { allowed: false, retryAfterSec: Math.ceil((entry.resetAt - now) / 1000) };
-  }
-  return { allowed: true, retryAfterSec: 0 };
+  return inviteRateLimits.take(key, INVITE_MAX_ATTEMPTS, INVITE_WINDOW_MS);
 }
 
 export async function lazyExpireAdviserInvitations(tx: Db = db): Promise<void> {

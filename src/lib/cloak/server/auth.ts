@@ -2,6 +2,8 @@ import { createHash, randomBytes, scrypt, timingSafeEqual, type ScryptOptions } 
 import { promisify } from "node:util";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
+import { RateLimitBuckets } from "@/lib/cloak/rate-limit";
+import { trustedClientIp } from "@/lib/cloak/trusted-ip";
 
 const scryptAsync = promisify(scrypt) as (
   password: string,
@@ -368,37 +370,58 @@ export function isSecureRequest(req: NextRequest): boolean {
   return req.nextUrl.protocol === "https:";
 }
 
-/* ---------- Login rate limiting (per IP, in-memory) ---------- */
+/* ---------- Login rate limiting ---------- */
 
 const LOGIN_WINDOW_MS = 5 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 10;
-const attempts = new Map<string, { count: number; resetAt: number }>();
+
+/* The handle window is deliberately longer than the IP window: the IP bucket
+   resets often and legitimately, while a burst against ONE handle is the
+   signature of credential stuffing rather than of a typo. */
+const HANDLE_WINDOW_MS = 15 * 60 * 1000;
+const HANDLE_MAX_ATTEMPTS = 10;
+
+/*
+ * Two independent throttles, because the IP one is weak on its own.
+ *
+ * A caller with a residential IPv6 allocation typically controls a whole /64 —
+ * 2^64 addresses — so rotating the source address costs nothing and requires no
+ * header forgery at all. Any per-IP limit is therefore defeatable by a patient
+ * attacker. The handle throttle keys on the thing actually under attack, and
+ * the attacker cannot rotate the victim's handle.
+ *
+ * The handle bucket is cleared on a successful login so ordinary use never
+ * accumulates against it. The trade-off, stated rather than hidden: a targeted
+ * attacker can keep a handle throttled by failing against it on purpose. For a
+ * private messenger that is a better failure mode than unlimited guessing, and
+ * the blast radius is one account for 15 minutes rather than the whole service.
+ */
+const loginAttemptsByIp = new RateLimitBuckets();
+const loginAttemptsByHandle = new RateLimitBuckets();
 
 export function checkLoginRateLimit(ip: string): { allowed: boolean; retryAfterSec: number } {
-  const now = Date.now();
-  const entry = attempts.get(ip);
-  if (!entry || entry.resetAt < now) {
-    attempts.set(ip, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
-    return { allowed: true, retryAfterSec: 0 };
-  }
-  entry.count += 1;
-  if (entry.count > LOGIN_MAX_ATTEMPTS) {
-    return {
-      allowed: false,
-      retryAfterSec: Math.ceil((entry.resetAt - now) / 1000),
-    };
-  }
-  return { allowed: true, retryAfterSec: 0 };
+  return loginAttemptsByIp.take(ip, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_MS);
 }
 
-export function clearLoginRateLimit(ip: string): void {
-  attempts.delete(ip);
+/** Per-handle throttle — see the comment above for why it is not optional. */
+export function checkLoginHandleRateLimit(handle: string): { allowed: boolean; retryAfterSec: number } {
+  return loginAttemptsByHandle.take(handle, HANDLE_MAX_ATTEMPTS, HANDLE_WINDOW_MS);
 }
 
+export function clearLoginRateLimit(ip: string, handle?: string): void {
+  loginAttemptsByIp.forget(ip);
+  if (handle) loginAttemptsByHandle.forget(handle);
+}
+
+/**
+ * The caller's address, as far as it can be trusted.
+ *
+ * Reads the RIGHTMOST `x-forwarded-for` hop rather than the leftmost, which was
+ * caller-controlled. See `src/lib/cloak/trusted-ip.ts` for the trust assumption
+ * and its limits.
+ */
 export function clientIp(req: NextRequest): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? "local";
+  return trustedClientIp(req.headers);
 }
 
 /* ---------- Dev account seeding (idempotent) ---------- */

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import {
   SESSION_COOKIE,
+  checkLoginHandleRateLimit,
   checkLoginRateLimit,
   clearLoginRateLimit,
   clientIp,
@@ -47,6 +48,19 @@ export async function POST(req: NextRequest) {
   const handle = parsedBody.handle.trim().replace(/^@+/, "").toLowerCase();
   const password = parsedBody.password;
 
+  /*
+   * The targeted throttle, applied once the handle is known. The IP check above
+   * runs first because it is the cheap, body-independent guard; this one is the
+   * one that cannot be evaded by rotating source addresses.
+   */
+  const handleLimit = checkLoginHandleRateLimit(handle);
+  if (!handleLimit.allowed) {
+    return NextResponse.json(
+      { ok: false, error: "rate_limited", retryAfterSec: handleLimit.retryAfterSec },
+      { status: 429, headers: { "Retry-After": String(handleLimit.retryAfterSec) } }
+    );
+  }
+
   await ensureDevAccounts();
 
   try {
@@ -55,7 +69,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "invalid_credentials" }, { status: 401 });
     }
 
-    clearLoginRateLimit(ip);
+    clearLoginRateLimit(ip, handle);
     const { token } = await createSession(
       user.id,
       parsedBody.deviceId,

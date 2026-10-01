@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { RateLimitBuckets } from "@/lib/cloak/rate-limit";
+import { trustedClientIp } from "@/lib/cloak/trusted-ip";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const CLEANUP_INTERVAL_MS = 60_000;
 
 type RatePolicy = {
   name: string;
@@ -9,13 +10,9 @@ type RatePolicy = {
   windowMs: number;
 };
 
-type RateBucket = {
-  count: number;
-  resetAt: number;
-};
-
-const rateBuckets = new Map<string, RateBucket>();
-let lastCleanupAt = 0;
+/* Shared with the route-level limiters so there is one bucket implementation
+   to reason about, and so the sweep lives in one place. */
+const rateBuckets = new RateLimitBuckets();
 
 const RATE_POLICIES: Array<{ test: RegExp; policy: RatePolicy }> = [
   { test: /^\/api\/auth\/(?:login|register)$/, policy: { name: "auth", max: 20, windowMs: 5 * 60_000 } },
@@ -93,24 +90,9 @@ async function checkWriteRateLimit(req: NextRequest): Promise<{ allowed: boolean
   const sharedLimit = await checkSharedWriteRateLimit(req);
   if (sharedLimit) return sharedLimit;
 
-  const now = Date.now();
-  cleanupExpiredBuckets(now);
-
   const policy = policyForPath(req.nextUrl.pathname);
   const key = `${policy.name}:${clientIp(req)}`;
-  const entry = rateBuckets.get(key);
-
-  if (!entry || entry.resetAt <= now) {
-    rateBuckets.set(key, { count: 1, resetAt: now + policy.windowMs });
-    return { allowed: true, retryAfterSec: 0 };
-  }
-
-  entry.count += 1;
-  if (entry.count > policy.max) {
-    return { allowed: false, retryAfterSec: Math.max(1, Math.ceil((entry.resetAt - now) / 1000)) };
-  }
-
-  return { allowed: true, retryAfterSec: 0 };
+  return rateBuckets.take(key, policy.max, policy.windowMs);
 }
 
 async function checkSharedWriteRateLimit(
@@ -154,23 +136,20 @@ function policyForPath(pathname: string): RatePolicy {
   return RATE_POLICIES.find(({ test }) => test.test(pathname))?.policy ?? DEFAULT_WRITE_POLICY;
 }
 
+/*
+ * The caller's address, as far as it can be trusted.
+ *
+ * Previously this read the LEFTMOST `x-forwarded-for` entry, which is whatever
+ * the caller sent — see `src/lib/cloak/trusted-ip.ts`. Note this is also the
+ * key for the shared Upstash limiter, so a spoofable key defeated that too.
+ */
 function clientIp(req: NextRequest): string {
-  return (
-    firstHeaderValue(req.headers.get("x-forwarded-for")) ??
-    req.headers.get("x-real-ip") ??
-    "local"
-  );
+  return trustedClientIp(req.headers);
 }
 
+/* Still used for the forwarded HOST and PROTO, which are single-valued in
+   practice and feed the write-origin allowlist rather than a rate-limit key. */
 function firstHeaderValue(value: string | null): string | null {
   const first = value?.split(",")[0]?.trim();
   return first || null;
-}
-
-function cleanupExpiredBuckets(now: number): void {
-  if (now - lastCleanupAt < CLEANUP_INTERVAL_MS) return;
-  lastCleanupAt = now;
-  for (const [key, bucket] of rateBuckets) {
-    if (bucket.resetAt <= now) rateBuckets.delete(key);
-  }
 }
