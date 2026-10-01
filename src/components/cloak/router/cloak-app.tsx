@@ -185,6 +185,7 @@ export function CloakApp({ route }: { route: RouteInfo }) {
           | "ai"
           | "storage"
           | "appearance"
+          | "admin"
         > = {
           membership: "membership",
           cloak: "cloak",
@@ -193,6 +194,9 @@ export function CloakApp({ route }: { route: RouteInfo }) {
           ai: "ai",
           storage: "storage",
           appearance: "appearance",
+          /* Reachable only for allowlisted accounts — the section itself
+             re-checks, and the API refuses regardless of the URL. */
+          admin: "admin",
         };
         const section = segments[2] ? sectionMap[segments[2]] : undefined;
         if (segments[2] && !section) {

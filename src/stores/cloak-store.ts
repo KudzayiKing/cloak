@@ -693,6 +693,14 @@ interface CloakState {
   membership: MembershipEntitlement;
   setMembershipEntitlement: (entitlement: MembershipEntitlement) => void;
 
+  /* Whether this account is on the admin allowlist (CLOAK_ADMIN_HANDLES /
+     _USER_IDS). Hydrated from /api/auth/* on every session and NEVER
+     persisted, so an allowlist change applies at the next hydration.
+     Display-only: it decides whether Settings offers the admin entry, and is
+     never consulted for access — every /api/admin/* route re-checks the same
+     predicate server-side (adviser invitation spec §4). */
+  isAdmin: boolean;
+
   /* Reserve guest passes (spec §7-§13) — server-backed registry, fetched
      per session for Reserve members. Never persisted. */
   guestPasses: ReserveGuestPass[];
@@ -818,16 +826,17 @@ export const useCloakStore = create<CloakState>()(
            restore — clear the flag, kill the stale cookie, and pick up a
            possibly-queued remote wipe before anything else renders. */
         if (await consumePendingRevocation()) {
-          set({ auth: { user: null, checked: true } });
+          set({ auth: { user: null, checked: true }, isAdmin: false });
           await checkPendingDaggerCommand().catch(() => undefined);
           return;
         }
         const res = await api<{
           user: AuthUser;
           membership: MembershipEntitlement | null;
+          isAdmin?: boolean;
         }>("/api/auth/me");
         if (res.ok) {
-          const { user, membership } = res.data;
+          const { user, membership, isAdmin } = res.data;
           /* E2EE: a refresh has no passphrase — the device-local identity
              is reused. When it is missing but a server backup exists (new
              browser with a live session), the UI offers a restore prompt. */
@@ -835,6 +844,7 @@ export const useCloakStore = create<CloakState>()(
           set((s) => ({
             auth: { user, checked: true },
             membership: membership ?? s.membership,
+            isAdmin: isAdmin === true,
             identityStatus,
           }));
           /* Dagger device registry: bind this install to the session and
@@ -864,7 +874,7 @@ export const useCloakStore = create<CloakState>()(
              signed-in account (only if push was already granted — never prompts). */
           void syncPushAfterAuth();
         } else {
-          set({ auth: { user: null, checked: true } });
+          set({ auth: { user: null, checked: true }, isAdmin: false });
           /* Signed out with a known device credential — this may be a
              Remote Dagger target reconnecting (codex §18). */
           await checkPendingDaggerCommand().catch(() => undefined);
@@ -875,6 +885,7 @@ export const useCloakStore = create<CloakState>()(
         const res = await api<{
           user: AuthUser;
           membership: MembershipEntitlement | null;
+          isAdmin?: boolean;
         }>("/api/auth/login", {
           method: "POST",
           body: JSON.stringify({
@@ -888,13 +899,14 @@ export const useCloakStore = create<CloakState>()(
         if (!res.ok) {
           return { ok: false as const, error: res.error ?? "server_error", status: res.status };
         }
-        const { user, membership } = res.data;
+        const { user, membership, isAdmin } = res.data;
         /* Open the gate the moment the session exists. Everything after this
            point is enrichment (E2EE keys, chat hydration, push) and must
            never be able to hold a signed-in user on the sign-in screen. */
         set((s) => ({
           auth: { user, checked: true },
           membership: membership ?? s.membership,
+          isAdmin: isAdmin === true,
         }));
         /* E2EE: sign-in has the passphrase — provision the identity on
            first use (uploads the public key + wrapped backup) or restore
@@ -931,6 +943,7 @@ export const useCloakStore = create<CloakState>()(
         const res = await api<{
           user: AuthUser;
           membership: MembershipEntitlement | null;
+          isAdmin?: boolean;
         }>("/api/auth/register", {
           method: "POST",
           body: JSON.stringify({
@@ -949,12 +962,13 @@ export const useCloakStore = create<CloakState>()(
         if (!res.ok) {
           return { ok: false as const, error: res.error ?? "server_error", status: res.status };
         }
-        const { user, membership } = res.data;
+        const { user, membership, isAdmin } = res.data;
         /* Same contract as signIn: the session opens the gate immediately,
            and identity provisioning is bounded enrichment. */
         set((s) => ({
           auth: { user, checked: true },
           membership: membership ?? s.membership,
+          isAdmin: isAdmin === true,
         }));
         /* Registration has the passphrase — provision the E2EE identity on
            first use (public key + wrapped backup upload). */
@@ -982,6 +996,7 @@ export const useCloakStore = create<CloakState>()(
         void api("/api/auth/logout", { method: "POST" });
         set({
           auth: { user: null, checked: true },
+          isAdmin: false,
           contacts: [],
           conversations: [],
           activeConversationId: null,
@@ -1699,6 +1714,11 @@ export const useCloakStore = create<CloakState>()(
       },
       setMembershipEntitlement: (entitlement) => set({ membership: entitlement }),
 
+      /* Starts false and is only ever set from a server response — an
+         unauthenticated or not-yet-hydrated session must not see the admin
+         entry. */
+      isAdmin: false,
+
       /* Reserve pass registry — the database owns statuses; the store is a
          fetch-and-display mirror (spec §7-§13, settlement spec §85). */
       guestPasses: [],
@@ -2210,6 +2230,7 @@ export const useCloakStore = create<CloakState>()(
            so nothing sensitive lingers behind the lock overlay (§6). */
         set({
           auth: { user: null, checked: true },
+          isAdmin: false,
           contacts: [],
           conversations: [],
           activeConversationId: null,

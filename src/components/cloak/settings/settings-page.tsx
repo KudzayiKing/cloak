@@ -66,7 +66,7 @@ import {
 import { LanguagesIcon } from "lucide-react";
 import { formatBytes } from "@/lib/cloak/utils";
 
-type SectionId = "account" | "membership" | "cloak" | "privacy" | "notifications" | "ai" | "storage" | "appearance";
+type SectionId = "account" | "membership" | "cloak" | "privacy" | "notifications" | "ai" | "storage" | "appearance" | "admin";
 
 const SECTIONS: { id: SectionId; label: string; path: string }[] = [
   { id: "account", label: "Account", path: "/app/settings" },
@@ -79,9 +79,21 @@ const SECTIONS: { id: SectionId; label: string; path: string }[] = [
   { id: "appearance", label: "Appearance", path: "/app/settings/appearance" },
 ];
 
+/* Appended only for allowlisted accounts. The nav is a convenience: the
+   admin page and every /api/admin/* route re-check the same predicate
+   server-side, so hiding this entry is not what keeps anyone out
+   (adviser invitation spec §4). */
+const ADMIN_SECTION: { id: SectionId; label: string; path: string } = {
+  id: "admin",
+  label: "Admin",
+  path: "/app/settings/admin",
+};
+
 export function SettingsPage({ section = "account" }: { section?: SectionId }) {
   const membership = useCloakStore((s) => s.membership);
   const guestPasses = useCloakStore((s) => s.guestPasses);
+  const isAdmin = useCloakStore((s) => s.isAdmin);
+  const sections = isAdmin ? [...SECTIONS, ADMIN_SECTION] : SECTIONS;
 
   return (
     <AppShell active="/app/settings">
@@ -92,7 +104,7 @@ export function SettingsPage({ section = "account" }: { section?: SectionId }) {
           <div className="grid gap-6 md:grid-cols-[190px_1fr]">
             {/* Section nav */}
             <nav aria-label="Settings sections" className="flex flex-row gap-1 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:flex-col">
-              {SECTIONS.map((s) => (
+              {sections.map((s) => (
                 <button
                   key={s.id}
                   onClick={() => navigate(s.path)}
@@ -121,6 +133,8 @@ export function SettingsPage({ section = "account" }: { section?: SectionId }) {
               {section === "ai" && <AISection />}
               {section === "storage" && <StorageSection />}
               {section === "appearance" && <AppearanceSection />}
+              {section === "admin" &&
+                (isAdmin ? <AdminSection /> : <AdminSectionUnavailable />)}
             </div>
           </div>
         </div>
@@ -884,6 +898,45 @@ function StorageRow({ label, note, value }: { label: string; note: string; value
       </div>
       <span className="font-mono text-[12px] text-cloak-text-secondary">{value}</span>
     </div>
+  );
+}
+
+/* Admin ------------------------------------------------------------------------ */
+
+/*
+ * The Founding Adviser dashboard is a standalone server-rendered page at
+ * /admin/invitations — outside the hash router, so it needs a real anchor
+ * rather than navigate(), which only writes location.hash.
+ *
+ * This section is a doorway, not a gate. It renders only for allowlisted
+ * accounts, but the page it links to and every /api/admin/* route re-check
+ * isAdminUser() server-side, so a non-admin who guesses the URL gets the
+ * "Admin access required" screen either way (spec §4).
+ */
+function AdminSection() {
+  return (
+    <Surface className="p-5">
+      <h2 className="mb-1 text-sm font-semibold text-cloak-text">Admin</h2>
+      <p className="mb-4 text-[12.5px] leading-relaxed text-cloak-text-muted">
+        Invite Founding Advisers. Each invitation is a single-use link granting complimentary{" "}
+        {BRAND.cloakPrivate} — it is shown once, when it is created, and only a hash is stored.
+      </p>
+      <Button asChild variant="outline">
+        <a href="/admin/invitations">Open adviser invitations</a>
+      </Button>
+    </Surface>
+  );
+}
+
+/** Shown when a non-admin opens /app/settings/admin directly. */
+function AdminSectionUnavailable() {
+  return (
+    <Surface className="p-5">
+      <h2 className="mb-1 text-sm font-semibold text-cloak-text">Not available</h2>
+      <p className="text-[12.5px] leading-relaxed text-cloak-text-muted">
+        This section is limited to accounts on the admin allowlist.
+      </p>
+    </Surface>
   );
 }
 

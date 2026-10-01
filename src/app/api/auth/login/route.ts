@@ -14,6 +14,7 @@ import {
   verifyPassword,
 } from "@/lib/cloak/server/auth";
 import { entitlementForUser } from "@/lib/cloak/server/membership-server";
+import { isAdminUser } from "@/lib/cloak/server/adviser-invitations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -91,6 +92,9 @@ export async function POST(req: NextRequest) {
         about: user.about,
       },
       membership: entitlementForUser(user),
+      /* Drives the Settings admin entry; recomputed per request, never
+         persisted, and never a substitute for the per-route check. */
+      isAdmin: isAdminUser(user),
     });
     res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(isSecureRequest(req)));
     return res;

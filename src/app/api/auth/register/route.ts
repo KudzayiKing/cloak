@@ -20,6 +20,7 @@ import {
 } from "@/lib/cloak/server/membership-server";
 import {
   getAdviserInvitationByToken,
+  isAdminUser,
   redeemAdviserInvitationInTransaction,
   invitationError,
 } from "@/lib/cloak/server/adviser-invitations";
@@ -248,7 +249,7 @@ export async function POST(req: NextRequest) {
       typeof body.deviceName === "string" && body.deviceName.trim() ? body.deviceName.trim().slice(0, 64) : undefined,
       typeof body.deviceToken === "string" && body.deviceToken.length >= 16 ? body.deviceToken.slice(0, 128) : undefined
     );
-    const res = NextResponse.json({ ok: true, user, membership });
+    const res = NextResponse.json({ ok: true, user, membership, isAdmin: isAdminUser(user) });
     res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(isSecureRequest(req)));
     return res;
   } catch (err) {
