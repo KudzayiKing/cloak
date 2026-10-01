@@ -45,6 +45,7 @@ import { NotificationsBell } from "@/components/cloak/notifications/notification
 import { MobileHeaderMenu } from "@/components/cloak/navigation/mobile-header-menu";
 import { useLongPress } from "@/hooks/use-long-press";
 import { hapticTap } from "@/lib/cloak/haptics";
+import { OnboardingFlow, OnboardingNudge } from "@/components/cloak/onboarding/onboarding-flow";
 
 type NavIcon = ForwardRefExoticComponent<
   { size?: number; className?: string } & RefAttributes<IconAnimationHandle>
@@ -502,6 +503,11 @@ export function AppShell({
         <main className="cloak-scroll min-h-0 flex-1 overflow-y-auto bg-cloak-bg md:overflow-hidden">
           {children}
         </main>
+
+        {/* New-user onboarding (guides every fresh account, including adviser
+            invite arrivals) + its post-completion re-surface nudge. */}
+        <OnboardingFlow />
+        <OnboardingNudge />
 
         {/* No in-flow spacer: page scroll containers extend to the bottom
             edge so content passes beneath the glass bottom nav — clearance

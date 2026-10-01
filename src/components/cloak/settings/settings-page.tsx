@@ -51,6 +51,7 @@ import { notificationForIncomingMessage } from "@/lib/cloak/notifications";
 import { WebPushCard } from "@/components/cloak/settings/web-push-card";
 import {
   ShieldCheckIcon,
+  SparklesIcon,
   ChevronRightIcon,
   MoonIcon,
   InfoIcon,
@@ -206,12 +207,31 @@ function AccountSection({
 }) {
   const user = useCloakStore((s) => s.auth.user);
   const signOut = useCloakStore((s) => s.signOut);
+  const onboarding = useCloakStore((s) => s.onboarding);
+  const reopenOnboarding = useCloakStore((s) => s.reopenOnboarding);
   const available = guestPasses.length
     ? guestPasses.filter((p: { id: string } & { status?: string }) => p.status === "available" || p.status === "expired" || p.status === "revoked_before_redemption").length
     : 0;
 
   return (
     <>
+      {!onboarding.completed && (
+        <button
+          onClick={() => reopenOnboarding()}
+          className="flex w-full items-center justify-between gap-3 rounded-lg border border-cloak-gold/30 bg-cloak-gold-soft/40 p-4 text-left transition-colors hover:bg-cloak-gold-soft/70"
+        >
+          <span className="flex items-center gap-2.5">
+            <SparklesIcon size={16} className="text-cloak-gold" />
+            <span>
+              <span className="block text-sm font-medium text-cloak-text">Finish setting up Cloak</span>
+              <span className="block text-xs text-cloak-text-secondary">
+                Notifications, a Cloak Mode passcode, and more.
+              </span>
+            </span>
+          </span>
+          <ChevronRightIcon size={16} className="shrink-0 text-cloak-text-muted" />
+        </button>
+      )}
       <Surface className="p-5">
         <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-cloak-text">
           <UserRoundCogIcon size={15} className="text-cloak-text-secondary" />

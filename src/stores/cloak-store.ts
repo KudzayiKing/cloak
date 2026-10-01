@@ -686,6 +686,15 @@ interface CloakState {
   openCloakGate: (purpose: CloakGateState["purpose"], onVerified?: (ok: boolean) => void) => void;
   closeCloakGate: (verified: boolean) => void;
 
+  /* New-user onboarding — UI-only preference, NEVER membership/identity.
+     Per-device (localStorage). Skippable, with re-surfacing guardrails. */
+  onboarding: OnboardingState;
+  completeOnboarding: () => void;
+  completeOnboardingStep: (step: OnboardingStepId) => void;
+  skipOnboardingStep: (step: OnboardingStepId) => void;
+  reopenOnboarding: () => void;
+  dismissOnboardingNudge: (step: OnboardingStepId) => void;
+
   /* Membership (server-authoritative: /api/auth, /api/payments/verify and
      /api/membership are the ONLY writers. The store is a display mirror —
      never persisted, never trusted for access decisions, settlement spec
@@ -813,6 +822,33 @@ export function nextLocalId(prefix: string): string {
 /* Verification callback for the Cloak Mode gate — module scope so it never
    enters persisted state. */
 let cloakGateCallback: ((verified: boolean) => void) | null = null;
+
+/* ---------- Onboarding (UI-only; per-device) ----------
+ * Step ids are stable so persisted progress survives refactors. `version` lets
+ * us force a re-show when a genuinely new required step is introduced. */
+export type OnboardingStepId =
+  | "welcome"
+  | "keys"
+  | "cloakMode"
+  | "notifications"
+  | "done";
+
+export interface OnboardingState {
+  completed: boolean;
+  stepsDone: OnboardingStepId[];
+  stepsSkipped: OnboardingStepId[];
+  dismissedNudges: OnboardingStepId[];
+  version: number;
+}
+
+export const ONBOARDING_VERSION = 1;
+
+/* Steps that carry an actual action (the ones we may re-surface later). */
+export const ONBOARDING_ACTION_STEPS: OnboardingStepId[] = [
+  "keys",
+  "cloakMode",
+  "notifications",
+];
 
 export const useCloakStore = create<CloakState>()(
   persist(
@@ -1687,11 +1723,59 @@ export const useCloakStore = create<CloakState>()(
         setForwardSecrecyWindow(window === "off" ? null : FS_WINDOW_MS[window] ?? null);
       },
 
+      onboarding: {
+        completed: false,
+        stepsDone: [],
+        stepsSkipped: [],
+        dismissedNudges: [],
+        version: ONBOARDING_VERSION,
+      },
       cloakGuard: { pinHash: null, credentialId: null },
       setCloakGuardPin: (pinHash) =>
         set((s) => ({ cloakGuard: { ...s.cloakGuard, pinHash } })),
       setCloakGuardBiometric: (credentialId) =>
         set((s) => ({ cloakGuard: { ...s.cloakGuard, credentialId } })),
+
+      /* ---------- Onboarding ---------- */
+      completeOnboarding: () =>
+        set((s) => ({ onboarding: { ...s.onboarding, completed: true } })),
+      completeOnboardingStep: (step) =>
+        set((s) => ({
+          onboarding: {
+            ...s.onboarding,
+            stepsDone: s.onboarding.stepsDone.includes(step)
+              ? s.onboarding.stepsDone
+              : [...s.onboarding.stepsDone, step],
+            stepsSkipped: s.onboarding.stepsSkipped.filter((x) => x !== step),
+          },
+        })),
+      skipOnboardingStep: (step) =>
+        set((s) => ({
+          onboarding: {
+            ...s.onboarding,
+            stepsSkipped: s.onboarding.stepsSkipped.includes(step)
+              ? s.onboarding.stepsSkipped
+              : [...s.onboarding.stepsSkipped, step],
+          },
+        })),
+      reopenOnboarding: () =>
+        set((s) => ({
+          onboarding: {
+            ...s.onboarding,
+            completed: false,
+            /* Drop "done" so the flow re-opens at the first un-finished step. */
+            stepsSkipped: s.onboarding.stepsSkipped.filter((x) => x !== "done"),
+          },
+        })),
+      dismissOnboardingNudge: (step) =>
+        set((s) => ({
+          onboarding: {
+            ...s.onboarding,
+            dismissedNudges: s.onboarding.dismissedNudges.includes(step)
+              ? s.onboarding.dismissedNudges
+              : [...s.onboarding.dismissedNudges, step],
+          },
+        })),
       cloakGate: { open: false, purpose: "cloak-off" },
       openCloakGate: (purpose, onVerified) => {
         cloakGateCallback = onVerified ?? null;
@@ -2347,6 +2431,8 @@ export const useCloakStore = create<CloakState>()(
         forwardSecrecy: s.forwardSecrecy,
         /* Protection stores only a PIN hash and a credential id. */
         cloakGuard: s.cloakGuard,
+        /* Onboarding is a UI preference (per-device); never membership/identity. */
+        onboarding: s.onboarding,
         privacy: s.privacy,
         ai: s.ai,
         notifications: s.notifications,
