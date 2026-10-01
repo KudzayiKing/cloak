@@ -14,7 +14,7 @@
  *   see tagFor/targetUrlFor below.
  */
 
-const VERSION = "cloak-shell-v36";
+const VERSION = "cloak-shell-v37";
 const SHELL_CACHE = `cloak-shell-${VERSION}`;
 const STATIC_CACHE = `cloak-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -195,7 +195,23 @@ self.addEventListener("push", (event) => {
   // blank second line.
   if (body) options.body = body;
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  /* A message push that lands while the app is open in the foreground is
+     surfaced in-app instead: that path can decrypt the message and honor the
+     user's "Name and message" / Cloak Mode settings, which the server —
+     being E2EE-blind — cannot. Showing the blind OS push on top of the rich
+     in-app one is redundant and misleading, so when a visible window exists
+     we skip the OS surface and let the app's own notification handle it.
+     Structural events have no in-app equivalent and always surface here. */
+  event.waitUntil(
+    (async () => {
+      if (isMessage) {
+        const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        const foreground = windows.some((c) => c.visibilityState === "visible");
+        if (foreground) return; // in-app notification will show it
+      }
+      await self.registration.showNotification(title, options);
+    })()
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {

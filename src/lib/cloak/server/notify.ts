@@ -94,6 +94,16 @@ export async function notifyMany(userIds: string[], input: Omit<NotifyInput, "us
  * who and what. (`conversationId` travels for the device-side collapse key
  * only — see sw.js tagFor.)
  *
+ * Delivery tick (round 23 / Phase E): a push that actually reaches a device
+ * IS delivery. sendPushToUser returns whether at least one of the
+ * recipient's subscriptions was dispatched, and when it did we advance the
+ * recipient's `lastDeliveredAt` here. Without this, a recipient who received
+ * the message only via push — app backgrounded, not polling — left the sender
+ * stuck on a single check mark forever, because the recipient's own polls are
+ * the only other thing that moves that marker, and a backgrounded app does not
+ * poll. When the app is genuinely closed (no subscription at all),
+ * sendPushToUser returns false and we correctly do NOT claim delivery.
+ *
  * Never throws: sendPushToUser already absorbs its own failures, and a push
  * must never break the send that triggered it.
  */
@@ -102,12 +112,20 @@ export async function notifyNewMessage(input: {
   conversationId: string;
 }): Promise<void> {
   try {
-    await sendPushToUser(input.userId, {
+    const pushed = await sendPushToUser(input.userId, {
       type: "message.new",
       title: "New message",
       body: "Open Cloak Dagger to read it",
       conversationId: input.conversationId,
     });
+    if (pushed) {
+      /* The push reached the device — record delivery so the sender's ticks
+         advance to two grey checks even though the recipient never polled. */
+      await db.participation.updateMany({
+        where: { conversationId: input.conversationId, userId: input.userId },
+        data: { lastDeliveredAt: new Date() },
+      });
+    }
   } catch {
     // Nothing to do — see the contract above.
   }

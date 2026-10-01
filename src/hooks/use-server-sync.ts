@@ -12,9 +12,56 @@
  * immediately, which drives the peer's read ticks.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MutableRefObject } from "react";
 import { useCloakStore } from "@/stores/cloak-store";
 import type { ServerConversation, ServerContact, ServerMessage } from "@/stores/cloak-store";
+import { toast } from "@/hooks/use-toast";
+import { notificationForIncomingMessage } from "@/lib/cloak/notifications";
+
+/**
+ * Surface a foreground in-app notification for genuinely new incoming
+ * messages, honoring the user's "Name and message" / Cloak Mode settings.
+ *
+ * This is the path that actually respects those settings: the OS push is
+ * E2EE-blind (the server never sees message content and cannot evaluate
+ * Cloak Mode), so the service worker suppresses it while the app is in the
+ * foreground and lets this in-app surface show the real preview. We only
+ * consider conversations that are NOT currently open (the open one is
+ * rendered inline and marked read by the sync loop), and we never re-toast a
+ * message whose id we have already seen.
+ */
+function surfaceIncomingToasts(
+  seenIds: MutableRefObject<Set<string>>,
+  seeded: MutableRefObject<boolean>
+) {
+  const state = useCloakStore.getState();
+  if (!state.auth.user) return;
+  const activeId = state.activeConversationId;
+  const previews = state.notifications.previews;
+  const cloakMode = state.cloakMode;
+  for (const conv of state.conversations) {
+    if (conv.id === activeId) continue; // visible inline; no toast
+    const msgs = conv.messages;
+    if (!msgs || msgs.length === 0) continue;
+    const newest = msgs[msgs.length - 1];
+    const aid = String(newest.authorId ?? "");
+    if (aid === "me" || aid === "system" || aid === "cloak") continue;
+    if (seeded.current) {
+      if (seenIds.current.has(newest.id)) continue;
+      seenIds.current.add(newest.id);
+      const note = notificationForIncomingMessage({
+        senderName: newest.authorName || "Someone",
+        body: newest.body || "",
+        cloakMode,
+        previews,
+      });
+      toast({ title: note.title, description: note.body, duration: 6000 });
+    } else {
+      seenIds.current.add(newest.id);
+    }
+  }
+  seeded.current = true;
+}
 
 const POLL_MS = 2500;
 const MAX_POLL_MS = 15000;
@@ -22,6 +69,12 @@ const MAX_POLL_MS = 15000;
 export function useServerSync(enabled: boolean) {
   const activeIdRef = useRef<string | null>(null);
   const lastIncomingRef = useRef<string | null>(null);
+  /** Ids of incoming messages we have already surfaced as a foreground
+   *  notification, so a steady-state poll never re-toasts the same message. */
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  /** Whether the backlog has been seeded — until the first list arrives we
+   *  must not toast the user's entire history on login. */
+  const seededRef = useRef(false);
 
   useEffect(() => {
     useCloakStore.subscribe((state) => {
@@ -80,6 +133,10 @@ export function useServerSync(enabled: boolean) {
           list.contacts as ServerContact[],
           list.conversations as ServerConversation[]
         );
+        /* In-app new-message notification (honors "Name and message" /
+           Cloak Mode). The OS push for this is suppressed by the service
+           worker while the app is foreground, so this is the only surface. */
+        surfaceIncomingToasts(seenIdsRef, seededRef);
       }
 
       const current = useCloakStore.getState();

@@ -68,15 +68,18 @@ interface SubscriptionRow {
   auth: string;
 }
 
-/** Fan a payload out to every device the user has subscribed. Never throws. */
-export async function sendPushToUser(userId: string, payload: PushPayload): Promise<void> {
+/** Fan a payload out to every device the user has subscribed. Never throws.
+ *  Returns whether at least one subscription existed and was attempted — the
+ *  caller (notifyNewMessage) uses this to advance the recipient's delivery
+ *  tick, since a dispatched push is the honest "reached the device" signal. */
+export async function sendPushToUser(userId: string, payload: PushPayload): Promise<boolean> {
   try {
-    if (!ensureConfigured()) return;
+    if (!ensureConfigured()) return false;
     const rows: SubscriptionRow[] = await db.pushSubscription.findMany({
       where: { userId },
       select: { id: true, endpoint: true, p256dh: true, auth: true },
     });
-    if (rows.length === 0) return;
+    if (rows.length === 0) return false;
 
     const body = JSON.stringify(payload);
     // Notifications are actionable the moment they arrive but stale
@@ -106,8 +109,10 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
     if (dead.length > 0) {
       await db.pushSubscription.deleteMany({ where: { id: { in: dead } } });
     }
+    return true;
   } catch {
     // Never break the parent operation because a push failed.
+    return false;
   }
 }
 

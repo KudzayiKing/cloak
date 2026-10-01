@@ -205,8 +205,15 @@ const withDeadPush = await post(`/api/conversations/${convId}/messages`, a.cooki
   body: envelope("third"),
   kind: "text",
 });
+const thirdId = withDeadPush.message?.id;
 check("a dead push subscription does not break the send", withDeadPush.ok, true);
 await new Promise((r) => setTimeout(r, 1500));
+
+/* Bug #1 (Phase E): with a push subscription present, the push reaching the
+   device counts as delivery. The recipient never polls here, yet the sender
+   must now see two ticks (delivered) instead of being stuck on one. */
+const afterPushDelivery = await tickFor(a.cookie, convId, thirdId);
+check("a dispatched push advances the recipient's delivery tick", afterPushDelivery.status, "delivered");
 
 /* VAPID must actually be configured, or every push silently no-ops. */
 const pushKey = await get("/api/push", a.cookie);
@@ -240,8 +247,10 @@ check("the send route schedules the push", /\bafter\(/.test(sendRoute), true);
 check("  ... through notifyNewMessage", /notifyNewMessage\(/.test(sendRoute), true);
 check("  ... for every participant except the sender", /p\.userId !== user\.id/.test(sendRoute), true);
 
-const notify = stripComments(read("src/lib/cloak/server/notify.ts"));
-const notifyNewMessage = notify.slice(notify.indexOf("export async function notifyNewMessage"));
+const notifySrc = stripComments(read("src/lib/cloak/server/notify.ts"));
+const ni = notifySrc.indexOf("export async function notifyNewMessage");
+const nx = notifySrc.indexOf("export ", ni + 10);
+const notifyNewMessage = nx === -1 ? notifySrc.slice(ni) : notifySrc.slice(ni, nx);
 check(
   "notifyNewMessage is push-only (no in-app row)",
   /userNotification\.create/.test(notifyNewMessage),
@@ -250,6 +259,11 @@ check(
 check(
   "  ... and its copy carries no content or sender name",
   /body:\s*"Open Cloak Dagger to read it"/.test(notifyNewMessage),
+  true
+);
+check(
+  "  ... and a dispatched push advances the recipient's delivery tick",
+  /sendPushToUser\(/.test(notifyNewMessage) && /lastDeliveredAt/.test(notifyNewMessage),
   true
 );
 
