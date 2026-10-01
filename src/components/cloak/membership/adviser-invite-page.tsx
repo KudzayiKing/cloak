@@ -23,11 +23,33 @@ type InviteState =
   | { kind: "success" }
   | { kind: "blocked"; error: string };
 
-const INVALID_COPY: Record<string, string> = {
-  invalid: "This invitation link is not valid. Check the link you were sent, or ask for a fresh invitation.",
-  expired: "This invitation has expired. Ask Kudzayi for a new link.",
-  redeemed: "This invitation has already been accepted. Adviser invitations are single-use.",
-  revoked: "This invitation is no longer available.",
+/*
+ * Terminal states (spec §20-§23).
+ *
+ * `invalid` deliberately covers every failure that is not a known lifecycle
+ * state — never-existed, deleted, malformed, wrong user. They must all read
+ * identically, or the page becomes an enumeration oracle: a probe could tell
+ * "this token was real once" from "this token never existed" (spec §23).
+ */
+const INVALID_COPY: Record<string, { title: string; body: string; signIn?: boolean }> = {
+  invalid: {
+    title: "Invitation unavailable",
+    body: "This invitation is invalid or no longer available.",
+  },
+  expired: {
+    title: "Invitation expired",
+    body:
+      "This invitation has expired. Contact the person who invited you if you believe you should still have access.",
+  },
+  redeemed: {
+    title: "Invitation already used",
+    body: "This invitation has already been used. If you redeemed it, sign in to Cloak Dagger.",
+    signIn: true,
+  },
+  revoked: {
+    title: "Invitation no longer active",
+    body: "This invitation is no longer active.",
+  },
 };
 
 const REDEEM_ERROR_COPY: Record<string, string> = {
@@ -108,10 +130,18 @@ export function AdviserInvitePage({ token }: { token: string }) {
         {invite.kind === "redeeming" && <LoadingCopy text="Activating your membership..." />}
 
         {invite.kind === "invalid" && (
-          <Panel icon={<InfoIcon size={20} />} title="Invitation unavailable">
-            <p className="text-sm leading-relaxed text-cloak-text-secondary">{INVALID_COPY[invite.status]}</p>
-            <Button className="mt-7 h-11 w-full bg-cloak-gold text-black hover:bg-cloak-gold-bright" onClick={() => { window.location.href = "/"; }}>
-              Open {BRAND.name}
+          <Panel
+            icon={<InfoIcon size={20} />}
+            title={(INVALID_COPY[invite.status] ?? INVALID_COPY.invalid).title}
+          >
+            <p className="text-sm leading-relaxed text-cloak-text-secondary">
+              {(INVALID_COPY[invite.status] ?? INVALID_COPY.invalid).body}
+            </p>
+            <Button
+              className="mt-7 h-11 w-full bg-cloak-gold text-black hover:bg-cloak-gold-bright"
+              onClick={() => { window.location.href = "/"; }}
+            >
+              {INVALID_COPY[invite.status]?.signIn ? "Sign In" : `Open ${BRAND.name}`}
             </Button>
           </Panel>
         )}
@@ -146,13 +176,18 @@ export function AdviserInvitePage({ token }: { token: string }) {
             <p className="text-sm leading-relaxed text-cloak-text-secondary">
               You&apos;ve been invited to evaluate {BRAND.name} as a Founding Adviser.
             </p>
+            <p className="mt-3 text-sm leading-relaxed text-cloak-text-secondary">
+              Your {invite.membershipName} membership has already been provided.
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-cloak-text-secondary">
+              No payment required.
+            </p>
             <dl className="mt-5 space-y-2 text-sm">
-              <Row label="Membership" value={`${invite.membershipName} already provided`} />
               <Row label="Recipient" value={`${invite.recipientName} (${invite.maskedRecipientEmail})`} />
-              <Row label="Expires" value={formatDate(invite.expiresAt)} />
+              <Row label="Invitation expires" value={formatDate(invite.expiresAt)} />
             </dl>
             <p className="mt-4 text-xs leading-relaxed text-cloak-text-muted">
-              No payment is required. This link is single-use and can only grant the membership chosen by the server.
+              This invitation is single-use and intended only for the named recipient.
             </p>
 
             {authUser ? (

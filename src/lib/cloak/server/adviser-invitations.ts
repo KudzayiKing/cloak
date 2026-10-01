@@ -7,6 +7,16 @@ import type { SessionUser } from "@/lib/cloak/server/auth";
 
 type Db = Prisma.TransactionClient | PrismaClient;
 
+/**
+ * The client type for entry points that open their OWN transaction.
+ * `Prisma.TransactionClient` deliberately omits `$transaction`, so a union of
+ * the two cannot call it. Every such entry point takes an optional client so
+ * the lifecycle can be exercised against an in-memory double in tests
+ * (adviser invitation spec §47) instead of only being asserted by grepping
+ * source text.
+ */
+type DbClient = PrismaClient;
+
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,160}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ADMIN_HANDLE_ENV = ["CLOAK_ADMIN_HANDLES", "CLOAQ_ADMIN_HANDLES", "ADMIN_HANDLES"];
@@ -70,10 +80,24 @@ export function normalizeEmail(input: string | undefined | null): string | null 
   return normalized;
 }
 
+/**
+ * Masks the local part, keeping only its first character (spec §18:
+ * `j•••••••@example.com`). The domain is left intact — it carries no
+ * personal information and the recipient needs it to recognise the address.
+ *
+ * The bullet run is capped so a long local part cannot leak its length.
+ */
 export function maskEmail(email: string): string {
   const [name = "", domain = ""] = email.split("@");
-  const visible = name.length <= 2 ? name[0] ?? "" : `${name.slice(0, 2)}...${name.slice(-1)}`;
-  return `${visible || "..."}@${domain}`;
+  if (!name) return `•••@${domain}`;
+  const hidden = Math.max(1, Math.min(name.length - 1, 8));
+  return `${name[0]}${"•".repeat(hidden)}@${domain}`;
+}
+
+/** First name only — the greeting in the invitation email (spec §16). */
+export function firstNameOf(recipientName: string): string {
+  const first = recipientName.trim().split(/\s+/)[0];
+  return first || recipientName.trim();
 }
 
 export function adviserNoStoreHeaders(extra?: HeadersInit): HeadersInit {
@@ -146,25 +170,61 @@ function effectiveStatus(invitation: { status: string; expiresAt: Date }): Advis
   return "pending";
 }
 
-function emailCopy(invitation: { recipientName: string; expiresAt: Date }, link: string) {
+/**
+ * The personalised adviser email (spec §16).
+ *
+ * Copied to the clipboard for the founder to send personally — nothing here
+ * transmits. That is deliberate: the first adviser cohort should receive a
+ * human email, not a campaign blast, so this is a template and not a send
+ * path (spec §40). A later phase can add "Create + Send" behind the same
+ * copy (spec §41).
+ *
+ * The URL is always built from the configured application origin, never
+ * hard-coded, so the production link cannot drift to the .com domain.
+ */
+/**
+ * "8 October 2026" — the invitation date shape used by the email and the
+ * admin surfaces (spec §11, §16, §18). en-GB is deliberate: it yields
+ * day-before-month, which is what the spec's examples show, and it does not
+ * drift with the server's locale.
+ */
+export function formatInvitationDate(date: Date): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+export function emailCopy(invitation: { recipientName: string; expiresAt: Date }, link: string) {
+  const expiryDate = formatInvitationDate(invitation.expiresAt);
   const subject = `Private invitation to experience ${BRAND.name}`;
   const body = [
-    `Hi ${invitation.recipientName},`,
+    `Hi ${firstNameOf(invitation.recipientName)},`,
     "",
-    `I would like to personally invite you to experience ${BRAND.name} as a Founding Adviser.`,
+    `I’m building ${BRAND.name}, a private communications platform designed for people and organizations that place a high value on confidentiality.`,
     "",
-    `${BRAND.name} is being built for private communications and private intelligence. I am inviting a small group of people whose judgment I trust to use it directly and tell me where the product should be sharper, calmer, or more useful.`,
+    `${BRAND.name} combines secure messaging, trusted private Circles, device-level privacy controls, and local-first intelligence designed to process sensitive context on the user’s own device rather than treating private conversations as cloud data.`,
     "",
-    `Your complimentary ${BRAND.cloakPrivate} membership is already provided. There is no payment required and no renewal required.`,
+    `I’m inviting a small group of security, family-office, legal, privacy, and executive-protection professionals to evaluate ${BRAND.name}.`,
     "",
-    `Accept your invitation here:`,
+    `I’d like to provide you with complimentary ${BRAND.cloakPrivate} access so you can use the product properly and evaluate it for yourself.`,
+    "",
+    `There is no obligation to recommend ${BRAND.name}.`,
+    "",
+    `What I’m interested in is your perspective: what would make you trust it, what would concern you, and what would prevent you from recommending it to someone whose communications genuinely matter.`,
+    "",
+    "Your private invitation:",
+    "",
     link,
     "",
-    `This invitation expires on ${invitation.expiresAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.`,
+    `The invitation is intended for you and expires on ${expiryDate}.`,
     "",
-    "Thank you,",
+    "Best,",
+    "",
     "Kudzayi",
-    "",
+    `Founder, ${BRAND.name}`,
     BRAND.baseUrl,
   ].join("\n");
   return { subject, body };
@@ -219,13 +279,54 @@ function serializeInvitation(invitation: {
   };
 }
 
-export async function listAdviserInvitations(): Promise<AdviserInvitationView[]> {
-  await lazyExpireAdviserInvitations();
-  const invitations = await db.adviserInvitation.findMany({
+export async function listAdviserInvitations(client: Db = db): Promise<AdviserInvitationView[]> {
+  await lazyExpireAdviserInvitations(client);
+  const invitations = await client.adviserInvitation.findMany({
     orderBy: { createdAt: "desc" },
     take: 200,
   });
   return invitations.map((invitation) => serializeInvitation(invitation));
+}
+
+export interface AdviserInvitationEventView {
+  id: string;
+  event: string;
+  actorUserId?: string;
+  detail?: string;
+  createdAt: string;
+}
+
+export interface AdviserInvitationDetailView extends AdviserInvitationView {
+  events: AdviserInvitationEventView[];
+}
+
+/**
+ * Admin detail read (spec §14, §32, §43) — the invitation plus its audit
+ * trail. `tokenHash` is never selected, so it cannot leak through this path
+ * even by accident. The raw token is unrecoverable by design: only its hash
+ * is stored (spec §12), which is why a redeemed or long-lived invitation
+ * cannot re-display its own link.
+ */
+export async function getAdviserInvitation(
+  id: string,
+  client: Db = db
+): Promise<AdviserInvitationDetailView | null> {
+  await lazyExpireAdviserInvitations(client);
+  const invitation = await client.adviserInvitation.findUnique({
+    where: { id },
+    include: { events: { orderBy: { createdAt: "asc" } } },
+  });
+  if (!invitation) return null;
+  return {
+    ...serializeInvitation(invitation),
+    events: invitation.events.map((event) => ({
+      id: event.id,
+      event: event.event,
+      actorUserId: event.actorUserId ?? undefined,
+      detail: event.detail ?? undefined,
+      createdAt: event.createdAt.toISOString(),
+    })),
+  };
 }
 
 export async function createAdviserInvitation(input: {
@@ -235,7 +336,7 @@ export async function createAdviserInvitation(input: {
   emailBindingRequired: boolean;
   internalNote?: string;
   adminUserId: string;
-}): Promise<{ invitation: AdviserInvitationView; token: string; link: string; emailSubject: string; emailBody: string }> {
+}, client: DbClient = db): Promise<{ invitation: AdviserInvitationView; token: string; link: string; emailSubject: string; emailBody: string }> {
   const recipientName = input.recipientName.trim().slice(0, 120);
   const recipientEmail = normalizeEmail(input.recipientEmail);
   if (!recipientName) throw new Error("bad_recipient_name");
@@ -247,14 +348,21 @@ export async function createAdviserInvitation(input: {
   for (let i = 0; i < 4; i += 1) {
     token = generateInviteTokenServer();
     tokenHash = hashInviteTokenServer(token);
-    const existing = await db.adviserInvitation.findUnique({ where: { tokenHash }, select: { id: true } });
+    const existing = await client.adviserInvitation.findUnique({ where: { tokenHash }, select: { id: true } });
     if (!existing) break;
   }
   if (!token || !tokenHash) throw new Error("token_unavailable");
 
-  const invitation = await db.$transaction(async (tx) => {
+  const invitation = await client.$transaction(async (tx) => {
     const created = await tx.adviserInvitation.create({
       data: {
+        /* Type, sku and origin are written explicitly rather than inherited
+           from column defaults. These three fields decide what a redemption
+           grants, so a schema default silently changing would silently change
+           the entitlement — the grant must be stated at the call site. */
+        type: ADVISER_INVITE_TYPE,
+        membershipSku: ADVISER_INVITE_MEMBERSHIP_SKU,
+        membershipOrigin: ADVISER_INVITE_MEMBERSHIP_ORIGIN,
         recipientName,
         recipientEmail,
         tokenHash,
@@ -285,10 +393,13 @@ export async function createAdviserInvitation(input: {
   };
 }
 
-export async function getAdviserInvitationByToken(token: string): Promise<AdviserInvitationPublicView> {
+export async function getAdviserInvitationByToken(
+  token: string,
+  client: Db = db
+): Promise<AdviserInvitationPublicView> {
   if (!TOKEN_PATTERN.test(token)) return { found: false };
-  await lazyExpireAdviserInvitations();
-  const invitation = await db.adviserInvitation.findUnique({
+  await lazyExpireAdviserInvitations(client);
+  const invitation = await client.adviserInvitation.findUnique({
     where: { tokenHash: hashInviteTokenServer(token) },
   });
   if (!invitation) return { found: false };
@@ -303,8 +414,12 @@ export async function getAdviserInvitationByToken(token: string): Promise<Advise
   };
 }
 
-export async function revokeAdviserInvitation(id: string, adminUserId: string): Promise<AdviserInvitationView> {
-  return db.$transaction(async (tx) => {
+export async function revokeAdviserInvitation(
+  id: string,
+  adminUserId: string,
+  client: DbClient = db
+): Promise<AdviserInvitationView> {
+  return client.$transaction(async (tx) => {
     const invitation = await tx.adviserInvitation.findUniqueOrThrow({ where: { id } });
     if (invitation.status !== "pending") throw new Error("not_pending");
     const updated = await tx.adviserInvitation.update({
@@ -318,9 +433,14 @@ export async function revokeAdviserInvitation(id: string, adminUserId: string): 
   });
 }
 
-export async function extendAdviserInvitation(id: string, expiresAt: Date, adminUserId: string): Promise<AdviserInvitationView> {
+export async function extendAdviserInvitation(
+  id: string,
+  expiresAt: Date,
+  adminUserId: string,
+  client: DbClient = db
+): Promise<AdviserInvitationView> {
   if (expiresAt.getTime() <= Date.now() + 60_000) throw new Error("bad_expiry");
-  return db.$transaction(async (tx) => {
+  return client.$transaction(async (tx) => {
     const invitation = await tx.adviserInvitation.findUniqueOrThrow({ where: { id } });
     if (invitation.status !== "pending") throw new Error("not_pending");
     const updated = await tx.adviserInvitation.update({
@@ -339,13 +459,16 @@ export async function extendAdviserInvitation(id: string, expiresAt: Date, admin
   });
 }
 
-export async function redeemAdviserInvitation(input: {
-  token: string;
-  userId: string;
-  email?: string;
-}): Promise<{ ok: true; entitlement: ReturnType<typeof entitlementForUser> } | { ok: false; error: string }> {
+export async function redeemAdviserInvitation(
+  input: {
+    token: string;
+    userId: string;
+    email?: string;
+  },
+  client: DbClient = db
+): Promise<{ ok: true; entitlement: ReturnType<typeof entitlementForUser> } | { ok: false; error: string }> {
   try {
-    const entitlement = await db.$transaction((tx) => redeemAdviserInvitationInTransaction(tx, input));
+    const entitlement = await client.$transaction((tx) => redeemAdviserInvitationInTransaction(tx, input));
     return { ok: true, entitlement };
   } catch (err) {
     return invitationError(err);
@@ -393,9 +516,13 @@ export async function redeemAdviserInvitationInTransaction(
   if (current.membership !== "none") throw new Error("recipient_already_private");
 
   if (invitation.emailBindingRequired) {
-    const candidate = user.email ?? providedEmail;
+    /* The account's own address wins; a brand-new account supplies the invited
+       address during registration instead. Either way it has to equal the
+       address the invitation was issued to — that IS the binding (spec §9,
+       §25). A single comparison, deliberately: a second equivalent check would
+       be dead code that makes the branch look stronger than it is. */
+    const candidate = normalizeEmail(user.email) ?? providedEmail;
     if (!candidate || candidate !== invitation.recipientEmail) throw new Error("email_binding_required");
-    if (user.email && user.email !== invitation.recipientEmail) throw new Error("email_binding_required");
     if (!user.email || !user.emailVerifiedAt) {
       await tx.user.update({
         where: { id: input.userId },
