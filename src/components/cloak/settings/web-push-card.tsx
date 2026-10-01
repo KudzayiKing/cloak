@@ -2,10 +2,11 @@
 
 /*
  * Web Push settings card (spec §62 transport) — the honest surface for
- * browser/OS notifications on structural events. Handles every real-world
- * browser posture: full support, iOS that needs Home-Screen install,
- * insecure context, and no push support at all — each with truthful copy
- * rather than a dead control.
+ * browser/OS notifications. Covers structural events (membership, roles,
+ * policy, join requests) and, since round 23, new messages. Handles every
+ * real-world browser posture: full support, iOS that needs Home-Screen
+ * install, insecure context, and no push support at all — each with truthful
+ * copy rather than a dead control.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -42,7 +43,7 @@ function statusLine(state: PushState): { title: string; detail: string } {
   if (state.subscribed) {
     return {
       title: "Notifications are on for this device",
-      detail: "Membership, role and policy events appear on this device even when Cloak Dagger is closed.",
+      detail: "New messages, plus membership, role and policy events, appear on this device even when Cloak Dagger is closed.",
     };
   }
   if (state.permission === "denied") {
@@ -53,7 +54,7 @@ function statusLine(state: PushState): { title: string; detail: string } {
   }
   return {
     title: "Get notified when Cloak Dagger is closed",
-    detail: "Adds, removals, role and policy changes, join requests \u2014 delivered to this device's notification area.",
+    detail: "New messages, adds, removals, role and policy changes, join requests \u2014 delivered to this device's notification area.",
   };
 }
 
@@ -142,9 +143,10 @@ export function WebPushCard() {
           )}
 
           <p className="mt-3 text-[11px] leading-relaxed text-cloak-text-muted">
-            Push notifications carry structural events only — never message
-            content (§62). Message previews stay an in-app decision made on
-            this device.
+            Notifications never carry message content — Cloak Dagger is
+            end-to-end encrypted and the server cannot read it. A new-message
+            alert says only that a message arrived; message previews stay an
+            in-app decision made on this device (§62).
           </p>
         </div>
       </div>

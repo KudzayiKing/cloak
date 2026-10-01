@@ -7,12 +7,14 @@
  * - Encrypted application data / decrypted message payloads: NEVER cached by the SW.
  *   Message content lives in app-controlled storage and never passes through this cache.
  * - /api/* requests are network-only.
- * - Web Push (§62): structural events only. The server is E2EE-blind, so the
- *   payload can never contain message content; the SW shows exactly what it
- *   received and never enriches it from any local store.
+ * - Web Push (§62): structural events, plus the new-message push (round 23).
+ *   The server is E2EE-blind, so the payload can never contain message
+ *   content; the SW shows exactly what it received and never enriches it
+ *   from any local store. A message push carries no content and no sender —
+ *   see tagFor/targetUrlFor below.
  */
 
-const VERSION = "cloak-shell-v33";
+const VERSION = "cloak-shell-v34";
 const SHELL_CACHE = `cloak-shell-${VERSION}`;
 const STATIC_CACHE = `cloak-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -131,12 +133,28 @@ self.addEventListener("fetch", (event) => {
 const APP_ICON = "/icons/icon-192.png";
 const BADGE_ICON = "/icons/icon-192.png";
 
-/** Deep-link target for a structural event — mirrors the in-app centre's
- *  tap-through (circle → circle page, group → messages). */
+/** Deep-link target — mirrors the in-app centre's tap-through (circle →
+ *  circle page; group and chat → the message list, which is where the app
+ *  lands and where the unread row lives).
+ *
+ *  A chat cannot deep-link to the individual thread: the hash router carries
+ *  no query string, and the open conversation is store state rather than a
+ *  route. Landing on the list with the thread at the top is the honest
+ *  behaviour today. */
 function targetUrlFor(data) {
   if (data && data.circleId) return `/#/app/circles/${data.circleId}`;
-  if (data && data.groupId) return "/#/app/messages";
+  if (data && (data.groupId || data.conversationId)) return "/#/app/messages";
   return "/#/app";
+}
+
+/** Collapse key. Structural events collapse by TYPE — one row per kind of
+ *  membership news. A chat collapses per CONVERSATION, so a second message
+ *  in a thread replaces its own notification instead of wiping another
+ *  thread's; collapsing every message under one tag would leave the user
+ *  with a single "New message" for a dozen chats. */
+function tagFor(data) {
+  if (data && data.conversationId) return "cloak-chat-" + data.conversationId;
+  return "cloak-" + ((data && data.type) || "event");
 }
 
 self.addEventListener("push", (event) => {
@@ -147,24 +165,37 @@ self.addEventListener("push", (event) => {
     payload = null; // Malformed payload: fall through to the generic copy.
   }
 
-  // Structural copy only — the server sends exactly the title/body the
-  // in-app inbox stores. If a payload is missing/unparseable we degrade to
-  // a fully generic "Cloak Dagger" notification rather than dropping the event,
-  // because membership changes matter even when the payload was mangled.
-  const title = (payload && typeof payload.title === "string" && payload.title) || "Cloak Dagger";
-  const body = payload && typeof payload.body === "string" ? payload.body : "Security or membership event";
   const data = payload && typeof payload === "object" ? payload : {};
+  const isMessage = data.type === "message.new";
 
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon: APP_ICON,
-      badge: BADGE_ICON,
-      tag: "cloak-" + (data.type || "event"),
-      // Not requireInteraction: structural events do not demand attention.
-      data: { url: targetUrlFor(data), type: data.type || "event" },
-    })
-  );
+  /* Structural copy only — the server sends exactly the title/body the
+     in-app inbox stores, and a message push deliberately carries no content
+     and no sender (the server is E2EE-blind, and Cloak Mode can hide
+     previews on a device the server cannot inspect).
+
+     If a STRUCTURAL payload is missing or unparseable we degrade to generic
+     copy rather than dropping the event, because membership changes matter
+     even when the payload was mangled. A message push gets no such fallback:
+     a mangled one has nothing to say beyond "a message exists", so it stays
+     title-only instead of claiming to be a security event. */
+  const title =
+    (typeof data.title === "string" && data.title) || (isMessage ? "New message" : "Cloak Dagger");
+  const body =
+    (typeof data.body === "string" && data.body) ||
+    (isMessage ? "" : "Security or membership event");
+
+  const options = {
+    icon: APP_ICON,
+    badge: BADGE_ICON,
+    tag: tagFor(data),
+    // Not requireInteraction: no notification here demands attention.
+    data: { url: targetUrlFor(data), type: data.type || "event" },
+  };
+  // Only attach a body when there is one — an empty string would render as a
+  // blank second line.
+  if (body) options.body = body;
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener("notificationclick", (event) => {

@@ -12,6 +12,11 @@ import { db } from "@/lib/db";
  *   device-side Cloak Mode decision the server cannot evaluate — pushes
  *   carry exactly the title/body the in-app inbox stores, which is
  *   membership/role/policy copy by construction.
+ * - A new-message push (type "message.new", round 23) carries NO content and
+ *   NO sender name — only the fact that a message exists, plus the chat id as
+ *   a collapse key. Cloak Mode can hide previews on the device, so a name on
+ *   the lock screen would leak past a privacy mode the user believes is on.
+ *   The recipient opens the app to find out who and what.
  * - Failure posture: a push failure NEVER throws into the caller and
  *   never rolls back the membership change it observes.
  * - Delivery unit is the SUBSCRIPTION (one row per browser/device): a
@@ -50,6 +55,10 @@ export interface PushPayload {
   body?: string;
   circleId?: string;
   groupId?: string;
+  /** Chat the notification belongs to (round 23). Used only as a
+   *  device-side collapse key so a thread's notifications replace their own
+   *  instead of wiping another thread's; it is never rendered. */
+  conversationId?: string;
 }
 
 interface SubscriptionRow {

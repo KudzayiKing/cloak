@@ -268,6 +268,44 @@ export async function loadConversationsForUser(userId: string) {
     orderBy: { updatedAt: "desc" as const },
   });
 
+  /* Delivery watermark — the recipient's half of the tick (round 23).
+
+     This poll ships each conversation's newest message body to the calling
+     device, so once it returns the device HAS received it, and the peer's
+     second tick exists to say exactly that. Previously only the
+     conversation-detail GET moved `lastDeliveredAt`, and that runs only
+     while a chat is open — so a recipient sitting on the chat list (where
+     the app lands, and where it stays) left the sender on a single tick
+     indefinitely even though the message was already on their screen. That
+     was the reported bug: "I see one check mark" long after delivery.
+
+     The watermark is the PRE-QUERY `now`, deliberately. Every row this query
+     can return was created at or before it, so the write can never claim
+     delivery of a message the response did not carry. A message created in
+     the sliver between `now` and the query is shipped but recorded as merely
+     "sent" for one more tick — an under-report, which is the safe direction
+     for a receipt, and self-correcting on the next poll 2.5s later. Reading
+     the clock after the query instead would over-report inside that window.
+
+     Only conversations with something genuinely undelivered are written, so
+     a steady-state poll costs no write at all. The caller's own messages and
+     system notices carry no receipt for anyone, so they are skipped. This
+     write cannot alter the payload built below: that reports the PEER's
+     marker, not the caller's. */
+  const undelivered = convs.filter((conv) => {
+    const mine = conv.participations.find((p) => p.userId === userId);
+    const newest = conv.messages?.[0];
+    if (!mine || mine.removedAt || !newest) return false;
+    if (newest.authorId === null || newest.authorId === userId) return false;
+    return !mine.lastDeliveredAt || mine.lastDeliveredAt.getTime() < newest.createdAt.getTime();
+  });
+  if (undelivered.length > 0) {
+    await db.participation.updateMany({
+      where: { userId, conversationId: { in: undelivered.map((c) => c.id) } },
+      data: { lastDeliveredAt: now },
+    });
+  }
+
   /* People you share a conversation with -> contacts list. Removed group
      members stop being contacts through the group but keep their DMs. */
   const peerIds = [

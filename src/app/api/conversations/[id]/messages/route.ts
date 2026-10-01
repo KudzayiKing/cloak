@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/cloak/server/auth";
 import { mapMessage, purgeExpiredMessages } from "@/lib/cloak/server/conversations";
+import { notifyNewMessage } from "@/lib/cloak/server/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -191,6 +192,28 @@ export async function POST(req: NextRequest, { params }: Params) {
   const peer = conversation.isGroup
     ? undefined
     : conversation.participations.find((p) => p.userId !== user.id);
+
+  /* OS notification for the recipients (round 23) — this is what was missing
+     entirely: the push transport, the VAPID keys, the SW push listener and
+     the subscribe UI all existed, but nothing on the message path ever called
+     into them, so a new message produced no notification at all.
+
+     Scheduled with `after`, so the send returns first: the push service is a
+     third-party round-trip and the sender must not wait on it. A bare
+     floating promise would not do — the handler's work can be cut off the
+     moment it returns, whereas `after` extends the invocation. The callback
+     cannot reject (notifyNewMessage absorbs its own failures).
+
+     Every OTHER participant is notified: the one peer of a DM, everyone else
+     in a group. The sender is never notified of their own message. */
+  const recipients = conversation.participations.filter((p) => p.userId !== user.id);
+  if (recipients.length > 0) {
+    after(async () => {
+      await Promise.all(
+        recipients.map((p) => notifyNewMessage({ userId: p.userId, conversationId }))
+      );
+    });
+  }
 
   return NextResponse.json({
     ok: true,
