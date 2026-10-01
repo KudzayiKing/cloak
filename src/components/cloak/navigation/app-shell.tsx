@@ -44,6 +44,7 @@ import {
 import { NotificationsBell } from "@/components/cloak/notifications/notifications-center";
 import { MobileHeaderMenu } from "@/components/cloak/navigation/mobile-header-menu";
 import { useLongPress } from "@/hooks/use-long-press";
+import { hapticTap } from "@/lib/cloak/haptics";
 
 type NavIcon = ForwardRefExoticComponent<
   { size?: number; className?: string } & RefAttributes<IconAnimationHandle>
@@ -81,20 +82,52 @@ const MOBILE_NAV: NavItem[] = [
 /* Mobile nav icon — touch devices have no hover, so pressing a tab starts
    the icon animation and holds it for two seconds (user feedback round 5).
    The pressKey makes the animation survive the navigation remount
-   (round 14): the new shell's identical icon resumes the same window. */
+   (round 14): the new shell's identical icon resumes the same window.
+
+   A press also fires a haptic pulse. On a phone the vibration is felt under
+   the finger the instant it starts, which is what makes a bottom-nav tap feel
+   connected to the screen that opens — the icon animation is still running at
+   that point, so it is not the only cue, just a different sense. */
 function MobileNavItem({ item, active }: { item: NavItem; active: boolean }) {
   const { iconRef, onPointerDown } = useIconPressAnimation(2000, item.path);
+  /* Re-keying the class re-triggers the CSS animation only when the tab
+     BECOMES active, so it plays on the way in and never on re-render. */
+  const [activeTick, setActiveTick] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const id = window.setTimeout(() => setActiveTick((t) => t + 1), 0);
+    return () => window.clearTimeout(id);
+  }, [active]);
+
   return (
     <button
       onClick={() => navigate(item.path)}
-      onPointerDown={onPointerDown}
+      onPointerDown={(e) => {
+        hapticTap(e.pointerType);
+        onPointerDown(e);
+      }}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex h-[56px] flex-col items-center justify-center gap-1 py-2 text-[10px] transition-colors",
+        "relative flex h-[56px] flex-col items-center justify-center gap-1 py-2 text-[10px] transition-colors",
         active ? "text-cloak-gold" : "text-cloak-text-muted"
       )}
     >
-      <item.icon ref={iconRef} size={22} />
+      {/* The active highlight sits behind the icon and label, so the icon can
+          pop without the surface scaling with it. DOM order, not a negative
+          z-index, puts it behind — see DesktopNavItem for why. */}
+      {active && (
+        <span
+          key={activeTick}
+          aria-hidden="true"
+          className="cloak-tab-indicator absolute inset-x-2 inset-y-1.5 rounded-lg bg-cloak-gold-soft"
+        />
+      )}
+      <span
+        key={active ? "on" : "off"}
+        className={cn("relative flex flex-col items-center", active && "cloak-tab-active")}
+      >
+        <item.icon ref={iconRef} size={22} />
+      </span>
       {item.label}
     </button>
   );
@@ -127,17 +160,36 @@ function DesktopNavItem({
       aria-current={active ? "page" : undefined}
       title={collapsed ? item.label : undefined}
       className={cn(
-        "transition-colors",
+        "relative transition-colors",
         collapsed
           ? "mx-auto grid h-10 w-10 place-items-center rounded-lg"
           : "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
         active
-          ? "bg-cloak-gold-soft text-cloak-gold"
+          ? "text-cloak-gold"
           : "text-cloak-text-secondary hover:bg-cloak-surface hover:text-cloak-text"
       )}
     >
-      <item.icon ref={iconRef} size={17} />
-      {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
+      {/* Active surface as a separate layer behind the row, so the icon and
+          label can pop on their own without dragging the fill with them.
+
+          The fill is NOT given a negative z-index: the <aside> that owns this
+          row does not establish a stacking context, so -z-10 would drop the
+          fill behind the rail's own background and make it invisible. Both
+          layers are simply positioned siblings and DOM order paints the
+          content last, which is the stacking we want. */}
+      {active && (
+        <span
+          aria-hidden="true"
+          className="cloak-tab-indicator absolute inset-0 rounded-lg bg-cloak-gold-soft"
+        />
+      )}
+      <span
+        key={active ? "on" : "off"}
+        className={cn("relative flex items-center gap-3", active && "cloak-tab-active")}
+      >
+        <item.icon ref={iconRef} size={17} />
+        {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
+      </span>
     </button>
   );
 }
@@ -200,14 +252,47 @@ export function AppShell({
     };
   }, [cloakMode]);
 
-  /* Publish the bottom nav's height so the update prompt can dock above it.
-     Inside a conversation the mobile chrome is hidden, so the prompt drops to
-     the safe-area edge instead of floating in empty space. Desktop ignores the
-     value entirely (globals.css overrides the offset at md). */
+  /* Publish the bottom nav's height so the update prompt can dock above it and
+     so every page's scroll container can clear it via
+     `--cloak-bottom-clearance`. Inside a conversation the mobile chrome is
+     hidden, so the prompt drops to the safe-area edge and the clearance
+     collapses to the safe area alone. Desktop ignores the value entirely
+     (globals.css overrides the offset at md).
+
+     The height is MEASURED, not asserted. It used to be the literal "56px",
+     which is one pixel short of the truth: the nav is a 1px border-t above a
+     56px tab row, so it renders 57px. Every page then cleared 56px and the
+     bottom edge of the last card sat under the nav's top hairline on every
+     scrolling screen. Measuring also means the value stays honest if the tab
+     row is ever re-sized. */
+  const navRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--cloak-bottom-nav-h", mobileChrome ? "56px" : "0px");
-    return () => root.style.setProperty("--cloak-bottom-nav-h", "0px");
+    const publish = () => {
+      const el = navRef.current;
+      if (!el) {
+        root.style.setProperty("--cloak-bottom-nav-h", "0px");
+        return;
+      }
+      /* The nav's padding-bottom is the gesture-area bleed, which hangs BELOW
+         the viewport and never covers content — only the part above it has to
+         be cleared, so the border box minus that padding is the real number. */
+      const styles = window.getComputedStyle(el);
+      const bleed = parseFloat(styles.paddingBottom) || 0;
+      const height = el.getBoundingClientRect().height - bleed;
+      root.style.setProperty(
+        "--cloak-bottom-nav-h",
+        `${Math.max(0, Math.round(height))}px`
+      );
+    };
+    publish();
+    /* The nav is laid out after first paint (fonts, the safe-area inset, the
+       PWA install prompt), so re-measure once the frame has settled. */
+    const raf = window.requestAnimationFrame(publish);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      root.style.setProperty("--cloak-bottom-nav-h", "0px");
+    };
   }, [mobileChrome]);
 
   return (
@@ -460,6 +545,7 @@ export function AppShell({
           the inner row adds only the hairline border. */}
       {mobileChrome && (
         <nav
+          ref={navRef}
           aria-label="Primary"
           className="cloak-bottom-nav fixed inset-x-0 z-40 bg-cloak-bg-elevated md:hidden"
         >

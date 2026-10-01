@@ -99,7 +99,7 @@ export function IntelligencePage() {
     <AppShell active="/app/intelligence">
       <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[1fr_320px]">
         {/* Main workspace */}
-        <div className="cloak-scroll flex min-h-0 flex-col overflow-y-auto pb-[calc(56px+env(safe-area-inset-bottom))] pt-[var(--cloak-top-chrome-h)] md:pb-0 md:pt-0">
+        <div className="cloak-scroll flex min-h-0 flex-col overflow-y-auto pb-[var(--cloak-bottom-clearance)] pt-[var(--cloak-top-chrome-h)] md:pb-0 md:pt-0">
           <header className="border-b border-cloak-border bg-cloak-bg-elevated/60 px-5 py-4 md:px-8">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">

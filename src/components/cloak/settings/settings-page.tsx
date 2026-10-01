@@ -8,7 +8,7 @@
  * /settings/storage, /settings/appearance.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/cloak/navigation/app-shell";
 import { useCloakStore } from "@/stores/cloak-store";
 import { Surface } from "@/components/cloak/shared/primitives";
@@ -95,15 +95,58 @@ export function SettingsPage({ section = "account" }: { section?: SectionId }) {
   const isAdmin = useCloakStore((s) => s.isAdmin);
   const sections = isAdmin ? [...SECTIONS, ADMIN_SECTION] : SECTIONS;
 
+  /* The page scrolls in an inner container, not on the document, so the
+     browser has no idea a "page load" happened when the section changes and
+     the previous section's scroll offset is still in place. Two symptoms the
+     owner reported on mobile: a tab opening part-way down, and a short tab
+     looking blank because the offset was past its end. Both are the same bug —
+     the offset is never reset. */
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const tabRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [section]);
+
+  /* On mobile the section nav is a horizontal strip far wider than the screen
+     (measured: 791px of tabs in a 350px viewport), so the active tab is
+     routinely off-screen and the strip shows tabs that are not selected. Bring
+     it into view, and nudge it clear of both screen edges so the first and
+     last tabs are not flush against them. */
+  useEffect(() => {
+    const strip = tabRef.current;
+    if (!strip) return;
+    const active = strip.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!active) return;
+    const stripBox = strip.getBoundingClientRect();
+    const box = active.getBoundingClientRect();
+    if (box.left < stripBox.left + 8) {
+      strip.scrollBy({ left: box.left - stripBox.left - 8, behavior: "smooth" });
+    } else if (box.right > stripBox.right - 8) {
+      strip.scrollBy({ left: box.right - stripBox.right + 8, behavior: "smooth" });
+    }
+  }, [section, sections.length]);
+
   return (
     <AppShell active="/app/settings">
-      <div className="cloak-scroll h-full overflow-y-auto pt-[var(--cloak-top-chrome-h)] md:pt-0">
-        <div className="mx-auto max-w-4xl px-5 pb-[calc(56px+env(safe-area-inset-bottom))] pt-8 md:px-8 md:pb-8">
+      <div
+        ref={scrollRef}
+        className="cloak-scroll h-full overflow-y-auto pt-[var(--cloak-top-chrome-h)] md:pt-0"
+      >
+        {/* The bottom padding is the measured bottom-nav clearance, not a
+            hardcoded 56px — see --cloak-bottom-clearance in globals.css. */}
+        <div className="mx-auto max-w-4xl px-5 pb-[var(--cloak-bottom-clearance)] pt-8 md:px-8 md:pb-8">
           <h1 className="cloak-display mb-6 text-2xl font-medium text-cloak-text">Settings</h1>
 
           <div className="grid gap-6 md:grid-cols-[190px_1fr]">
-            {/* Section nav */}
-            <nav aria-label="Settings sections" className="flex flex-row gap-1 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:flex-col">
+            {/* Section nav. The negative margin plus matching padding lets the
+                strip run to the screen edge on mobile, so the overflow is
+                visible and swipeable, while the labels still line up with the
+                page gutter. */}
+            <nav
+              ref={tabRef}
+              aria-label="Settings sections"
+              className="-mx-5 flex flex-row gap-1 overflow-x-auto px-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:flex-col md:overflow-visible md:px-0"
+            >
               {sections.map((s) => (
                 <button
                   key={s.id}
@@ -112,7 +155,7 @@ export function SettingsPage({ section = "account" }: { section?: SectionId }) {
                   className={cn(
                     "shrink-0 rounded-lg px-3.5 py-2 text-left text-[13px] transition-colors",
                     section === s.id
-                      ? "bg-cloak-gold-soft text-cloak-gold"
+                      ? "cloak-tab-active bg-cloak-gold-soft font-medium text-cloak-gold"
                       : "text-cloak-text-secondary hover:bg-cloak-surface hover:text-cloak-text"
                   )}
                 >

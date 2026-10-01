@@ -235,7 +235,7 @@ export function CirclesPage() {
   return (
     <AppShell active="/app/circles">
       <div className="cloak-scroll h-full overflow-y-auto pt-[var(--cloak-top-chrome-h)] md:pt-0">
-        <div className="mx-auto max-w-3xl px-5 pb-[calc(56px+env(safe-area-inset-bottom))] pt-8 md:px-8 md:pb-8">
+        <div className="mx-auto max-w-3xl px-5 pb-[var(--cloak-bottom-clearance)] pt-8 md:px-8 md:pb-8">
           <div className="mb-6 flex items-center justify-between gap-4">
             <div>
               <h1 className="cloak-display text-2xl font-medium text-cloak-text">Circles</h1>

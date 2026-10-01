@@ -222,7 +222,7 @@ export function ChatSidebar({
         </DropdownMenu>
       </div>
 
-      <div className="cloak-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-[calc(56px+env(safe-area-inset-bottom))] md:pb-3">
+      <div className="cloak-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-[var(--cloak-bottom-clearance)] md:pb-3">
         {filtered.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center px-8 text-center">
             <SearchIcon size={22} className="text-cloak-text-muted" />
@@ -294,14 +294,22 @@ function FilterChip({
 }) {
   return (
     <span
+      /* Keying on `active` remounts the chip the moment it becomes active,
+         which is what re-runs the one-shot activation pop. Without it the
+         animation would only ever play on first render and the tab would go
+         dead for the rest of the session. */
+      key={active ? "on" : "off"}
       className={cn(
-        "flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
+        "flex shrink-0 items-center gap-1 rounded-full border transition-colors",
         active
-          ? "border-cloak-gold/40 bg-cloak-gold-soft text-cloak-gold"
+          ? "cloak-tab-active border-cloak-gold/40 bg-cloak-gold-soft text-cloak-gold"
           : "border-cloak-border bg-cloak-surface text-cloak-text-secondary hover:border-cloak-border-strong hover:text-cloak-text"
       )}
     >
-      <button onClick={onClick} className="whitespace-nowrap">
+      <button
+        onClick={onClick}
+        className={cn("px-3 py-1.5 text-[12px] font-medium whitespace-nowrap")}
+      >
         {label}
       </button>
       {removable && (
@@ -311,7 +319,7 @@ function FilterChip({
             e.stopPropagation();
             onRemove?.();
           }}
-          className="grid h-3.5 w-3.5 place-items-center rounded-full text-cloak-text-muted transition-colors hover:text-cloak-danger"
+          className="mr-2.5 grid h-3.5 w-3.5 place-items-center rounded-full text-cloak-text-muted transition-colors hover:text-cloak-danger"
         >
           <XIcon size={10} />
         </button>

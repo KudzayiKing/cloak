@@ -310,7 +310,7 @@ export function SecurityCentrePage() {
   return (
     <AppShell active="/app/security">
       <div className="cloak-scroll h-full overflow-y-auto pt-[var(--cloak-top-chrome-h)] md:pt-0">
-        <div className="mx-auto max-w-3xl px-5 pb-[calc(56px+env(safe-area-inset-bottom))] pt-8 md:px-8 md:pb-8">
+        <div className="mx-auto max-w-3xl px-5 pb-[var(--cloak-bottom-clearance)] pt-8 md:px-8 md:pb-8">
           {/* Top state */}
           <div className="mb-8 text-center">
             <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-cloak-text-muted">
@@ -501,7 +501,7 @@ export function DevicesPage() {
   return (
     <AppShell active="/app/security">
       <div className="cloak-scroll h-full overflow-y-auto pt-[var(--cloak-top-chrome-h)] md:pt-0">
-        <div className="mx-auto max-w-3xl px-5 pb-[calc(56px+env(safe-area-inset-bottom))] pt-8 md:px-8 md:pb-8">
+        <div className="mx-auto max-w-3xl px-5 pb-[var(--cloak-bottom-clearance)] pt-8 md:px-8 md:pb-8">
           <button
             onClick={() => navigate("/app/security")}
             className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-cloak-text-secondary transition-colors hover:text-cloak-text"
