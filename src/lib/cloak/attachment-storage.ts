@@ -3,10 +3,17 @@
 /*
  * Device-local attachment storage.
  *
- * Attachment bytes stay in the browser's origin storage (IndexedDB). Chat
- * transport sends only encrypted metadata, keeping file contents off Cloak Dagger's
- * API/database path. Dagger already clears IndexedDB as part of local wipe.
+ * This is now the LOCAL CACHE, not the whole story. Attachment bytes are still
+ * written here first, so the device that created a note plays it instantly and
+ * without a round trip — but the bytes are also sealed and uploaded (see
+ * `attachment-remote.ts`) so the recipient can actually hear them. The envelope
+ * therefore carries the crypto envelope needed to open the uploaded copy.
+ *
+ * Keeping the local write is what makes the sender's own playback instant and
+ * keeps working offline; it is no longer the only copy that exists.
  */
+
+import { parseBlobEnvelope, type BlobEnvelope } from "@/lib/crypto/e2ee";
 
 const DB_NAME = "cloak-attachments";
 const DB_VERSION = 1;
@@ -32,11 +39,19 @@ export interface AttachmentEnvelope {
   storedAt: number;
   /**
    * Voice notes only: how long the recording runs, in seconds. It rides the
-   * envelope because the recipient never receives the bytes (attachment blobs
-   * stay on the device that created them), so the duration is the only part of
-   * the note they can be told about. Absent for files and images.
+   * envelope so the player can render the clock before any audio is fetched.
+   * Absent for files and images.
    */
   durationSec?: number;
+  /**
+   * Crypto envelope for the uploaded copy — conversation key version, per-blob
+   * key id, and IV. Present once the ciphertext reached the server; absent when
+   * the upload failed or the note predates transport, in which case it is only
+   * playable on the device that recorded it.
+   *
+   * It travels INSIDE the encrypted message body, so the server never sees it.
+   */
+  blob?: BlobEnvelope;
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -116,12 +131,38 @@ export async function saveLocalAttachment(
   };
 }
 
-export async function getLocalAttachment(id: string): Promise<LocalAttachmentRecord | null> {
+/**
+ * The envelope as it should TRAVEL, once the upload has produced a crypto
+ * envelope. Called after `uploadAttachmentBlob` succeeds; on failure the caller
+ * passes nothing and the note travels as metadata only.
+ */
+export function withBlobEnvelope(
+  envelope: AttachmentEnvelope,
+  blob: BlobEnvelope | undefined
+): AttachmentEnvelope {
+  return blob ? { ...envelope, blob } : envelope;
+}
+
+/**
+ * Read a local record.
+ *
+ * `conversationId` is REQUIRED, not optional. This store is keyed by origin
+ * rather than by account, and one install may serve several accounts (see the
+ * device registry), so an id-only lookup would let account B read account A's
+ * media on a shared device. Naming the conversation is what makes that
+ * impossible rather than merely unlikely.
+ */
+export async function getLocalAttachment(
+  id: string,
+  conversationId: string
+): Promise<LocalAttachmentRecord | null> {
   if (!id) return null;
   const record = await withStore<LocalAttachmentRecord | undefined>("readonly", (store) =>
     store.get(id)
   );
-  return record ?? null;
+  if (!record) return null;
+  if (record.conversationId !== conversationId) return null;
+  return record;
 }
 
 export function parseAttachmentEnvelope(body: string): AttachmentEnvelope | null {
@@ -137,6 +178,7 @@ export function parseAttachmentEnvelope(body: string): AttachmentEnvelope | null
     ) {
       return null;
     }
+    const blob = parseBlobEnvelope(parsed.blob);
     return {
       type: "cloak.attachment",
       v: 1,
@@ -148,6 +190,9 @@ export function parseAttachmentEnvelope(body: string): AttachmentEnvelope | null
       ...(typeof parsed.durationSec === "number" && Number.isFinite(parsed.durationSec)
         ? { durationSec: Math.max(0, Math.round(parsed.durationSec)) }
         : {}),
+      /* A malformed crypto envelope is dropped rather than half-honoured: the
+         note then reads as "not transferred" instead of failing to decrypt. */
+      ...(blob ? { blob } : {}),
     };
   } catch {
     return null;

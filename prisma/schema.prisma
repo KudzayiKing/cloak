@@ -65,6 +65,7 @@ model User {
   notifications      UserNotification[]    @relation("notifications")
   pushSubscriptions  PushSubscription[]    @relation("pushSubscriptions")
   privacySettings    UserPrivacySettings?  @relation("privacySettings")
+  attachmentBlobs    AttachmentBlob[]
 }
 
 model Session {
@@ -174,6 +175,7 @@ model Conversation {
   invites        GroupInvite[]
   joinRequests   GroupJoinRequest[]
   keyWraps       ConversationKeyWrap[]
+  attachmentBlobs AttachmentBlob[]
 
   @@index([circleId])
 }
@@ -213,6 +215,36 @@ model Message {
   reactions      MessageReaction[]
 
   @@index([conversationId, createdAt])
+  @@index([expiresAt])
+}
+
+/// Encrypted attachment payloads (voice notes, files, images).
+///
+/// Attachment bytes used to live ONLY in the recording device's IndexedDB, so a
+/// recipient could be told a note's duration but could never hear it. This table
+/// is the transport that fixes that — and it holds CIPHERTEXT ONLY. The client
+/// seals the blob with a key derived from the conversation root key (HKDF info
+/// `cloak/blob/`, AAD bound to conversation + attachment id), so the server
+/// stores bytes it cannot read. Nothing here is ever plaintext.
+model AttachmentBlob {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  authorId       String
+  author         User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  /// AES-GCM ciphertext (includes the 16-byte GCM tag).
+  ciphertext     Bytes
+  /// Ciphertext length, so a size check never has to load the bytes.
+  byteSize       Int
+  /// Conversation key version the blob was sealed under; the recipient
+  /// resolves the matching root key from its own keyring.
+  keyVersion     Int
+  createdAt      DateTime     @default(now())
+  /// Retention. Ghost conversations stamp this from their TTL so a vanishing
+  /// message does not leave its media behind.
+  expiresAt      DateTime?
+
+  @@index([conversationId])
   @@index([expiresAt])
 }
 

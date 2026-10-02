@@ -29,6 +29,14 @@ import {
 /** Longest single note, so a forgotten recording cannot grow without bound. */
 const MAX_RECORDING_SEC = 300;
 
+/**
+ * Opus mono at 32 kbps is transparent for speech, and it keeps a full 5-minute
+ * note near 1.2 MB — comfortably inside the upload cap. The browser default
+ * measured ~79 kbps, which would triple the payload for no audible gain and
+ * spend the server's size cap on bitrate nobody asked for.
+ */
+const VOICE_BITS_PER_SECOND = 32_000;
+
 /** Preferred container/codec, best first. Safari has no webm and needs mp4. */
 const AUDIO_MIME_CANDIDATES = [
   "audio/webm;codecs=opus",
@@ -172,7 +180,10 @@ export function MessageComposer({
     const mimeType = pickAudioMime();
     let recorder: MediaRecorder;
     try {
-      recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      recorder = new MediaRecorder(stream, {
+        ...(mimeType ? { mimeType } : {}),
+        audioBitsPerSecond: VOICE_BITS_PER_SECOND,
+      });
     } catch {
       stream.getTracks().forEach((track) => track.stop());
       setRecordError("This browser cannot record audio.");

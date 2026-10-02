@@ -323,22 +323,24 @@ function AttachmentBubble({
   const openActionSheet = useCallback(() => setActionSheetOpen(true), []);
   const { longPressHandlers } = useLongPress(openActionSheet);
 
+  /* Same reason as the voice player: key the effect on primitives so a sync
+     poll cannot re-run it and re-download, while `attachmentBlob.k` still
+     triggers exactly one retry when the crypto envelope arrives. */
+  const messageRef = useRef(message);
+  messageRef.current = message;
+
   useEffect(() => {
     let cancelled = false;
     let objectUrl: string | null = null;
     async function load() {
-      if (!message.attachmentId) {
-        setAvailable(false);
-        return;
-      }
-      const record = await getLocalAttachment(message.attachmentId).catch(() => null);
+      const blob = await resolveAttachmentBlob(messageRef.current).catch(() => null);
       if (cancelled) return;
-      if (!record) {
+      if (!blob) {
         setAvailable(false);
         setUrl(null);
         return;
       }
-      objectUrl = URL.createObjectURL(record.blob);
+      objectUrl = URL.createObjectURL(blob);
       setUrl(objectUrl);
       setAvailable(true);
     }
@@ -347,7 +349,7 @@ function AttachmentBubble({
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [message.attachmentId]);
+  }, [message.attachmentId, message.conversationId, message.attachmentBlob?.k]);
 
   const name = message.fileName ?? (kind === "image" ? "Photo" : "Attachment");
   const size = formatBytes(message.fileSizeBytes ?? 0);
@@ -444,24 +446,77 @@ function AttachmentBubble({
 /*
  * VoiceNotePlayer.
  *
- * A voice note is an attachment, so its bytes live on the device that recorded
- * it and nowhere else (see `attachment-storage.ts`). That gives three states,
- * and the third is the honest one for a recipient:
+ * A voice note is an attachment, and its bytes now arrive by TWO routes:
  *
- *   null   -> still reading device storage
+ *   1. the local IndexedDB cache — the device that recorded it, played with no
+ *      round trip at all;
+ *   2. the uploaded ciphertext — fetched and decrypted with the conversation
+ *      key, which is what finally lets a RECIPIENT hear the note.
+ *
+ * That gives three states, and the third is the honest one when neither route
+ * yields bytes (no upload, keys missing, or the payload will not open):
+ *
+ *   null   -> still resolving (local read, then network)
  *   true   -> playable here; the waveform is measured from the real audio
- *   false  -> the sender's device holds the bytes; all we can state is duration
+ *   false  -> the bytes are not available on this device
  *
  * The waveform is measured, not decorative: `decodeAudioData` yields the samples
  * and we reduce them to one peak per bar, so the shape is the note's own. Bars
  * are sized in Cloak's own tokens — gold for the played part, muted for the
  * rest — so the player reads as part of the bubble rather than a bolted-on
- * widget. Decoding is cached per attachment id because a thread re-renders on
- * every sync poll and must not re-decode on each one.
+ * widget. BOTH the decoded peaks and the downloaded blob are cached per
+ * attachment id, because a thread re-renders on every sync poll and must not
+ * re-fetch or re-decode on each one.
  */
 
 const VOICE_BAR_COUNT = 32;
 const voicePeakCache = new Map<string, number[]>();
+
+/* Downloaded plaintext, shared by the voice player and the file/image bubble so
+   a remount (or a poll tick) does not download the same payload twice. */
+const attachmentBlobCache = new Map<string, Blob>();
+
+/**
+ * Resolve attachment bytes for a message.
+ *
+ * Two routes, in order: the LOCAL cache on the device that created it (instant,
+ * offline, no round trip), then the uploaded ciphertext — fetched and decrypted
+ * with the conversation key, which is what lets a recipient read the payload at
+ * all. Returns null when neither yields bytes, and the caller then renders the
+ * honest unavailable state rather than an inert player.
+ */
+async function resolveAttachmentBlob(message: Message): Promise<Blob | null> {
+  const attachmentId = message.attachmentId;
+  if (!attachmentId) return null;
+
+  const local = await getLocalAttachment(attachmentId, message.conversationId).catch(() => null);
+  if (local?.blob) return local.blob;
+
+  const envelope = message.attachmentBlob;
+  if (!envelope) return null;
+
+  const cached = attachmentBlobCache.get(attachmentId);
+  if (cached) return cached;
+
+  const fetched = await useCloakStore
+    .getState()
+    .fetchAttachmentBlob(
+      message.conversationId,
+      attachmentId,
+      envelope,
+      message.attachmentMime ?? ""
+    )
+    .catch(() => null);
+  if (fetched) {
+    attachmentBlobCache.set(attachmentId, fetched);
+    /* Bounded FIFO: a long session in a busy thread must not pin everything. */
+    if (attachmentBlobCache.size > 40) {
+      const oldest = attachmentBlobCache.keys().next().value;
+      if (oldest) attachmentBlobCache.delete(oldest);
+    }
+  }
+  return fetched;
+}
 
 async function measurePeaks(attachmentId: string, blob: Blob): Promise<number[]> {
   const cached = voicePeakCache.get(attachmentId);
@@ -510,25 +565,34 @@ function VoiceNotePlayer({ message }: { message: Message }) {
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0);
 
+  /* The store rebuilds every message object on each sync poll. Reading through a
+     ref keeps this effect keyed on PRIMITIVES, so a poll cannot re-run it and
+     restart playback mid-note — while `attachmentBlob.k` changes exactly once,
+     when the crypto envelope arrives, which is precisely when we must retry. */
+  const messageRef = useRef(message);
+  messageRef.current = message;
+
   useEffect(() => {
     let cancelled = false;
     let objectUrl: string | null = null;
     async function load() {
-      if (!message.attachmentId) {
+      const current = messageRef.current;
+      const attachmentId = current.attachmentId;
+      if (!attachmentId) {
         setAvailable(false);
         return;
       }
-      const record = await getLocalAttachment(message.attachmentId).catch(() => null);
+      const blob = await resolveAttachmentBlob(current).catch(() => null);
       if (cancelled) return;
-      if (!record) {
+      if (!blob) {
         setAvailable(false);
         setUrl(null);
         return;
       }
-      objectUrl = URL.createObjectURL(record.blob);
+      objectUrl = URL.createObjectURL(blob);
       setUrl(objectUrl);
       setAvailable(true);
-      const measured = await measurePeaks(message.attachmentId, record.blob);
+      const measured = await measurePeaks(attachmentId, blob);
       if (!cancelled && measured.length) setPeaks(measured);
     }
     void load();
@@ -536,7 +600,7 @@ function VoiceNotePlayer({ message }: { message: Message }) {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [message.attachmentId]);
+  }, [message.attachmentId, message.conversationId, message.attachmentBlob?.k]);
 
   const total = message.voiceDurationSec ?? 0;
   const hasPeaks = peaks.length > 0;
@@ -601,8 +665,16 @@ function VoiceNotePlayer({ message }: { message: Message }) {
         </span>
       </div>
 
+      {available === null && (
+        <p className="mt-1 text-[10px] text-cloak-text-muted">Loading audio…</p>
+      )}
+
       {available === false && (
-        <p className="mt-1 text-[10px] text-cloak-text-muted">Stored on sender device</p>
+        <p className="mt-1 text-[10px] text-cloak-text-muted">
+          {message.attachmentTransferFailed
+            ? "Upload failed — only you can play this"
+            : "Audio isn't available"}
+        </p>
       )}
 
       {url && (

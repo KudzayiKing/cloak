@@ -197,9 +197,18 @@ check(
   /played \? "bg-cloak-gold" : "bg-cloak-text-muted\/40"/.test(bubble),
   true
 );
+/* Round 38: the payload now travels (sealed) to the server, so the old
+   "Stored on sender device" line is no longer true of a delivered note. The
+   player must still state the unavailable case honestly rather than render an
+   inert control, but it must not claim the bytes never left the device. */
 check(
-  "the player states when the bytes are on the sender's device",
+  "the player no longer claims the bytes only live on the sender's device",
   /Stored on sender device/.test(bubble),
+  false
+);
+check(
+  "the player still states an unavailable payload honestly",
+  /Audio isn't available/.test(bubble),
   true
 );
 /* The old shell rendered `{voiceDurationSec ?? 0}:00`, so a 12s note read

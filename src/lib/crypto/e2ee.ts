@@ -29,6 +29,14 @@
  *                 AES-GCM with additionalData = "<convId>|<kind>|<authorId>"
  *                 so ciphertexts cannot be transplanted between
  *                 conversations, authors, or kinds.
+ * Attachments   : a blob (voice note, file, image) is sealed under the same
+ *                 conversation root but in its OWN HKDF domain:
+ *                   blobKey = HKDF-SHA256(root, salt = "<convId>|v<N>",
+ *                                         info = "cloak/blob/<k>")
+ *                 AES-GCM with additionalData = "<convId>|blob|<attachmentId>".
+ *                 The payload is BINARY and stored server-side as ciphertext
+ *                 (AttachmentBlob.ciphertext) — the server never sees the bytes
+ *                 in the clear, and a leaked body key does not expose media.
  *
  * System notices stay plaintext server-side (membership facts only).
  * Legacy pre-E2EE rows have non-envelope bodies and render via fallback.
@@ -383,4 +391,114 @@ export function parseEnvelope(body: string): MessageEnvelope | null {
     /* not an envelope */
   }
   return null;
+}
+
+/* ---------- attachment blobs ---------- */
+
+/*
+ * Attachment payloads (voice notes, files, images) reuse the conversation root
+ * key but get their OWN HKDF domain and their OWN AAD:
+ *
+ *   blobKey = HKDF-SHA256(root, salt = "<convId>|v<N>", info = "cloak/blob/<k>")
+ *   AES-GCM with additionalData = "<convId>|blob|<attachmentId>"
+ *
+ * A distinct info prefix means a blob key can never collide with a body key, so
+ * a leaked body key never exposes media. Binding the attachment id means
+ * ciphertext sealed for one attachment cannot be replayed as another's.
+ *
+ * The ciphertext stays BINARY and travels as bytes, never base64 — base64 would
+ * inflate every note by 33% and spend the server's size cap on encoding.
+ */
+
+const HKDF_BLOB_INFO_PREFIX = "cloak/blob/";
+
+/** AAD for a blob: conversation + attachment id, so neither can be swapped. */
+export function blobAad(conversationId: string, attachmentId: string): Uint8Array {
+  return utf8(`${conversationId}|blob|${attachmentId}`);
+}
+
+export interface BlobEnvelope {
+  v: number; // conversation key version the blob was sealed under
+  k: string; // b64 per-blob key id (ratcheted, like a body key)
+  n: string; // b64 iv
+}
+
+/** Per-blob AES key from the conversation root — same ratchet shape as bodies. */
+export async function deriveBlobKeyRaw(
+  rootRawB64: string,
+  conversationId: string,
+  version: number,
+  keyIdB64: string
+): Promise<CryptoKey> {
+  const base = await crypto.subtle.importKey(
+    "raw",
+    fromB64(rootRawB64),
+    "HKDF",
+    false,
+    ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: utf8(`${conversationId}|v${version}`) as unknown as BufferSource,
+      info: utf8(`${HKDF_BLOB_INFO_PREFIX}${keyIdB64}`) as unknown as BufferSource,
+    },
+    base,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+export async function encryptBlob(
+  rootRawB64: string,
+  version: number,
+  bytes: ArrayBuffer,
+  conversationId: string,
+  attachmentId: string
+): Promise<{ envelope: BlobEnvelope; ciphertext: Uint8Array<ArrayBuffer> }> {
+  const keyId = generateMessageKeyId();
+  const key = await deriveBlobKeyRaw(rootRawB64, conversationId, version, keyId);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt(
+    {
+      name: "AES-GCM",
+      iv,
+      additionalData: blobAad(conversationId, attachmentId) as unknown as BufferSource,
+    },
+    key,
+    bytes as unknown as BufferSource
+  );
+  return {
+    envelope: { v: version, k: keyId, n: toB64(iv) },
+    ciphertext: new Uint8Array(ct),
+  };
+}
+
+export async function decryptBlob(
+  rootRawB64: string,
+  envelope: BlobEnvelope,
+  ciphertext: Uint8Array,
+  conversationId: string,
+  attachmentId: string
+): Promise<ArrayBuffer> {
+  const key = await deriveBlobKeyRaw(rootRawB64, conversationId, envelope.v, envelope.k);
+  return crypto.subtle.decrypt(
+    {
+      name: "AES-GCM",
+      iv: fromB64(envelope.n) as unknown as BufferSource,
+      additionalData: blobAad(conversationId, attachmentId) as unknown as BufferSource,
+    },
+    key,
+    ciphertext as unknown as BufferSource
+  );
+}
+
+/** Shape-check a blob envelope that arrived inside an attachment envelope. */
+export function parseBlobEnvelope(value: unknown): BlobEnvelope | null {
+  if (!value || typeof value !== "object") return null;
+  const v = value as Record<string, unknown>;
+  if (typeof v.v !== "number" || typeof v.k !== "string" || typeof v.n !== "string") return null;
+  return { v: v.v, k: v.k, n: v.n };
 }

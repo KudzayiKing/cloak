@@ -209,10 +209,25 @@ export interface Message {
   bodyLockedReason?: "missing" | "expired";
   fileName?: string;
   fileSizeBytes?: number;
-  /** Device-local attachment blob id (IndexedDB / origin storage). */
+  /** Attachment blob id. Local cache on the sender's device, and the primary
+   *  key of the uploaded ciphertext everywhere else. */
   attachmentId?: string;
   attachmentMime?: string;
   attachmentStoredLocal?: boolean;
+  /**
+   * Crypto envelope for the uploaded copy (conversation key version, per-blob
+   * key id, IV). Present when the ciphertext reached the server, so any member
+   * can fetch and open it; absent means the payload is only on the device that
+   * created it. Declared structurally rather than importing the crypto type so
+   * this module stays dependency-free.
+   */
+  attachmentBlob?: { v: number; k: string; n: string };
+  /**
+   * The payload could not be uploaded (too large, no key, offline). The message
+   * still sends as metadata-only, but the sender is told rather than left
+   * believing the recipient can play it.
+   */
+  attachmentTransferFailed?: boolean;
   voiceDurationSec?: number;
   /** For AI answers: where and how processing happened. */
   ai?: AIProcessingDetails;

@@ -44,13 +44,16 @@ import { DEFAULT_CLOAK_THEME, applyCloakTheme, type CloakTheme } from "@/lib/clo
 import {
   parseAttachmentEnvelope,
   saveLocalAttachment,
+  withBlobEnvelope,
   type AttachmentEnvelope,
 } from "@/lib/cloak/attachment-storage";
+import { downloadAttachmentBlob, uploadAttachmentBlob } from "@/lib/cloak/attachment-remote";
 import {
   applyForwardSecrecy,
   decryptBody,
   encryptBody,
   ensureIdentity,
+  getConversationKeyRaw,
   maybeRotateForAge,
   restoreIdentity,
   rotateConversationKey,
@@ -353,6 +356,7 @@ function hydrateAttachmentMessage(message: Message): Message {
     attachmentId: envelope.attachmentId,
     attachmentMime: envelope.mime,
     attachmentStoredLocal: message.authorId === "me",
+    attachmentBlob: envelope.blob,
     voiceDurationSec: envelope.durationSec,
   };
 }
@@ -369,6 +373,7 @@ function attachmentMessageFromEnvelope(
     attachmentId: envelope.attachmentId,
     attachmentMime: envelope.mime,
     attachmentStoredLocal: true,
+    attachmentBlob: envelope.blob,
     voiceDurationSec: envelope.durationSec,
   };
 }
@@ -760,6 +765,18 @@ interface CloakState {
     file: File,
     options?: { durationSec?: number }
   ) => Promise<{ ok: true; messageId: string } | { ok: false; error: string }>;
+  /**
+   * Recipient side of attachment transport: fetch the uploaded ciphertext and
+   * open it with the conversation key at the version the sender sealed under.
+   * Returns null when the keys are not on this device yet or the payload cannot
+   * be opened — the caller renders the honest "not available" state.
+   */
+  fetchAttachmentBlob: (
+    conversationId: string,
+    attachmentId: string,
+    blobEnvelope: { v: number; k: string; n: string },
+    mime: string
+  ) => Promise<Blob | null>;
   updateMessageStatus: (
     conversationId: string,
     messageId: string,
@@ -1988,6 +2005,24 @@ export const useCloakStore = create<CloakState>()(
         return id;
       },
 
+      fetchAttachmentBlob: async (conversationId, attachmentId, blobEnvelope, mime) => {
+        const myUserId = get().auth.user?.id;
+        if (!myUserId) return null;
+        /* A fresh device may not hold the version the sender sealed under, so
+           sync the keyring before concluding the payload is unopenable. */
+        if (!getConversationKeyRaw(conversationId, blobEnvelope.v)) {
+          await syncConversationKeys(conversationId, myUserId);
+          await waitForConversationKey(conversationId, 2500);
+        }
+        const result = await downloadAttachmentBlob({
+          conversationId,
+          attachmentId,
+          blobEnvelope,
+          mime,
+        });
+        return result.ok ? result.blob : null;
+      },
+
       sendAttachment: async (conversationId, file, options) => {
         if (!file || file.size <= 0) return { ok: false, error: "empty_file" };
         /* Audio becomes a voice note; everything else is a file, or an image
@@ -2007,7 +2042,6 @@ export const useCloakStore = create<CloakState>()(
         }
 
         const id = nextLocalId("m");
-        const plaintext = JSON.stringify(saved.envelope);
         const message = attachmentMessageFromEnvelope(
           {
             id,
@@ -2029,6 +2063,10 @@ export const useCloakStore = create<CloakState>()(
         void (async () => {
           const myUserId = get().auth.user?.id;
           let encrypted: string | null = null;
+          /* The envelope that actually travels. Starts metadata-only and gains
+             the crypto envelope once the payload has been uploaded. */
+          let travelEnvelope: AttachmentEnvelope = saved.envelope;
+          let transferFailed = false;
           if (myUserId) {
             await syncConversationKeys(conversationId, myUserId);
             let readyKey = await waitForConversationKey(conversationId, 2500);
@@ -2041,7 +2079,28 @@ export const useCloakStore = create<CloakState>()(
               const windowMs = FS_WINDOW_MS[fs];
               if (windowMs) await maybeRotateForAge(conversationId, myUserId, windowMs / 2);
             }
-            encrypted = await encryptBody(conversationId, plaintext, kind, myUserId);
+
+            /* Seal and upload the payload BEFORE the body: the body carries the
+               crypto envelope the recipient needs in order to open it, so the
+               upload must have happened first. A failure is not fatal — the note
+               still sends, as metadata only, and the sender is told so. */
+            const upload = await uploadAttachmentBlob({
+              conversationId,
+              attachmentId: saved.envelope.attachmentId,
+              file,
+            });
+            if (upload.ok) {
+              travelEnvelope = withBlobEnvelope(saved.envelope, upload.blobEnvelope);
+            } else {
+              transferFailed = true;
+            }
+
+            encrypted = await encryptBody(
+              conversationId,
+              JSON.stringify(travelEnvelope),
+              kind,
+              myUserId
+            );
           }
 
           if (!encrypted) {
@@ -2074,6 +2133,12 @@ export const useCloakStore = create<CloakState>()(
               id: confirmed.id,
               createdAt: confirmed.createdAt,
               status: confirmed.status ?? "sent",
+              /* The optimistic message was built before the upload, so its
+                 `attachmentBlob` is stale/absent — take the authoritative one
+                 from the confirmed body, and surface a failed transfer rather
+                 than letting the sender assume the recipient can play it. */
+              attachmentBlob: confirmed.attachmentBlob,
+              ...(transferFailed ? { attachmentTransferFailed: true } : {}),
             };
           }
 
