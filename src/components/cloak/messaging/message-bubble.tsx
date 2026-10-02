@@ -290,7 +290,7 @@ export function MessageBubble({
             <GhostGlyph size={11} />
           )}
           {formatTime(message.createdAt)}
-          {outgoing && <DeliveryStatus status={message.status ?? "sent"} />}
+          {outgoing && <DeliveryStatus message={message} />}
         </div>
 
         {(translatable || canReact) && (
@@ -429,7 +429,7 @@ function AttachmentBubble({
           )}
         >
           {formatTime(message.createdAt)}
-          {outgoing && <DeliveryStatus status={message.status ?? "sent"} />}
+          {outgoing && <DeliveryStatus message={message} />}
         </div>
         {onReact && (
           <MessageActionSheet
@@ -865,11 +865,55 @@ function TranslationBody({
   );
 }
 
-function DeliveryStatus({ status }: { status: Message["status"] }) {
-  if (status === "sending")
+/**
+ * Outgoing delivery state.
+ *
+ * `failed` used to read "failed — tap to retry" with no retry behind it, which
+ * was a lie the user could do nothing about. It is a real button now.
+ *
+ * `queued` is deliberately NOT styled as an error. The message is safe on this
+ * device and will send itself; red would tell the user something is wrong when
+ * nothing is. Tapping it just tries now rather than waiting for the next tick.
+ */
+function DeliveryStatus({ message }: { message: Message }) {
+  const retryMessage = useCloakStore((s) => s.retryMessage);
+  const [busy, setBusy] = useState(false);
+  const status = message.status ?? "sent";
+
+  if (status === "sending") {
     return <span className="text-[10px] text-cloak-text-muted">sending</span>;
-  if (status === "failed")
-    return <span className="text-[10px] text-cloak-danger">failed — tap to retry</span>;
+  }
+  if (status === "queued") {
+    return (
+      <button
+        type="button"
+        onClick={async () => {
+          setBusy(true);
+          await retryMessage(message.conversationId, message.id).catch(() => undefined);
+          setBusy(false);
+        }}
+        className="text-[10px] text-cloak-text-muted hover:text-cloak-text"
+        title="Waiting for a connection — tap to try now"
+      >
+        {busy ? "sending…" : "queued"}
+      </button>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <button
+        type="button"
+        onClick={async () => {
+          setBusy(true);
+          await retryMessage(message.conversationId, message.id).catch(() => undefined);
+          setBusy(false);
+        }}
+        className="text-[10px] text-cloak-danger hover:underline"
+      >
+        {busy ? "retrying…" : "failed — tap to retry"}
+      </button>
+    );
+  }
   if (status === "sent") return <CheckIcon size={11} />;
   if (status === "delivered") return <CheckCheckIcon size={11} />;
   return <CheckCheckIcon size={11} className="text-cloak-gold" />;

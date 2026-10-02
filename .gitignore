@@ -23,6 +23,11 @@ node_modules
 !/scripts/verify-reaction-sizing.mts
 !/scripts/verify-pwa-update.mts
 !/scripts/verify-theme-and-icons.mts
+!/scripts/verify-outbox.mts
+# Offline-send (round 40) live regression probes — duplicate-safety over HTTP and
+# offline-queue-then-flush-once over a real browser. Worth keeping.
+!/scripts/probe-outbox.mjs
+!/scripts/probe-outbox-browser.mjs
 # The icon generator is the source of truth for the committed brand assets in
 # public/icons/, and verify-theme-and-icons.mts asserts on it — so it is source,
 # not scratch.
@@ -78,8 +83,12 @@ next-env.d.ts
 *.log
 dev.log
 dev.out.log
-test
-prompt
+# ROOT-SCOPED on purpose. A bare `test`/`prompt` (no leading slash) matches a
+# path segment at ANY depth and would silently swallow a nested source file or
+# directory of that name — the same class of bug that once swallowed
+# local-db.ts / local-vault.ts. Restrict to the repository root.
+/test
+/prompt
 
 server.log
 # Skills directory

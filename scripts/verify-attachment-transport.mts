@@ -170,15 +170,23 @@ check(
 );
 
 /* --------------------- 4. send order: upload, then body ------------------ */
+/* Round 40 unified the text AND attachment send paths into postOutgoingMessage,
+   so the upload / encrypt / decrypt invariants now live there (and settleOutgoing
+   paints the confirmed row). The guards below point at that shared path. */
+
+const postStart = store.indexOf("async function postOutgoingMessage");
+const postEnd = store.indexOf("function toClientMessage");
+const postBlock = postStart >= 0 && postEnd > postStart ? store.slice(postStart, postEnd) : "";
 
 check(
-  "the store uploads the payload before encrypting the body",
-  /uploadAttachmentBlob\([\s\S]{0,600}?encryptBody\(/.test(store),
+  "the shared send path uploads the payload before encrypting the body",
+  store.indexOf("uploadAttachmentBlob(") >= 0 &&
+    store.indexOf("encryptBody(") > store.indexOf("uploadAttachmentBlob("),
   true
 );
 check(
   "the travelling envelope gains the crypto envelope on success",
-  /withBlobEnvelope\(saved\.envelope, upload\.blobEnvelope\)/.test(store),
+  /withBlobEnvelope\(envelope, upload\.blobEnvelope\)/.test(postBlock),
   true
 );
 check(
@@ -187,8 +195,8 @@ check(
   true
 );
 check(
-  "the confirmed message's blob wins over the pre-upload optimistic one",
-  /attachmentBlob:\s*confirmed\.attachmentBlob/.test(store),
+  "the confirmed (decrypted) message replaces the optimistic bubble",
+  /replaceMessage\(\s*conversationId\s*,\s*id\s*,\s*outcome\.transferFailed/.test(store),
   true
 );
 /* Regression guard. `confirmed` must come from the DECRYPTION pass, not the
@@ -197,22 +205,15 @@ check(
    written over the optimistic one, that silently WIPES the sender's envelope
    the moment the send is confirmed. This shipped once; the probe caught it
    only because it asserted on the settled message rather than the optimistic
-   one. Scoped to the attachment action: the text path deliberately keeps its
-   local plaintext body instead (see the comment there). */
-const attachStart = store.indexOf("sendAttachment: async");
-/* lastIndexOf: the state INTERFACE declares updateMessageStatus long before
-   the implementation does, and indexOf would bound the slice to nothing. */
-const attachEnd = store.lastIndexOf("updateMessageStatus:");
-const attachSendBlock =
-  attachStart >= 0 && attachEnd > attachStart ? store.slice(attachStart, attachEnd) : "";
+   one. Now in the shared send path rather than the attachment action. */
 check(
-  "the attachment confirmation is decrypted, not parsed as plaintext",
-  /const \[confirmed\] = await decryptServerMessages\(/.test(attachSendBlock),
+  "the confirmation is decrypted, not parsed as plaintext",
+  /const \[confirmed\] = await decryptServerMessages\(/.test(postBlock),
   true
 );
 check(
-  "the attachment send path never hydrates the raw ciphertext body",
-  attachSendBlock.length > 0 && !/toClientMessage\(res\.data\.message\)/.test(attachSendBlock),
+  "the shared send path never hydrates the raw ciphertext body",
+  !/toClientMessage\(res\.data\.message\)/.test(postBlock),
   true
 );
 check(

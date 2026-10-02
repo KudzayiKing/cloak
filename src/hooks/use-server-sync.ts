@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useRef, type MutableRefObject } from "react";
-import { useCloakStore } from "@/stores/cloak-store";
+import { flushOutbox, useCloakStore } from "@/stores/cloak-store";
 import type { ServerConversation, ServerContact, ServerMessage } from "@/stores/cloak-store";
 import { toast } from "@/hooks/use-toast";
 import { notificationForIncomingMessage } from "@/lib/cloak/notifications";
@@ -145,6 +145,8 @@ export function useServerSync(enabled: boolean) {
         /* E2EE key maintenance is serialized with the polling loop so the
            Supabase pooler is not hit by list/messages/keys in parallel. */
         await store.syncE2eeKeys();
+        /* No chat open is exactly when a queued message most needs to go. */
+        if (tickOk) void flushOutbox();
         finishTick(tickOk);
         return;
       }
@@ -184,6 +186,12 @@ export function useServerSync(enabled: boolean) {
       }
 
       await store.syncE2eeKeys();
+      /* Drain pending sends, at the END of the tick and after key maintenance
+         so it stays serialized with the poll rather than racing it. Only when
+         this tick actually reached the server: a failed tick means we are
+         offline and the flush would fail identically. This is also the trigger
+         that covers a reconnect the `online` event never fired for. */
+      if (tickOk) void flushOutbox();
       finishTick(tickOk);
     };
 

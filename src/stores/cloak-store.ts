@@ -22,6 +22,7 @@ import type {
   DisappearingTimer,
   MemoryScope,
   Message,
+  MessageStatus,
   MessageReactionSummary,
   MembershipEntitlement,
   MessageKind,
@@ -56,10 +57,20 @@ import { MODEL_MANIFEST } from "@/lib/cloak/config";
 import { DEFAULT_CLOAK_THEME, applyCloakTheme, type CloakTheme } from "@/lib/cloak/theme";
 import {
   parseAttachmentEnvelope,
+  getLocalAttachment,
+  openLocalAttachment,
   saveLocalAttachment,
   withBlobEnvelope,
   type AttachmentEnvelope,
 } from "@/lib/cloak/attachment-storage";
+import {
+  bumpOutboxAttempt,
+  deleteOutboxEntry,
+  enqueueOutbox,
+  listOutbox,
+  updateOutboxBody,
+  type OutboxEntry,
+} from "@/lib/cloak/outbox";
 import { downloadAttachmentBlob, uploadAttachmentBlob } from "@/lib/cloak/attachment-remote";
 import {
   applyForwardSecrecy,
@@ -340,6 +351,141 @@ function relativeTime(iso: string): string {
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} h ago`;
   return `${Math.floor(diff / 86_400_000)} d ago`;
+}
+
+/* ---------- the outbox's single send path ---------- */
+
+/**
+ * A fresh idempotency key. It doubles as the optimistic message's id, so the
+ * queued row, the rendered bubble and every retry all name the same value.
+ */
+function newClientKey(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `ck-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+type SendOutcome =
+  | {
+      kind: "sent";
+      message: Message;
+      /** The message landed but its payload did not, so only this device can
+       *  play it. Surfaced to the sender rather than hidden. */
+      transferFailed?: boolean;
+    }
+  | { kind: "retryable"; reason: string }
+  | { kind: "permanent"; reason: string };
+
+/**
+ * Is a failed POST worth retrying?
+ *
+ * This distinction is the entire reason the outbox can exist. A 404 means the
+ * message can never land (not a member any more) and must be surfaced as
+ * failed. A timeout means we do NOT KNOW whether it landed, so it must be
+ * retried — which is only safe because the retry carries the same clientKey and
+ * the route replays instead of duplicating.
+ */
+function classifySendFailure(status: number): "retryable" | "permanent" {
+  if (status === 0) return "retryable"; // network error or timeout
+  if (status === 401 || status === 408 || status === 429) return "retryable";
+  if (status >= 500) return "retryable";
+  return "permanent";
+}
+
+/**
+ * Seal (and upload, for media) then POST. ONE implementation, shared by the
+ * immediate send and the outbox flush, so the two can never drift — a queue
+ * that encrypts differently from the live path would be a silent data-loss bug.
+ *
+ * ENCRYPTION HAPPENS HERE, AT SEND TIME. Never at enqueue time: a conversation
+ * key version can be retired by forward secrecy while a message waits in the
+ * queue, and a body encrypted under a retired version is unopenable by anyone,
+ * including the sender. That is why the queue holds vault-sealed plaintext.
+ */
+async function postOutgoingMessage(params: {
+  conversationId: string;
+  clientKey: string;
+  kind: MessageKind;
+  /** Plaintext for text; the metadata envelope JSON for attachments. */
+  plaintext: string;
+  attachmentId?: string;
+  myUserId: string;
+  forwardSecrecy: string;
+}): Promise<SendOutcome> {
+  const { conversationId, clientKey, kind, attachmentId, myUserId, forwardSecrecy } = params;
+  let plaintext = params.plaintext;
+
+  await syncConversationKeys(conversationId, myUserId);
+  let readyKey = await waitForConversationKey(conversationId, 2500);
+  if (!readyKey) {
+    await syncConversationKeys(conversationId, myUserId);
+    readyKey = await waitForConversationKey(conversationId, 1500);
+  }
+  /* Rotate an over-aged version BEFORE encrypting, so this message lands under
+     a fresh root rather than one the window is about to retire. */
+  if (forwardSecrecy !== "off") {
+    const windowMs = FS_WINDOW_MS[forwardSecrecy];
+    if (windowMs) await maybeRotateForAge(conversationId, myUserId, windowMs / 2);
+  }
+
+  let transferFailed = false;
+  if (attachmentId) {
+    const envelope = parseAttachmentEnvelope(plaintext);
+    if (envelope) {
+      if (envelope.blob) {
+        /* An earlier attempt already uploaded the payload and recorded its
+           crypto envelope here. Uploading again would get a 409 for an id the
+           server already holds, and the fresh IV from that second seal is NOT
+           the one the stored ciphertext was encrypted with — so the recipient
+           could never open it. Reuse, never re-seal. */
+      } else {
+        const record = await getLocalAttachment(attachmentId, conversationId).catch(() => null);
+        const bytes = record ? await openLocalAttachment(record).catch(() => null) : null;
+        if (!bytes) {
+          /* The payload is not on this device (cleared cache, or another
+             install). Nothing to upload — send the metadata so the message is
+             not lost, exactly as a failed transfer behaves. */
+          transferFailed = true;
+        } else {
+          const upload = await uploadAttachmentBlob({
+            conversationId,
+            attachmentId,
+            file: new Blob([bytes], { type: record?.mime || envelope.mime }),
+          });
+          if (upload.ok) {
+            plaintext = JSON.stringify(withBlobEnvelope(envelope, upload.blobEnvelope));
+            /* Record the upload before the body POST, so a timeout on the body
+               cannot leave a stored blob whose envelope we have thrown away. */
+            void updateOutboxBody(clientKey, plaintext);
+          } else if (upload.error === "network" || /^upload_5\d\d$/.test(upload.error)) {
+            /* Offline. Sending the body now would deliver a message the
+               recipient cannot play, so hold the whole thing and retry. */
+            return { kind: "retryable", reason: upload.error };
+          } else {
+            /* A real rejection (too large, rejected payload). The message still
+               has value as metadata; say so rather than dropping it. */
+            transferFailed = true;
+          }
+        }
+      }
+    }
+  }
+
+  const encrypted = await encryptBody(conversationId, plaintext, kind, myUserId);
+  if (!encrypted) return { kind: "retryable", reason: "no_conversation_key" };
+
+  const res = await api<{ message: ServerMessage; replayed?: boolean }>(
+    `/api/conversations/${conversationId}/messages`,
+    { method: "POST", body: JSON.stringify({ body: encrypted, kind, clientKey }) }
+  );
+  if (!res.ok) {
+    return { kind: classifySendFailure(res.status), reason: res.error ?? "send_failed" };
+  }
+
+  const [confirmed] = await decryptServerMessages([res.data.message], myUserId);
+  if (!confirmed) return { kind: "retryable", reason: "no_confirmation" };
+  return { kind: "sent", message: confirmed, ...(transferFailed ? { transferFailed } : {}) };
 }
 
 function toClientMessage(m: ServerMessage): Message {
@@ -803,6 +949,12 @@ interface CloakState {
     options?: { durationSec?: number }
   ) => Promise<{ ok: true; messageId: string } | { ok: false; error: string }>;
   /**
+   * Re-attempt a message that is queued or failed. Safe to call repeatedly:
+   * the message keeps its clientKey, so the server replays rather than
+   * duplicating however many times this runs.
+   */
+  retryMessage: (conversationId: string, messageId: string) => Promise<boolean>;
+  /**
    * Recipient side of attachment transport: fetch the uploaded ciphertext and
    * open it with the conversation key at the version the sender sealed under.
    * Returns null when the keys are not on this device yet or the payload cannot
@@ -1154,7 +1306,6 @@ export const useCloakStore = create<CloakState>()(
            server answering. On a slow or dropped connection this is what turns
            an empty inbox into the history the user already had. */
         const cached = await loadCachedConversations();
-        if (!cached.length) return;
         const withHistory = await Promise.all(
           cached.map(async (c) => ({
             ...c,
@@ -1163,10 +1314,52 @@ export const useCloakStore = create<CloakState>()(
             ),
           }))
         );
+
+        /* Pending sends are NOT in the message cache — they never reached the
+           server, so nothing ever cached them. They must be re-painted from the
+           outbox, or a reload would silently swallow the words the user wrote
+           while offline. */
+        const pending = await listOutbox();
+        if (!withHistory.length && !pending.length) return;
+
+        const queuedByConversation = new Map<string, Message[]>();
+        for (const entry of pending) {
+          const envelope = parseAttachmentEnvelope(entry.body);
+          const base = {
+            id: entry.id,
+            conversationId: entry.conversationId,
+            authorId: "me",
+            kind: entry.kind,
+            createdAt: entry.createdAt,
+            status: "queued" as MessageStatus,
+          };
+          const message = envelope
+            ? attachmentMessageFromEnvelope(base, envelope)
+            : { ...base, body: entry.body };
+          const list = queuedByConversation.get(entry.conversationId) ?? [];
+          list.push(message);
+          queuedByConversation.set(entry.conversationId, list);
+        }
+
         set((s) => {
           const byId = new Map(withHistory.map((c) => [c.id, c]));
           /* Anything the live session already holds wins — it is newer. */
           for (const c of s.conversations) byId.set(c.id, c);
+          /* Then re-attach any pending send the live state is missing. Keyed by
+             the clientKey, so a message that already went is not doubled. */
+          for (const [conversationId, messages] of queuedByConversation) {
+            const conversation = byId.get(conversationId);
+            if (!conversation) continue;
+            const known = new Set(conversation.messages.map((m) => m.id));
+            const missing = messages.filter((m) => !known.has(m.id));
+            if (!missing.length) continue;
+            byId.set(conversationId, {
+              ...conversation,
+              messages: [...conversation.messages, ...missing].sort(
+                (a, b) => a.createdAt - b.createdAt
+              ),
+            });
+          }
           return { conversations: [...byId.values()] };
         });
       },
@@ -1983,7 +2176,10 @@ export const useCloakStore = create<CloakState>()(
       },
 
       sendMessage: (conversationId, body, kind = "text") => {
-        const id = nextLocalId("m");
+        /* The clientKey IS the optimistic id. One value names the queued row,
+           the rendered bubble and every retry — and it is what the server uses
+           to recognise a repeat instead of creating a duplicate. */
+        const id = newClientKey();
         const message: Message = {
           id,
           conversationId,
@@ -2001,84 +2197,24 @@ export const useCloakStore = create<CloakState>()(
           ),
         }));
 
-        /* E2EE: the plaintext NEVER leaves the device — the body is
-           encrypted with the conversation key before POSTing. The key
-           provisioning (if still running) is awaited briefly. */
+        /* E2EE: the plaintext NEVER leaves the device — it is encrypted with
+           the conversation key inside postOutgoingMessage. A send that cannot
+           complete is HELD in the outbox rather than dropped. */
         void (async () => {
           const myUserId = get().auth.user?.id;
-          let encrypted: string | null = null;
-          if (myUserId) {
-            /* Sending should not wait for the background poll to prepare
-               keys. Run key maintenance immediately, then wait briefly for
-               the local key. A second pass covers races where the first
-               caller was already provisioning. */
-            await syncConversationKeys(conversationId, myUserId);
-            let readyKey = await waitForConversationKey(conversationId, 2500);
-            if (!readyKey) {
-              await syncConversationKeys(conversationId, myUserId);
-              readyKey = await waitForConversationKey(conversationId, 1500);
-            }
-            /* Forward secrecy: when a window is active, retire an over-aged
-               key version BEFORE encrypting so this message lands under a
-               fresh root (CAS makes concurrent rotators safe — a 409 loser
-               just sends under the key it holds). */
-            const fs = get().forwardSecrecy;
-            if (fs !== "off") {
-              const windowMs = FS_WINDOW_MS[fs];
-              if (windowMs) await maybeRotateForAge(conversationId, myUserId, windowMs / 2);
-            }
-            encrypted = await encryptBody(conversationId, body, kind, myUserId);
-          }
-          if (!encrypted) {
-            set((s) => ({
-              conversations: s.conversations.map((c) =>
-                c.id !== conversationId
-                  ? c
-                  : {
-                      ...c,
-                      messages: c.messages.map((m) =>
-                        m.id === id ? { ...m, status: "failed" as const } : m
-                      ),
-                    }
-              ),
-            }));
+          if (!myUserId) {
+            setMessageStatus(conversationId, id, "failed");
             return;
           }
-          const res = await api<{ message: ServerMessage }>(
-            `/api/conversations/${conversationId}/messages`,
-            { method: "POST", body: JSON.stringify({ body: encrypted, kind }) }
-          );
-          /* Real transport — the API is the authority; the sync loop brings
-             delivered/read states from the peer's participation markers. */
-          let serverMessage: Message | null = null;
-          if (res.ok) {
-            const confirmed = toClientMessage(res.data.message);
-            /* This device already has the plaintext it just encrypted.
-               Avoid re-decrypting the server envelope here; if key sync is
-               mid-flight, that would falsely mark a delivered message as
-               failed. Polling will still refresh tick state later. */
-            serverMessage = {
-              ...confirmed,
-              body,
-              status: confirmed.status ?? "sent",
-            };
-          }
-          set((s) => ({
-            conversations: s.conversations.map((c) =>
-              c.id !== conversationId
-                ? c
-                : {
-                    ...c,
-                    messages: c.messages.map((m) =>
-                      m.id === id
-                        ? serverMessage
-                          ? serverMessage
-                          : { ...m, status: "failed" as const }
-                        : m
-                    ),
-                  }
-            ),
-          }));
+          const outcome = await postOutgoingMessage({
+            conversationId,
+            clientKey: id,
+            kind,
+            plaintext: body,
+            myUserId,
+            forwardSecrecy: get().forwardSecrecy,
+          });
+          await settleOutgoing({ conversationId, id, kind, plaintext: body, outcome });
         })();
         return id;
       },
@@ -2119,7 +2255,9 @@ export const useCloakStore = create<CloakState>()(
           return { ok: false, error: "storage_unavailable" };
         }
 
-        const id = nextLocalId("m");
+        /* Same contract as sendMessage: the clientKey is the optimistic id, so
+           the queued row, the bubble and every retry name one value. */
+        const id = newClientKey();
         const message = attachmentMessageFromEnvelope(
           {
             id,
@@ -2138,115 +2276,73 @@ export const useCloakStore = create<CloakState>()(
           ),
         }));
 
+        /* The travelling body starts as the metadata-only envelope and gains
+           the crypto envelope once the payload is uploaded — all inside
+           postOutgoingMessage, which re-reads the bytes from local storage so
+           ONE implementation serves an immediate send and a flush days later. */
+        const plaintext = JSON.stringify(saved.envelope);
+
         void (async () => {
           const myUserId = get().auth.user?.id;
-          let encrypted: string | null = null;
-          /* The envelope that actually travels. Starts metadata-only and gains
-             the crypto envelope once the payload has been uploaded. */
-          let travelEnvelope: AttachmentEnvelope = saved.envelope;
-          let transferFailed = false;
-          if (myUserId) {
-            await syncConversationKeys(conversationId, myUserId);
-            let readyKey = await waitForConversationKey(conversationId, 2500);
-            if (!readyKey) {
-              await syncConversationKeys(conversationId, myUserId);
-              readyKey = await waitForConversationKey(conversationId, 1500);
-            }
-            const fs = get().forwardSecrecy;
-            if (fs !== "off") {
-              const windowMs = FS_WINDOW_MS[fs];
-              if (windowMs) await maybeRotateForAge(conversationId, myUserId, windowMs / 2);
-            }
-
-            /* Seal and upload the payload BEFORE the body: the body carries the
-               crypto envelope the recipient needs in order to open it, so the
-               upload must have happened first. A failure is not fatal — the note
-               still sends, as metadata only, and the sender is told so. */
-            const upload = await uploadAttachmentBlob({
-              conversationId,
-              attachmentId: saved.envelope.attachmentId,
-              file,
-            });
-            if (upload.ok) {
-              travelEnvelope = withBlobEnvelope(saved.envelope, upload.blobEnvelope);
-            } else {
-              transferFailed = true;
-            }
-
-            encrypted = await encryptBody(
-              conversationId,
-              JSON.stringify(travelEnvelope),
-              kind,
-              myUserId
-            );
-          }
-
-          if (!encrypted) {
-            set((s) => ({
-              conversations: s.conversations.map((c) =>
-                c.id !== conversationId
-                  ? c
-                  : {
-                      ...c,
-                      messages: c.messages.map((m) =>
-                        m.id === id ? { ...m, status: "failed" as const } : m
-                      ),
-                    }
-              ),
-            }));
+          if (!myUserId) {
+            setMessageStatus(conversationId, id, "failed");
             return;
           }
-
-          const res = await api<{ message: ServerMessage }>(
-            `/api/conversations/${conversationId}/messages`,
-            { method: "POST", body: JSON.stringify({ body: encrypted, kind }) }
-          );
-
-          let serverMessage: Message | null = null;
-          if (res.ok) {
-            /* The POST response body is still CIPHERTEXT, so the synchronous
-               toClientMessage() cannot hydrate the attachment envelope from
-               it: `confirmed.attachmentBlob` would always be undefined and
-               the line below would WIPE the envelope the optimistic row was
-               carrying. Decrypt first — the same path the sync/GET route
-               uses — so the sender's own message keeps its envelope (and its
-               `attachmentBlob.k`, which the bubble's effects key off). */
-            const [confirmed] = await decryptServerMessages(
-              [res.data.message],
-              myUserId
-            );
-            if (confirmed) {
-              serverMessage = {
-                ...confirmed,
-                ...message,
-                id: confirmed.id,
-                createdAt: confirmed.createdAt,
-                status: confirmed.status ?? "sent",
-                attachmentBlob: confirmed.attachmentBlob,
-                ...(transferFailed ? { attachmentTransferFailed: true } : {}),
-              };
-            }
-          }
-
-          set((s) => ({
-            conversations: s.conversations.map((c) =>
-              c.id !== conversationId
-                ? c
-                : {
-                    ...c,
-                    messages: c.messages.map((m) =>
-                      m.id === id
-                        ? serverMessage
-                          ? serverMessage
-                          : { ...m, status: "failed" as const }
-                        : m
-                    ),
-                  }
-            ),
-          }));
+          const outcome = await postOutgoingMessage({
+            conversationId,
+            clientKey: id,
+            kind,
+            plaintext,
+            attachmentId: saved.envelope.attachmentId,
+            myUserId,
+            forwardSecrecy: get().forwardSecrecy,
+          });
+          await settleOutgoing({
+            conversationId,
+            id,
+            kind,
+            plaintext,
+            attachmentId: saved.envelope.attachmentId,
+            outcome,
+          });
         })();
 
         return { ok: true, messageId: id };
+      },
+
+      retryMessage: async (conversationId, messageId) => {
+        const message = get()
+          .conversations.find((c) => c.id === conversationId)
+          ?.messages.find((m) => m.id === messageId);
+        if (!message) return false;
+        const myUserId = get().auth.user?.id;
+        if (!myUserId) return false;
+
+        setMessageStatus(conversationId, messageId, "sending");
+
+        /* The plaintext is recovered from the message itself: text keeps it in
+           `body`, an attachment in the fields the bubble renders from. */
+        const envelope = envelopeFromMessage(message);
+        const plaintext = envelope ? JSON.stringify(envelope) : message.body;
+
+        const outcome = await postOutgoingMessage({
+          conversationId,
+          clientKey: messageId,
+          kind: message.kind,
+          plaintext,
+          ...(message.attachmentId ? { attachmentId: message.attachmentId } : {}),
+          myUserId,
+          forwardSecrecy: get().forwardSecrecy,
+        });
+        await settleOutgoing({
+          conversationId,
+          id: messageId,
+          kind: message.kind,
+          plaintext,
+          ...(message.attachmentId ? { attachmentId: message.attachmentId } : {}),
+          outcome,
+        });
+        return outcome.kind === "sent";
       },
 
       updateMessageStatus: (conversationId, messageId, status) =>
@@ -2639,6 +2735,201 @@ useCloakStore.subscribe((state, prev) => {
   void ensurePersistentStorage();
   void purgeExpiredCachedMessages();
 });
+
+/* ---------- outbox: settling, flushing and retrying ---------- */
+
+function replaceMessage(conversationId: string, id: string, next: Message): void {
+  useCloakStore.setState((s) => ({
+    conversations: s.conversations.map((c) =>
+      c.id !== conversationId
+        ? c
+        : { ...c, messages: c.messages.map((m) => (m.id === id ? next : m)) }
+    ),
+  }));
+}
+
+function setMessageStatus(conversationId: string, id: string, status: MessageStatus): void {
+  useCloakStore.setState((s) => ({
+    conversations: s.conversations.map((c) =>
+      c.id !== conversationId
+        ? c
+        : { ...c, messages: c.messages.map((m) => (m.id === id ? { ...m, status } : m)) }
+    ),
+  }));
+}
+
+/**
+ * Rebuild the travelling envelope from a rendered attachment message. The
+ * bubble blanks `body` and moves the envelope into separate fields, so this is
+ * the inverse of `hydrateAttachmentMessage` — needed to retry a failed send,
+ * where the only surviving copy of the envelope is the message itself.
+ */
+function envelopeFromMessage(message: Message): AttachmentEnvelope | null {
+  if (!message.attachmentId) return null;
+  return {
+    type: "cloak.attachment",
+    v: 1,
+    attachmentId: message.attachmentId,
+    name: message.fileName ?? "Attachment",
+    mime: message.attachmentMime ?? "application/octet-stream",
+    size: message.fileSizeBytes ?? 0,
+    storedAt: message.createdAt,
+    ...(message.voiceDurationSec ? { durationSec: message.voiceDurationSec } : {}),
+    ...(message.attachmentBlob ? { blob: message.attachmentBlob } : {}),
+  };
+}
+
+/**
+ * Apply a send outcome to the optimistic bubble.
+ *
+ * The three branches are the whole feature:
+ *   sent      -> the server's row replaces the local one
+ *   permanent -> "failed", because retrying genuinely cannot help
+ *   retryable -> HELD in the outbox as "queued", so the words survive a reload,
+ *                a dead connection and a closed tab
+ */
+async function settleOutgoing(params: {
+  conversationId: string;
+  id: string;
+  kind: MessageKind;
+  plaintext: string;
+  attachmentId?: string;
+  outcome: SendOutcome;
+}): Promise<void> {
+  const { conversationId, id, kind, plaintext, attachmentId, outcome } = params;
+
+  if (outcome.kind === "sent") {
+    replaceMessage(
+      conversationId,
+      id,
+      outcome.transferFailed
+        ? { ...outcome.message, attachmentTransferFailed: true }
+        : outcome.message
+    );
+    return;
+  }
+
+  if (outcome.kind === "permanent") {
+    setMessageStatus(conversationId, id, "failed");
+    return;
+  }
+
+  const queued = await enqueueOutbox({
+    id,
+    conversationId,
+    kind,
+    plaintext,
+    ...(attachmentId ? { attachmentId } : {}),
+  });
+  if (!queued.ok) {
+    /* No vault key, so it cannot be held durably. Saying "failed" is honest;
+       "queued" would promise a send that a reload would erase. */
+    setMessageStatus(conversationId, id, "failed");
+    return;
+  }
+  setMessageStatus(conversationId, id, "queued");
+  /* Overflow dropped the oldest pending sends. Surface them rather than
+     letting them vanish. */
+  for (const evictedId of queued.evicted) {
+    setMessageStatus(conversationId, evictedId, "failed");
+  }
+}
+
+/**
+ * Drain the queue.
+ *
+ * STRICTLY FIFO PER CONVERSATION, with head-of-line blocking: if the oldest
+ * pending message for a conversation cannot go, nothing behind it goes either.
+ * Skipping ahead would let a later message land first, and the server stamps
+ * `createdAt` at insert time — so a message the user typed second would render
+ * above the one they typed first. Stalling is the honest failure mode.
+ *
+ * Other conversations are unaffected: only the blocked one waits.
+ */
+let outboxFlushing = false;
+
+export async function flushOutbox(): Promise<void> {
+  if (outboxFlushing) return;
+  if (!useCloakStore.getState().auth.user) return;
+  outboxFlushing = true;
+  try {
+    const entries = await listOutbox();
+    if (!entries.length) return;
+
+    const byConversation = new Map<string, OutboxEntry[]>();
+    for (const entry of entries) {
+      const queue = byConversation.get(entry.conversationId) ?? [];
+      queue.push(entry);
+      byConversation.set(entry.conversationId, queue);
+    }
+
+    for (const [conversationId, queue] of byConversation) {
+      for (const entry of queue) {
+        const state = useCloakStore.getState();
+        const myUserId = state.auth.user?.id;
+        if (!myUserId) return; // signed out mid-flush: keep the rest queued
+
+        /* A row whose body will not open cannot be sent and cannot be fixed.
+           Clear it so it does not retry forever, and say so. */
+        if (!entry.body) {
+          await deleteOutboxEntry(entry.id);
+          setMessageStatus(conversationId, entry.id, "failed");
+          continue;
+        }
+
+        const outcome = await postOutgoingMessage({
+          conversationId,
+          clientKey: entry.id,
+          kind: entry.kind,
+          plaintext: entry.body,
+          ...(entry.attachmentId ? { attachmentId: entry.attachmentId } : {}),
+          myUserId,
+          forwardSecrecy: state.forwardSecrecy,
+        });
+
+        if (outcome.kind === "sent") {
+          await deleteOutboxEntry(entry.id);
+          replaceMessage(
+            conversationId,
+            entry.id,
+            outcome.transferFailed
+              ? { ...outcome.message, attachmentTransferFailed: true }
+              : outcome.message
+          );
+          continue;
+        }
+        if (outcome.kind === "permanent") {
+          await deleteOutboxEntry(entry.id);
+          setMessageStatus(conversationId, entry.id, "failed");
+          continue;
+        }
+        /* Retryable: keep this message AND everything behind it, and try again
+           on the next trigger. */
+        await bumpOutboxAttempt(entry.id);
+        break;
+      }
+    }
+  } finally {
+    outboxFlushing = false;
+  }
+}
+
+/*
+ * Flush triggers. A queue that nothing drains is just a leak, and each of these
+ * covers a case the others miss:
+ *   online             the connection came back while the app was open
+ *   visibilitychange   the tab was backgrounded and is being looked at again
+ *   the sync loop      a successful poll PROVES the network works, which also
+ *                      covers a reconnect the `online` event never fired for
+ *                      (and a first load that was never offline to begin with)
+ * All are best-effort and cheap when the queue is empty.
+ */
+if (typeof window !== "undefined") {
+  window.addEventListener("online", () => void flushOutbox());
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void flushOutbox();
+  });
+}
 
 /* Convenience selector: the active conversation object. */
 export function useActiveConversation(): Conversation | null {

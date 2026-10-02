@@ -212,6 +212,13 @@ model Message {
   createdAt      DateTime     @default(now())
   // Ghost chats: when this passes, the message is purged on next access.
   expiresAt      DateTime?
+  // Idempotency key, minted by the SENDING CLIENT. A queued message may be
+  // retried after a timeout, and a timeout does not tell us whether the server
+  // committed it — so the retry carries the same key and the route returns the
+  // original row instead of creating a duplicate. Nullable because every
+  // message written before the outbox existed has none (Postgres allows many
+  // NULLs under a unique index).
+  clientKey      String?      @unique
   reactions      MessageReaction[]
 
   @@index([conversationId, createdAt])

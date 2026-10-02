@@ -108,7 +108,7 @@ check(
   /DB_NAME = "cloak-/.test(db),
   true
 );
-check("the schema is at version 2", /DB_VERSION = 2/.test(db), true);
+check("the schema is at version 3", /DB_VERSION = 3/.test(db), true);
 check(
   "the upgrade creates attachments, messages and conversations",
   ["STORE_ATTACHMENTS", "STORE_MESSAGES", "STORE_CONVERSATIONS"].every((name) =>
@@ -312,7 +312,7 @@ check(
 
 check(
   "the service worker version was bumped for the new client bundle",
-  /cloak-shell-v43/.test(sw),
+  /cloak-shell-v44/.test(sw),
   true
 );
 

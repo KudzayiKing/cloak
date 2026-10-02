@@ -135,7 +135,30 @@ const sendSchema = z.object({
     }
   }),
   kind: z.enum(USER_MESSAGE_KINDS).default("text"),
+  /* Idempotency key, minted by the sending client. Optional so older clients
+     (and any non-outbox caller) keep working unchanged. Bounded and
+     character-restricted because it goes into a unique index and is echoed
+     back in conflict responses. */
+  clientKey: z
+    .string()
+    .min(8)
+    .max(64)
+    .regex(/^[A-Za-z0-9_-]+$/)
+    .optional(),
 });
+
+/** The unique index on Message.clientKey is the only constraint a replay can
+ *  realistically trip, so a P2002 here means "another attempt won the race". */
+function isClientKeyCollision(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const candidate = error as { code?: string; meta?: { target?: unknown } };
+  if (candidate.code !== "P2002") return false;
+  const target = candidate.meta?.target;
+  if (Array.isArray(target)) return target.includes("clientKey");
+  if (typeof target === "string") return target.includes("clientKey");
+  /* Older Prisma builds omit the target; clientKey is the only plausible one. */
+  return true;
+}
 
 export async function POST(req: NextRequest, { params }: Params) {
   const user = await getSessionUser(req);
@@ -171,27 +194,85 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
   const ghostSeconds = conversation.ghostSeconds ?? null;
 
-  const [created] = await db.$transaction([
-    db.message.create({
-      data: {
-        conversationId,
-        authorId: user.id,
-        kind: parsed.kind,
-        body: parsed.body,
-        ...(ghostSeconds ? { expiresAt: new Date(Date.now() + ghostSeconds * 1000) } : {}),
-      },
-      include: { author: true, reactions: { select: { emoji: true, userId: true } } },
-    }),
-    db.conversation.update({
-      where: { id: conversationId },
-      data: { updatedAt: new Date() },
-      select: { id: true },
-    }),
-  ]);
-
   const peer = conversation.isGroup
     ? undefined
     : conversation.participations.find((p) => p.userId !== user.id);
+
+  /* Idempotent replay. The outbox retries a send whose outcome it never
+     learned — a TIMEOUT does not say whether this insert committed — so a
+     retry carries the same clientKey and must return the ORIGINAL message
+     rather than creating a second one.
+
+     Checked after the membership lookup above, so a non-member still gets the
+     404 and cannot use a key as an oracle. */
+  const clientKey = parsed.clientKey ?? null;
+  const replayMessage = async () => {
+    if (!clientKey) return null;
+    const existing = await db.message.findUnique({
+      where: { clientKey },
+      include: { author: true, reactions: { select: { emoji: true, userId: true } } },
+    });
+    return existing ?? null;
+  };
+  if (clientKey) {
+    const existing = await replayMessage();
+    if (existing) {
+      /* A key is guessable, so never replay across a conversation or an
+         author: that would hand back a message the caller should not see. */
+      if (existing.conversationId !== conversationId || existing.authorId !== user.id) {
+        return NextResponse.json({ ok: false, error: "client_key_conflict" }, { status: 409 });
+      }
+      return NextResponse.json({
+        ok: true,
+        message: mapMessage(
+          existing,
+          user.id,
+          peer?.lastReadAt ?? null,
+          peer?.lastDeliveredAt ?? null
+        ),
+        ghostSeconds,
+        replayed: true,
+      });
+    }
+  }
+
+  let created;
+  try {
+    [created] = await db.$transaction([
+      db.message.create({
+        data: {
+          conversationId,
+          authorId: user.id,
+          kind: parsed.kind,
+          body: parsed.body,
+          ...(clientKey ? { clientKey } : {}),
+          ...(ghostSeconds ? { expiresAt: new Date(Date.now() + ghostSeconds * 1000) } : {}),
+        },
+        include: { author: true, reactions: { select: { emoji: true, userId: true } } },
+      }),
+      db.conversation.update({
+        where: { id: conversationId },
+        data: { updatedAt: new Date() },
+        select: { id: true },
+      }),
+    ]);
+  } catch (error) {
+    /* Two attempts raced past the check above and the loser hit the unique
+       index. That is the expected outcome of a retry, not an error: re-read
+       and replay. The transaction rolled back, so updatedAt was not bumped
+       twice either. */
+    if (!isClientKeyCollision(error)) throw error;
+    const existing = await replayMessage();
+    if (!existing || existing.conversationId !== conversationId || existing.authorId !== user.id) {
+      return NextResponse.json({ ok: false, error: "client_key_conflict" }, { status: 409 });
+    }
+    return NextResponse.json({
+      ok: true,
+      message: mapMessage(existing, user.id, peer?.lastReadAt ?? null, peer?.lastDeliveredAt ?? null),
+      ghostSeconds,
+      replayed: true,
+    });
+  }
 
   /* OS notification for the recipients (round 23) — this is what was missing
      entirely: the push transport, the VAPID keys, the SW push listener and

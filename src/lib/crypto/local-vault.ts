@@ -196,4 +196,8 @@ export function parseSealedBox(value: unknown): SealedBox | null {
 export const vaultScope = {
   message: (messageId: string) => `msg|${messageId}`,
   attachment: (attachmentId: string) => `att|${attachmentId}`,
+  /* A distinct scope from `message`, even when the id is the same value: an
+     outbox row is a message the user WROTE, a cache row is one they RECEIVED.
+     Sharing a scope would let a stale cache write and a pending send collide. */
+  outbox: (clientKey: string) => `out|${clientKey}`,
 };

@@ -146,7 +146,15 @@ export interface Contact {
 
 /* ---------- Messaging (spec §17, §18, §24) ---------- */
 
-export type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed";
+/**
+ * `sending` = in flight right now.
+ * `queued`  = held in the outbox, waiting for a connection. NOT a failure: the
+ *             message is safe on this device and will send itself. It is a
+ *             distinct state because "sending" would imply progress that is not
+ *             happening, and "failed" would be a lie that invites a pointless
+ *             retry.
+ */
+export type MessageStatus = "sending" | "queued" | "sent" | "delivered" | "read" | "failed";
 
 export type MessageKind =
   | "text"

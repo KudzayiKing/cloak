@@ -11,15 +11,22 @@
  * matters is the `cloak-` prefix, because that is what makes Dagger's
  * `clearIndexedDB()` cover this database during a panic wipe.
  *
- * Everything here is a CACHE. The server remains the source of truth for
- * ordering, receipts and membership; nothing in this layer is authoritative.
+ * Everything here is a CACHE — except the outbox. The server remains the source
+ * of truth for ordering, receipts and membership; nothing in this layer is
+ * authoritative. The one exception is `outbox`, which holds messages the user
+ * wrote that have not reached the server yet: those exist nowhere else.
  */
 
 export const DB_NAME = "cloak-attachments";
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 export const STORE_ATTACHMENTS = "attachments";
 export const STORE_MESSAGES = "messages";
 export const STORE_CONVERSATIONS = "conversations";
+/**
+ * Pending outgoing messages. NOT a cache — see `clearLocalCache` for why it is
+ * deliberately excluded from the "clear saved data" action.
+ */
+export const STORE_OUTBOX = "outbox";
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -47,6 +54,14 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE_CONVERSATIONS)) {
         const store = db.createObjectStore(STORE_CONVERSATIONS, { keyPath: "id" });
         store.createIndex("cachedAt", "cachedAt", { unique: false });
+      }
+      /* v2 → v3 adds `outbox`. Existing caches are untouched. */
+      if (!db.objectStoreNames.contains(STORE_OUTBOX)) {
+        const store = db.createObjectStore(STORE_OUTBOX, { keyPath: "id" });
+        /* queuedAt is the FIFO order WITHIN a conversation; conversationId
+           groups them. Neither is unique. */
+        store.createIndex("queuedAt", "queuedAt", { unique: false });
+        store.createIndex("conversationId", "conversationId", { unique: false });
       }
     };
 
@@ -138,13 +153,26 @@ export async function clearStore(storeName: string): Promise<void> {
 }
 
 /** The user-facing "clear local data" action. Keys are untouched: this drops
- *  cached content, not the ability to decrypt anything. */
+ *  cached content, not the ability to decrypt anything.
+ *
+ *  The OUTBOX is deliberately excluded. Everything else in this database is a
+ *  copy of something the server (or the sender) still has, so dropping it costs
+ *  at most a re-download. An outbox row is a message the user WROTE and has not
+ *  managed to send yet — there is no other copy anywhere, and clearing it would
+ *  silently destroy their words. Panic wipe (Dagger) still takes it, because
+ *  that is an explicit "leave nothing behind" action. */
 export async function clearLocalCache(): Promise<void> {
   await Promise.all([
     clearStore(STORE_MESSAGES),
     clearStore(STORE_ATTACHMENTS),
     clearStore(STORE_CONVERSATIONS),
   ]);
+}
+
+/** Drop every pending send. Only Dagger and an explicit discard should call
+ *  this — see `clearLocalCache`. */
+export async function clearOutbox(): Promise<void> {
+  await clearStore(STORE_OUTBOX);
 }
 
 /**
