@@ -7,6 +7,18 @@ export function formatTime(ts: number): string {
   });
 }
 
+/**
+ * `0:07` / `1:42` — a DURATION, not a wall clock.
+ *
+ * Shared by the composer's recording timer and the voice-note player so the two
+ * cannot drift: a note that counts up as `0:07` while recording has to read back
+ * as `0:07` in the bubble.
+ */
+export function formatVoiceClock(seconds: number): string {
+  const safe = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+  return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
+}
+
 export function formatListTime(ts: number): string {
   const d = new Date(ts);
   const now = new Date();

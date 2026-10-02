@@ -30,7 +30,7 @@ import { CloakMark } from "@/components/cloak/brand/CloakLogo";
 import { navigate } from "@/hooks/use-hash-route";
 import { Button } from "@/components/ui/button";
 import { initialsOf } from "@/lib/cloak/utils";
-import { ORCHESTRATOR_TRIGGER } from "@/lib/cloak/config";
+import { CALLS_ENABLED, ORCHESTRATOR_TRIGGER } from "@/lib/cloak/config";
 
 export function ConversationView({
   onOpenSecurityPanel,
@@ -256,6 +256,13 @@ export function ConversationView({
     }
   };
 
+  /* A recorded note is an attachment whose bytes stay on this device; the
+     envelope carries the duration so the peer is told how long it runs. */
+  const handleVoice = async (file: File, durationSec: number) => {
+    if (!conversation || isLocked) return;
+    await sendAttachment(conversation.id, file, { durationSec });
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-cloak-bg md:p-3">
       {/* Fullscreen chat on mobile — no outer border, square header top and
@@ -309,8 +316,13 @@ export function ConversationView({
         </div>
 
         <div className="flex items-center gap-0.5">
-          <HeaderAction label="Audio call" icon={PhoneIcon} />
-          <HeaderAction label="Video call" icon={VideoIcon} />
+          {/* Hidden while calls are deferred — see CALLS_ENABLED. */}
+          {CALLS_ENABLED && (
+            <>
+              <HeaderAction label="Audio call" icon={PhoneIcon} />
+              <HeaderAction label="Video call" icon={VideoIcon} />
+            </>
+          )}
           <HeaderAction
             label="Conversation details"
             icon={EllipsisIcon}
@@ -458,6 +470,7 @@ export function ConversationView({
             key={conversation.id}
             onSend={handleSend}
             onAttach={handleAttach}
+            onVoice={handleVoice}
             ghost={conversation.ghost}
             disabled={isLocked}
           />

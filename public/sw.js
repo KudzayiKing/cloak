@@ -14,7 +14,7 @@
  *   see tagFor/targetUrlFor below.
  */
 
-const VERSION = "cloak-shell-v39";
+const VERSION = "cloak-shell-v40";
 const SHELL_CACHE = `cloak-shell-${VERSION}`;
 const STATIC_CACHE = `cloak-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";

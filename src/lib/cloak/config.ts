@@ -186,6 +186,20 @@ export const MODEL_MANIFEST: ModelManifestConfig = {
 /** Cloud fallback is a consent-gated, explicit opt-in — never silent (spec §7). */
 export const CLOUD_FALLBACK_DEFAULT = false;
 
+/*
+ * Voice and video calls are deferred past launch: the app ships as a text
+ * messenger. The conversation header's call affordances are hidden until the
+ * feature exists, because a control that cannot work damages trust more than
+ * an absent one. Flipping this to `true` restores both icons.
+ *
+ * Deliberately typed `boolean` rather than left as a `false` literal — a
+ * literal would narrow to the `false` type and make the render branches
+ * statically dead. Calls also need a realtime signalling transport (the
+ * 2.5s poll in `use-server-sync.ts` is too slow for ICE), so enabling this
+ * flag alone is not sufficient to ship calls.
+ */
+export const CALLS_ENABLED: boolean = false;
+
 /** The orchestrator handles these intents deterministically before any LLM call. */
 export const ORCHESTRATOR_TRIGGER = "@CD";
 

@@ -30,6 +30,13 @@ export interface AttachmentEnvelope {
   mime: string;
   size: number;
   storedAt: number;
+  /**
+   * Voice notes only: how long the recording runs, in seconds. It rides the
+   * envelope because the recipient never receives the bytes (attachment blobs
+   * stay on the device that created them), so the duration is the only part of
+   * the note they can be told about. Absent for files and images.
+   */
+  durationSec?: number;
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -72,7 +79,8 @@ async function withStore<T>(
 
 export async function saveLocalAttachment(
   file: File,
-  conversationId: string
+  conversationId: string,
+  options?: { durationSec?: number }
 ): Promise<{ record: LocalAttachmentRecord; envelope: AttachmentEnvelope }> {
   const id =
     typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -89,6 +97,10 @@ export async function saveLocalAttachment(
     blob: file,
   };
   await withStore("readwrite", (store) => store.put(record));
+  const durationSec =
+    typeof options?.durationSec === "number" && Number.isFinite(options.durationSec)
+      ? Math.max(0, Math.round(options.durationSec))
+      : undefined;
   return {
     record,
     envelope: {
@@ -99,6 +111,7 @@ export async function saveLocalAttachment(
       mime: record.mime,
       size: record.size,
       storedAt: createdAt,
+      ...(durationSec ? { durationSec } : {}),
     },
   };
 }
@@ -132,6 +145,9 @@ export function parseAttachmentEnvelope(body: string): AttachmentEnvelope | null
       mime: parsed.mime,
       size: parsed.size,
       storedAt: typeof parsed.storedAt === "number" ? parsed.storedAt : Date.now(),
+      ...(typeof parsed.durationSec === "number" && Number.isFinite(parsed.durationSec)
+        ? { durationSec: Math.max(0, Math.round(parsed.durationSec)) }
+        : {}),
     };
   } catch {
     return null;

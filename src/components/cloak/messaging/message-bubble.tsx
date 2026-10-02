@@ -6,9 +6,9 @@
  * accent only. Interactive processing badge for AI answers (spec §19).
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { formatTime } from "@/lib/cloak/utils";
+import { formatTime, formatVoiceClock } from "@/lib/cloak/utils";
 import { getLocalAttachment } from "@/lib/cloak/attachment-storage";
 import { reactionById } from "@/lib/cloak/reactions";
 import type { Message } from "@/lib/cloak/types";
@@ -24,8 +24,8 @@ import {
   FileTextIcon,
   DownloadIcon,
   ImageIcon,
-  AudioLinesIcon,
   PlayIcon,
+  PauseIcon,
   CpuIcon,
   CloudIcon,
   ChevronDownIcon,
@@ -176,7 +176,7 @@ export function MessageBubble({
     );
   }
 
-  /* Voice note shell */
+  /* Voice note — a real player whenever the bytes are on this device. */
   if (message.kind === "voice") {
     return (
       <div
@@ -185,15 +185,11 @@ export function MessageBubble({
       >
         <div
           className={cn(
-            "cloak-message-in flex max-w-[80%] items-center gap-3 rounded-2xl border border-cloak-border bg-cloak-surface px-3.5 py-3",
+            "cloak-message-in max-w-[80%] rounded-2xl border border-cloak-border bg-cloak-surface px-3.5 py-3",
             outgoing && "cloak-bubble-out"
           )}
         >
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-cloak-gold-soft text-cloak-gold">
-            <PlayIcon size={13} />
-          </span>
-          <AudioLinesIcon size={40} className="text-cloak-text-muted" />
-          <span className="text-[11px] text-cloak-text-muted">{message.voiceDurationSec ?? 0}:00</span>
+          <VoiceNotePlayer message={message} />
           <ReactionRow message={message} onReact={onReact} />
         </div>
         {canReact && (
@@ -441,6 +437,189 @@ function AttachmentBubble({
           />
         )}
       </div>
+    </div>
+  );
+}
+
+/*
+ * VoiceNotePlayer.
+ *
+ * A voice note is an attachment, so its bytes live on the device that recorded
+ * it and nowhere else (see `attachment-storage.ts`). That gives three states,
+ * and the third is the honest one for a recipient:
+ *
+ *   null   -> still reading device storage
+ *   true   -> playable here; the waveform is measured from the real audio
+ *   false  -> the sender's device holds the bytes; all we can state is duration
+ *
+ * The waveform is measured, not decorative: `decodeAudioData` yields the samples
+ * and we reduce them to one peak per bar, so the shape is the note's own. Bars
+ * are sized in Cloak's own tokens — gold for the played part, muted for the
+ * rest — so the player reads as part of the bubble rather than a bolted-on
+ * widget. Decoding is cached per attachment id because a thread re-renders on
+ * every sync poll and must not re-decode on each one.
+ */
+
+const VOICE_BAR_COUNT = 32;
+const voicePeakCache = new Map<string, number[]>();
+
+async function measurePeaks(attachmentId: string, blob: Blob): Promise<number[]> {
+  const cached = voicePeakCache.get(attachmentId);
+  if (cached) return cached;
+  const Ctor =
+    typeof window === "undefined"
+      ? undefined
+      : (window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
+  if (!Ctor) return [];
+  const context = new Ctor();
+  try {
+    const buffer = await context.decodeAudioData(await blob.arrayBuffer());
+    const samples = buffer.getChannelData(0);
+    const bucket = Math.max(1, Math.floor(samples.length / VOICE_BAR_COUNT));
+    const peaks: number[] = [];
+    for (let bar = 0; bar < VOICE_BAR_COUNT; bar += 1) {
+      const start = bar * bucket;
+      const end = Math.min(samples.length, start + bucket);
+      let peak = 0;
+      for (let i = start; i < end; i += 1) {
+        const value = Math.abs(samples[i]);
+        if (value > peak) peak = value;
+      }
+      peaks.push(peak);
+    }
+    const loudest = Math.max(...peaks, 0.0001);
+    /* A floor keeps quiet passages visible — without it a softly spoken note
+       renders as a row of zero-height bars and reads as broken, not quiet. */
+    const normalised = peaks.map((peak) => Math.max(0.14, Math.min(1, peak / loudest)));
+    voicePeakCache.set(attachmentId, normalised);
+    return normalised;
+  } catch {
+    /* An undecodable container is not worth failing the bubble over. */
+    return [];
+  } finally {
+    void context.close();
+  }
+}
+
+function VoiceNotePlayer({ message }: { message: Message }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [peaks, setPeaks] = useState<number[]>([]);
+  const [playing, setPlaying] = useState(false);
+  const [position, setPosition] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    async function load() {
+      if (!message.attachmentId) {
+        setAvailable(false);
+        return;
+      }
+      const record = await getLocalAttachment(message.attachmentId).catch(() => null);
+      if (cancelled) return;
+      if (!record) {
+        setAvailable(false);
+        setUrl(null);
+        return;
+      }
+      objectUrl = URL.createObjectURL(record.blob);
+      setUrl(objectUrl);
+      setAvailable(true);
+      const measured = await measurePeaks(message.attachmentId, record.blob);
+      if (!cancelled && measured.length) setPeaks(measured);
+    }
+    void load();
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [message.attachmentId]);
+
+  const total = message.voiceDurationSec ?? 0;
+  const hasPeaks = peaks.length > 0;
+  const bars = hasPeaks
+    ? peaks
+    : Array.from({ length: VOICE_BAR_COUNT }, () => 0.34);
+  const fraction = total > 0 ? Math.min(1, position / total) : 0;
+  const playable = Boolean(url);
+
+  const toggle = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (el.paused) void el.play().catch(() => undefined);
+    else el.pause();
+  };
+
+  return (
+    <div className="min-w-[168px]">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={!playable}
+          aria-label={playing ? "Pause voice note" : "Play voice note"}
+          data-testid="voice-play"
+          className={cn(
+            "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors",
+            playable
+              ? "bg-cloak-gold-soft text-cloak-gold hover:bg-cloak-gold/20"
+              : "bg-cloak-surface-hover text-cloak-text-muted"
+          )}
+        >
+          {playing ? <PauseIcon size={13} /> : <PlayIcon size={13} />}
+        </button>
+
+        <div
+          data-testid="voice-waveform"
+          data-available={available === null ? "checking" : available ? "local" : "remote"}
+          className="flex h-8 flex-1 items-center gap-[2px]"
+        >
+          {bars.map((height, index) => {
+            const played = hasPeaks && (index + 1) / bars.length <= fraction;
+            return (
+              <span
+                key={index}
+                style={{ height: `${Math.round(height * 100)}%` }}
+                className={cn(
+                  "w-[3px] shrink-0 rounded-full transition-colors",
+                  played ? "bg-cloak-gold" : "bg-cloak-text-muted/40",
+                  !playable && "opacity-50"
+                )}
+              />
+            );
+          })}
+        </div>
+
+        <span
+          data-testid="voice-duration"
+          className="shrink-0 text-[11px] tabular-nums text-cloak-text-muted"
+        >
+          {formatVoiceClock(position > 0 ? position : total)}
+        </span>
+      </div>
+
+      {available === false && (
+        <p className="mt-1 text-[10px] text-cloak-text-muted">Stored on sender device</p>
+      )}
+
+      {url && (
+        <audio
+          ref={audioRef}
+          src={url}
+          preload="metadata"
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => {
+            setPlaying(false);
+            setPosition(0);
+          }}
+          onTimeUpdate={(event) => setPosition(event.currentTarget.currentTime)}
+          className="hidden"
+        />
+      )}
     </div>
   );
 }

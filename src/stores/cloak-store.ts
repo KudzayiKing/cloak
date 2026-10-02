@@ -353,6 +353,7 @@ function hydrateAttachmentMessage(message: Message): Message {
     attachmentId: envelope.attachmentId,
     attachmentMime: envelope.mime,
     attachmentStoredLocal: message.authorId === "me",
+    voiceDurationSec: envelope.durationSec,
   };
 }
 
@@ -368,6 +369,7 @@ function attachmentMessageFromEnvelope(
     attachmentId: envelope.attachmentId,
     attachmentMime: envelope.mime,
     attachmentStoredLocal: true,
+    voiceDurationSec: envelope.durationSec,
   };
 }
 
@@ -755,7 +757,8 @@ interface CloakState {
   sendMessage: (conversationId: string, body: string, kind?: Message["kind"]) => string;
   sendAttachment: (
     conversationId: string,
-    file: File
+    file: File,
+    options?: { durationSec?: number }
   ) => Promise<{ ok: true; messageId: string } | { ok: false; error: string }>;
   updateMessageStatus: (
     conversationId: string,
@@ -1985,12 +1988,20 @@ export const useCloakStore = create<CloakState>()(
         return id;
       },
 
-      sendAttachment: async (conversationId, file) => {
+      sendAttachment: async (conversationId, file, options) => {
         if (!file || file.size <= 0) return { ok: false, error: "empty_file" };
-        const kind: MessageKind = file.type.startsWith("image/") ? "image" : "file";
+        /* Audio becomes a voice note; everything else is a file, or an image
+           when the browser handed us an image mime. */
+        const kind: MessageKind = file.type.startsWith("audio/")
+          ? "voice"
+          : file.type.startsWith("image/")
+            ? "image"
+            : "file";
         let saved: Awaited<ReturnType<typeof saveLocalAttachment>>;
         try {
-          saved = await saveLocalAttachment(file, conversationId);
+          saved = await saveLocalAttachment(file, conversationId, {
+            durationSec: options?.durationSec,
+          });
         } catch {
           return { ok: false, error: "storage_unavailable" };
         }

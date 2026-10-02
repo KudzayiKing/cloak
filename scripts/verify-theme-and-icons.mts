@@ -1132,6 +1132,48 @@ check(
     /bg-\[#1D1A12\]|bg-\[#1d1a12\]/.test(productMockup),
     false
   );
+
+  /*
+   * Calls are deferred past launch (text-only). The conversation header must
+   * not offer a control that cannot work, so the two call actions are gated
+   * behind CALLS_ENABLED. These checks pin the flag off, pin the gate, and
+   * pin the gate's shape — the failure they exist to catch is someone
+   * re-exposing the icons while the flag is still false.
+   */
+  const config = stripComments(read("src/lib/cloak/config.ts"));
+  check(
+    "voice and video calls are disabled for launch",
+    /export const CALLS_ENABLED[^=\n]*=\s*false/.test(config),
+    true
+  );
+  check(
+    "CALLS_ENABLED is annotated boolean, not narrowed to a false literal",
+    /export const CALLS_ENABLED:\s*boolean\s*=\s*false/.test(config),
+    true
+  );
+
+  const conversationView = stripComments(
+    read("src/components/cloak/messaging/conversation-view.tsx")
+  );
+  check(
+    "conversation header imports the calls flag",
+    /import \{ CALLS_ENABLED, ORCHESTRATOR_TRIGGER \} from "@\/lib\/cloak\/config"/.test(
+      conversationView
+    ),
+    true
+  );
+  check(
+    "both call actions sit inside the CALLS_ENABLED gate",
+    /\{CALLS_ENABLED && \([\s\S]{0,240}label="Audio call"[\s\S]{0,240}label="Video call"/.test(
+      conversationView
+    ),
+    true
+  );
+  check(
+    "the details action still renders while calls are off",
+    /label="Conversation details"/.test(conversationView),
+    true
+  );
 }
 
 /* -------------------------------- report --------------------------------- */
