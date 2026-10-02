@@ -215,8 +215,11 @@ function AccountSection({
 }) {
   const user = useCloakStore((s) => s.auth.user);
   const signOut = useCloakStore((s) => s.signOut);
+  const exportAccountData = useCloakStore((s) => s.exportAccountData);
   const onboarding = useCloakStore((s) => s.onboarding);
   const reopenOnboarding = useCloakStore((s) => s.reopenOnboarding);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [exportState, setExportState] = useState<"idle" | "busy" | "done" | "error">("idle");
   const available = guestPasses.length
     ? guestPasses.filter((p: { id: string } & { status?: string }) => p.status === "available" || p.status === "expired" || p.status === "revoked_before_redemption").length
     : 0;
@@ -318,7 +321,198 @@ function AccountSection({
           <ChevronRightIcon size={14} className="text-cloak-text-muted" />
         </button>
       </Surface>
+
+      <Surface className="p-5">
+        <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-cloak-text">
+          <HardDriveIcon size={15} className="text-cloak-text-secondary" />
+          Your data
+        </h2>
+        <p className="text-[12.5px] leading-relaxed text-cloak-text-secondary">
+          Download everything Cloak Dagger stores about this account as a JSON
+          file — profile, conversations, the messages you sent, membership,
+          devices and payments. Message bodies are the encrypted envelopes only
+          you can read.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3 h-8 border-cloak-border-strong bg-transparent text-[12.5px] text-cloak-text hover:bg-cloak-surface-hover"
+          disabled={exportState === "busy"}
+          onClick={async () => {
+            setExportState("busy");
+            const res = await exportAccountData();
+            setExportState(res.ok ? "done" : "error");
+          }}
+        >
+          {exportState === "busy" ? "Preparing…" : "Export my data"}
+        </Button>
+        {exportState === "done" && (
+          <p className="mt-2 text-[11.5px] text-cloak-text-muted">
+            Your export has been downloaded.
+          </p>
+        )}
+        {exportState === "error" && (
+          <p role="alert" className="mt-2 text-[11.5px] text-cloak-danger">
+            The export could not be prepared. Try again in a moment.
+          </p>
+        )}
+      </Surface>
+
+      <Surface className="border-cloak-danger/25 p-5">
+        <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-cloak-text">
+          <InfoIcon size={15} className="text-cloak-danger" />
+          Delete account
+        </h2>
+        <p className="text-[12.5px] leading-relaxed text-cloak-text-secondary">
+          Permanently erase this account: your profile, every signed-in device,
+          membership, uploaded media, and the invite links you created. Messages
+          you sent stay in the conversations you shared, no longer attributed to
+          you. This cannot be undone.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3 h-8 border-cloak-danger/40 bg-transparent text-[12.5px] text-cloak-danger hover:bg-cloak-danger/10"
+          onClick={() => setDeleteOpen(true)}
+        >
+          Delete account
+        </Button>
+      </Surface>
+
+      <DeleteAccountDialog open={deleteOpen} onOpenChange={setDeleteOpen} />
     </>
+  );
+}
+
+/* Account deletion ---------------------------------------------------------- */
+
+const DELETE_ERROR_COPY: Record<string, string> = {
+  handle_mismatch: "That does not match your handle.",
+  bad_password: "That password is not correct.",
+  rate_limited: "Too many attempts. Try again in a few minutes.",
+  bad_origin: "This request was blocked for security reasons. Reload and try again.",
+  network_error: "Could not reach Cloak Dagger. Check your connection and try again.",
+  user_not_found: "This account no longer exists.",
+  unauthenticated: "Your session expired. Sign in again.",
+};
+
+/*
+ * Irreversible, so the confirmation is deliberately two-part: the handle
+ * typed back AND the password re-entered. The session cookie alone must not
+ * be enough to destroy an account from an unlocked device.
+ */
+function DeleteAccountDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const handle = useCloakStore((s) => s.auth.user?.handle ?? "");
+  const deleteAccount = useCloakStore((s) => s.deleteAccount);
+  const [confirmHandle, setConfirmHandle] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const typed = confirmHandle.replace(/^@/, "").trim().toLowerCase();
+  const matches = handle.length > 0 && typed === handle.toLowerCase();
+  const canSubmit = matches && password.length > 0 && !busy;
+
+  const submit = async () => {
+    if (!canSubmit) return;
+    setBusy(true);
+    setError(null);
+    const res = await deleteAccount(password, confirmHandle);
+    if (!res.ok) {
+      setError(DELETE_ERROR_COPY[res.error] ?? "Something went wrong. Please try again.");
+      setBusy(false);
+    }
+    /* On success the store clears local state and reloads — nothing to do. */
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!busy) onOpenChange(next);
+      }}
+    >
+      <RiseDialogContent className="border-cloak-border bg-cloak-bg-elevated text-cloak-text sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Delete this account</DialogTitle>
+          <DialogDescription className="text-cloak-text-secondary">
+            This erases your profile, sessions, devices, membership and cached
+            media, and revokes the invite links you created. It cannot be
+            undone, and there is no recovery window.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 pt-2">
+          <label className="block">
+            <span className="mb-1.5 block text-[12.5px] text-cloak-text-secondary">
+              Type <span className="font-mono text-cloak-text">@{handle}</span> to confirm
+            </span>
+            <Input
+              value={confirmHandle}
+              onChange={(e) => setConfirmHandle(e.target.value)}
+              placeholder={`@${handle}`}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={busy}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-[12.5px] text-cloak-text-secondary">
+              Your password
+            </span>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              disabled={busy}
+            />
+          </label>
+          {error && (
+            <p
+              role="alert"
+              className="flex items-start gap-1.5 text-[12px] leading-relaxed text-cloak-danger"
+            >
+              <InfoIcon size={13} className="mt-0.5 shrink-0" />
+              {error}
+            </p>
+          )}
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 px-3 text-[12.5px] text-cloak-text-muted hover:text-cloak-text"
+              disabled={busy}
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 border-cloak-danger/40 bg-transparent px-3 text-[12.5px] text-cloak-danger hover:bg-cloak-danger/10"
+              disabled={!canSubmit}
+              onClick={() => void submit()}
+            >
+              {busy ? (
+                <>
+                  <LoaderCircleIcon size={13} className="mr-1.5 animate-spin" />
+                  Deleting…
+                </>
+              ) : (
+                "Delete forever"
+              )}
+            </Button>
+          </div>
+        </div>
+      </RiseDialogContent>
+    </Dialog>
   );
 }
 

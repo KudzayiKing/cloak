@@ -176,6 +176,40 @@ export async function clearOutbox(): Promise<void> {
 }
 
 /**
+ * Drop ONE account's rows from the cache (account deletion).
+ *
+ * `clearLocalCache` / `clearOutbox` are whole-store operations, which is
+ * correct for "clear saved data" and for Dagger. Account deletion is not: one
+ * install may serve several Cloak IDs, so erasing one account must leave the
+ * other account's cached history alone. Every row carries `ownerUserId`, so
+ * the purge is a filtered scan — there is no index on it, but these stores are
+ * small and this runs once.
+ *
+ * The outbox is INCLUDED here, unlike in `clearLocalCache`. Its exclusion
+ * exists to stop a casual "free up space" tap from destroying unsent words;
+ * deleting the account is the one case where the words can never be sent, so
+ * keeping them would only leave the account's content on the device.
+ */
+export async function clearLocalCacheForOwner(ownerUserId: string): Promise<void> {
+  await Promise.all(
+    [STORE_MESSAGES, STORE_ATTACHMENTS, STORE_CONVERSATIONS, STORE_OUTBOX].map(async (storeName) => {
+      const rows = await getAllFromStore<{ id: IDBValidKey; ownerUserId?: string }>(storeName);
+      const keys = rows
+        .filter((row) => row && row.ownerUserId === ownerUserId)
+        .map((row) => row.id);
+      if (keys.length === 0) return;
+      /* One readwrite transaction for the batch; `count()` is only a
+         completion token, so the promise resolves after the deletes are
+         committed. */
+      await withStore(storeName, "readwrite", (store) => {
+        for (const key of keys) store.delete(key);
+        return store.count();
+      });
+    })
+  );
+}
+
+/**
  * Ask the browser to make this origin's storage persistent.
  *
  * Without it the cache is "best effort": a browser under pressure may evict the

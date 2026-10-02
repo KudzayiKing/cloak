@@ -142,6 +142,27 @@ export function hasLocalIdentity(userId: string): boolean {
   return !!readJson<LocalIdentity>(LS_IDENTITY(userId));
 }
 
+/**
+ * Forget ONE account's local key material.
+ *
+ * Dagger's `destroyCryptoKeys` is deliberately device-wide — a panic wipe
+ * must leave nothing behind for anybody. Account DELETION is the opposite
+ * case: the device registry explicitly supports one install serving several
+ * accounts (a phone PWA signed into two Cloak IDs is normal, not an attack),
+ * so erasing one account must not take the other account's keyring with it.
+ * This removes exactly the three seeds that belong to `userId`.
+ */
+export function forgetLocalIdentity(userId: string): void {
+  try {
+    localStorage.removeItem(LS_IDENTITY(userId));
+    localStorage.removeItem(LS_CONVKEYS(userId));
+    localStorage.removeItem(LS_CONVKEYS_META(userId));
+  } catch {
+    /* ignore */
+  }
+  if (identity?.userId === userId) wipeKeyringMemory();
+}
+
 export function isIdentityReady(userId: string): boolean {
   return identity?.userId === userId;
 }

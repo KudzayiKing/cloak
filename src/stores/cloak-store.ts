@@ -32,8 +32,8 @@ import type {
 import type { IssueGuestPassInput } from "@/lib/cloak/membership";
 import { membershipService, type PassAllocationView, type PassInviteRecord } from "@/lib/cloak/membership-service";
 import { syncPushAfterAuth } from "@/lib/cloak/push-client";
-import { setVaultUser } from "@/lib/crypto/local-vault";
-import { ensurePersistentStorage } from "@/lib/cloak/local-db";
+import { setVaultUser, forgetVaultKey } from "@/lib/crypto/local-vault";
+import { clearLocalCacheForOwner, ensurePersistentStorage } from "@/lib/cloak/local-db";
 import {
   cachedRowToMessage,
   cacheMessages,
@@ -77,6 +77,7 @@ import {
   decryptBody,
   encryptBody,
   ensureIdentity,
+  forgetLocalIdentity,
   getConversationKeyRaw,
   maybeRotateForAge,
   restoreIdentity,
@@ -685,6 +686,15 @@ interface CloakState {
     email?: string
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
   signOut: () => Promise<void>;
+  /** Erase the account server-side, then take this account's local copy
+   *  (keys, cache, outbox) with it. The server re-verifies the password and
+   *  requires the handle typed back; this only carries the request. */
+  deleteAccount: (
+    password: string,
+    confirmHandle: string
+  ) => Promise<{ ok: true } | { ok: false; error: string; status?: number }>;
+  /** Download everything the server holds about the account as JSON. */
+  exportAccountData: () => Promise<{ ok: true } | { ok: false; error: string }>;
 
   /* Server hydration / sync */
   hydrateServerData: (contacts: ServerContact[], conversations: ServerConversation[]) => Promise<void>;
@@ -1264,6 +1274,94 @@ export const useCloakStore = create<CloakState>()(
           passInvites: [],
           passAllocation: null,
         });
+      },
+
+      /* ---------- Account lifecycle ---------- */
+
+      deleteAccount: async (password, confirmHandle) => {
+        const user = get().auth.user;
+        if (!user) return { ok: false, error: "unauthenticated" };
+
+        let status = 0;
+        let error: string | undefined;
+        try {
+          const res = await fetch("/api/account", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password, confirmHandle }),
+          });
+          status = res.status;
+          const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+          if (!res.ok || json.ok !== true) error = json.error ?? "server_error";
+        } catch {
+          return { ok: false, error: "network_error" };
+        }
+        if (error) return { ok: false, error, status };
+
+        /* The server row is gone. Remove THIS account's local copy — never
+           the whole origin's. One install may serve several Cloak IDs, so
+           `destroyCryptoKeys()`/`clearSensitiveStorage()` (Dagger's
+           device-wide wipe) would take another account's keyring and cached
+           history with it. A failure here must not block the exit: the
+           erasure that matters already committed server-side. */
+        try {
+          forgetLocalIdentity(user.id);
+          forgetVaultKey(user.id);
+          await clearLocalCacheForOwner(user.id);
+        } catch {
+          /* ignore */
+        }
+
+        set({
+          auth: { user: null, checked: true },
+          isAdmin: false,
+          contacts: [],
+          conversations: [],
+          activeConversationId: null,
+          inbox: [],
+          unreadInbox: 0,
+          blockedUsers: [],
+          membership: {
+            membership: "none",
+            origin: "admin_grant",
+            active: false,
+            renewal: "never",
+          },
+          guestPasses: [],
+          passInvites: [],
+          passAllocation: null,
+          devices: [],
+        });
+        /* Full reload: no stale in-memory slice, and the cleared cookie is
+           honoured from a clean boot. */
+        window.location.assign("/");
+        return { ok: true };
+      },
+
+      exportAccountData: async () => {
+        try {
+          const res = await fetch("/api/account/export", { method: "GET" });
+          if (!res.ok) {
+            const json = (await res.json().catch(() => ({}))) as { error?: string };
+            return { ok: false, error: json.error ?? "export_failed" };
+          }
+          /* Fetch-then-save rather than navigating at the endpoint, so a
+             401/429 surfaces as copy instead of a tab full of raw JSON. */
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `cloak-${get().auth.user?.handle ?? "account"}-${new Date()
+            .toISOString()
+            .slice(0, 10)}.json`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 10_000);
+          return { ok: true };
+        } catch {
+          return { ok: false, error: "network_error" };
+        }
       },
 
       /* ---------- Server hydration / sync ---------- */

@@ -76,6 +76,23 @@ export function currentVaultUserId(): string | null {
   return vaultUserId;
 }
 
+/**
+ * Forget ONE account's vault key (account deletion).
+ *
+ * `wipeVaultMemory` only drops the in-memory handle and is device-wide in
+ * effect, because Dagger follows it with a full localStorage clear. Deleting
+ * a single account on a shared install must not do that — the other account's
+ * vault key has to survive, or its entire local cache becomes unreadable.
+ */
+export function forgetVaultKey(userId: string): void {
+  try {
+    localStorage.removeItem(LS_VAULT(userId));
+  } catch {
+    /* ignore */
+  }
+  if (vaultUserId === userId) wipeVaultMemory();
+}
+
 async function loadOrCreateVaultKey(userId: string): Promise<CryptoKey | null> {
   let rawB64: string | null = null;
   try {
