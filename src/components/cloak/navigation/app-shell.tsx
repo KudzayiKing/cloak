@@ -281,8 +281,25 @@ export function AppShell({
     /* The nav is laid out after first paint (fonts, the safe-area inset, the
        PWA install prompt), so re-measure once the frame has settled. */
     const raf = window.requestAnimationFrame(publish);
+    /* A one-shot measurement goes stale: the nav can change height AFTER first
+       paint — the safe-area inset settles, a font swap reflows the tab row, the
+       install prompt appears, or the device rotates. If the published number
+       drifts below the nav's real height the last card on every page slides back
+       under the bar (the "doesn't scroll all the way down" class of bug). Watch
+       the element and the viewport so the value can never drift. */
+    const el = navRef.current;
+    const ro =
+      typeof ResizeObserver !== "undefined" && el
+        ? new ResizeObserver(publish)
+        : null;
+    if (ro && el) ro.observe(el);
+    window.addEventListener("resize", publish);
+    window.addEventListener("orientationchange", publish);
     return () => {
       window.cancelAnimationFrame(raf);
+      ro?.disconnect();
+      window.removeEventListener("resize", publish);
+      window.removeEventListener("orientationchange", publish);
       root.style.setProperty("--cloak-bottom-nav-h", "0px");
     };
   }, [mobileChrome]);

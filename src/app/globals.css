@@ -402,22 +402,27 @@
   /*
    * Bottom clearance for every page's scroll container.
    *
-   * This exists because the clearance was previously hardcoded as
-   * `calc(56px + env(safe-area-inset-bottom))` in six places, and 56px was
-   * WRONG: the nav is a 1px `border-t` above a 56px tab row, so it measures 57px
-   * (verified on-device at 390x844). One pixel of clearance short means the
-   * bottom edge of the last card on every scrolling screen sits exactly under
-   * the nav's top hairline — the page scrolls to its end and the last thing on
-   * it still reads as clipped. That is the "settings never scrolls all the way
-   * down" report.
+   * --cloak-bottom-nav-h is the mobile bottom nav's visible height, MEASURED by
+   * AppShell from the live element (the nav is a 1px `border-t` above a 56px tab
+   * row, so it renders 57px, and the gesture-area bleed is subtracted because it
+   * hangs below the viewport and never covers content). Deriving the clearance
+   * from it means it can no longer drift from the bar it has to clear: one
+   * number, one source, correct on every inset and in the nav-less conversation
+   * case (where the variable is 0px and the clearance collapses to the gap).
    *
-   * Deriving it from --cloak-bottom-nav-h (which AppShell measures from the
-   * live element and re-publishes whenever the nav appears or disappears) means
-   * the clearance can no longer drift from the bar it has to clear: one number,
-   * one source, correct on every inset and in the nav-less conversation case
-   * (where the variable is 0px and the clearance collapses to the safe area).
+   * The clearance used to be EXACTLY the nav height. Measured in a real
+   * 390x620 mobile viewport, that left the last element on every scrolling
+   * screen ending flush against the nav's top hairline — 0px to spare — so the
+   * end of the page read as clipped. That is the owner's "the content does not
+   * scroll all the way to the bottom" report (it affected every Settings tab,
+   * since they share one scroll container). The deliberate GAP below is what
+   * makes the end of the content unmistakable. Tune the gap here, never per
+   * page.
    */
-  --cloak-bottom-clearance: calc(var(--cloak-bottom-nav-h) + env(safe-area-inset-bottom));
+  --cloak-bottom-gap: 1.5rem;
+  --cloak-bottom-clearance: calc(
+    var(--cloak-bottom-nav-h) + env(safe-area-inset-bottom) + var(--cloak-bottom-gap)
+  );
 
   /*
    * Mobile top chrome — the fixed header.

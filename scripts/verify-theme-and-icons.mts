@@ -1022,6 +1022,25 @@ check(
     true
   );
 
+  /*
+   * The bottom clearance must clear the bar with a GAP, not exactly touch it.
+   * Measured in a real 390x620 mobile viewport, a clearance equal to the nav's
+   * height left the last element on every Settings tab flush against the nav's
+   * top edge (0px to spare) — the page scrolls to its end and the last thing on
+   * it still reads as clipped. That is the owner's "the content does not scroll
+   * all the way to the bottom" report. The gap is the fix; keep it non-zero.
+   */
+  check(
+    "the bottom clearance clears the nav with a deliberate gap",
+    /--cloak-bottom-clearance:\s*calc\([^;]*var\(--cloak-bottom-gap\)/.test(css),
+    true
+  );
+  check(
+    "  ... and the gap is a real, non-zero length",
+    /--cloak-bottom-gap:\s*(?!0px)(?!0;)[\d.]/.test(css),
+    true
+  );
+
   /* Clearance must read the shared token: a hardcoded 56px sits under the
      header on any device that reports a status-bar inset. */
   check(
