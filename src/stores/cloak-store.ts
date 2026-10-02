@@ -31,6 +31,19 @@ import type {
 import type { IssueGuestPassInput } from "@/lib/cloak/membership";
 import { membershipService, type PassAllocationView, type PassInviteRecord } from "@/lib/cloak/membership-service";
 import { syncPushAfterAuth } from "@/lib/cloak/push-client";
+import { setVaultUser } from "@/lib/crypto/local-vault";
+import { ensurePersistentStorage } from "@/lib/cloak/local-db";
+import {
+  cachedRowToMessage,
+  cacheMessages,
+  forgetCachedSignatures,
+  loadCachedMessages,
+  purgeExpiredCachedMessages,
+} from "@/lib/cloak/message-cache";
+import {
+  cacheConversations,
+  loadCachedConversations,
+} from "@/lib/cloak/conversation-cache";
 import {
   DAGGER_DEFAULTS,
   checkPendingDaggerCommand,
@@ -430,11 +443,24 @@ async function decryptServerMessages(
   messages: ServerMessage[],
   myUserId: string | undefined
 ): Promise<Message[]> {
-  if (!myUserId) return messages.map(toClientMessage);
-  return Promise.all(
+  if (!myUserId) {
+    const plain = messages.map(toClientMessage);
+    void cacheMessages(plain);
+    return plain;
+  }
+
+  /* Cached BEFORE hydration. `hydrateAttachmentMessage` blanks `body` and moves
+     the attachment envelope into separate fields, but the decrypted body IS
+     that envelope — caching after hydration would lose it and leave every
+     cached note with no metadata to render or fetch from. */
+  const cacheable: Message[] = [];
+
+  const out = await Promise.all(
     messages.map(async (m) => {
       if (m.kind === "system" || m.authorId === "system" || m.authorId === "cloak") {
-        return toClientMessage(m); // service notices / local AI answers
+        const notice = toClientMessage(m); // service notices / local AI answers
+        cacheable.push(notice);
+        return notice;
       }
       const base = toClientMessage(m);
       const result = await decryptBody(
@@ -444,16 +470,24 @@ async function decryptServerMessages(
         m.authorId,
         myUserId
       );
-      if (!result.ok)
-        return {
+      if (!result.ok) {
+        const locked: Message = {
           ...base,
           body: "",
           bodyLocked: true,
           bodyLockedReason: result.reason ?? "missing",
         };
-      return hydrateAttachmentMessage({ ...base, body: result.text ?? base.body });
+        cacheable.push(locked);
+        return locked;
+      }
+      const decrypted: Message = { ...base, body: result.text ?? base.body };
+      cacheable.push(decrypted);
+      return hydrateAttachmentMessage(decrypted);
     })
   );
+
+  void cacheMessages(cacheable);
+  return out;
 }
 
 async function toClientConversationAsync(
@@ -508,6 +542,9 @@ interface CloakState {
 
   /* Server hydration / sync */
   hydrateServerData: (contacts: ServerContact[], conversations: ServerConversation[]) => Promise<void>;
+  /** Paint saved conversations + history from the local cache. Safe to call
+   *  before (or instead of) the server answering. */
+  hydrateLocalCache: () => Promise<void>;
   mergeConversationList: (
     activeId: string | null,
     contacts: ServerContact[],
@@ -903,6 +940,10 @@ export const useCloakStore = create<CloakState>()(
             isAdmin: isAdmin === true,
             identityStatus,
           }));
+          /* Show saved history immediately; the server merge follows. This is
+             also the only path that yields an inbox at all if the conversation
+             fetch below fails on a flaky connection. */
+          void get().hydrateLocalCache();
           /* Dagger device registry: bind this install to the session and
              check for a queued remote wipe (codex §16/§18). */
           const identity = deviceIdentity();
@@ -1080,17 +1121,54 @@ export const useCloakStore = create<CloakState>()(
         const clientConvs = await Promise.all(
           conversations.map((c) => toClientConversationAsync(c, myUserId))
         );
+
+        /* MERGE over anything already on screen from the local cache. The server
+           window is authoritative for the rows it contains, but it is capped
+           (`MESSAGE_HISTORY_CAP` = 200), so cached rows beyond it must survive
+           or the cache would be pointless. */
+        const existingById = new Map(get().conversations.map((c) => [c.id, c]));
+        const mergedConvs = clientConvs.map((client) => {
+          const existing = existingById.get(client.id);
+          if (!existing?.messages.length) return client;
+          const byId = new Map(existing.messages.map((m) => [m.id, m]));
+          for (const m of client.messages) byId.set(m.id, m);
+          const messages = [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);
+          return { ...client, messages };
+        });
+
         set({
           contacts,
-          conversations: clientConvs,
+          conversations: mergedConvs,
           activeConversationId:
-            currentActive && clientConvs.some((c) => c.id === currentActive)
+            currentActive && mergedConvs.some((c) => c.id === currentActive)
               ? currentActive
               : null,
         });
+        void cacheConversations(mergedConvs);
         /* E2EE: provision / unwrap / heal keys for every conversation
            (inflight-guarded + cooldown inside the orchestrator). */
         void get().syncE2eeKeys();
+      },
+      hydrateLocalCache: async () => {
+        /* Paint saved conversations and history before (or instead of) the
+           server answering. On a slow or dropped connection this is what turns
+           an empty inbox into the history the user already had. */
+        const cached = await loadCachedConversations();
+        if (!cached.length) return;
+        const withHistory = await Promise.all(
+          cached.map(async (c) => ({
+            ...c,
+            messages: (await loadCachedMessages(c.id)).map((row) =>
+              cachedRowToMessage(row, hydrateAttachmentMessage)
+            ),
+          }))
+        );
+        set((s) => {
+          const byId = new Map(withHistory.map((c) => [c.id, c]));
+          /* Anything the live session already holds wins — it is newer. */
+          for (const c of s.conversations) byId.set(c.id, c);
+          return { conversations: [...byId.values()] };
+        });
       },
       mergeConversationList: async (activeId, contacts, conversations) => {
         const myUserId = get().auth.user?.id;
@@ -2126,20 +2204,28 @@ export const useCloakStore = create<CloakState>()(
 
           let serverMessage: Message | null = null;
           if (res.ok) {
-            const confirmed = toClientMessage(res.data.message);
-            serverMessage = {
-              ...confirmed,
-              ...message,
-              id: confirmed.id,
-              createdAt: confirmed.createdAt,
-              status: confirmed.status ?? "sent",
-              /* The optimistic message was built before the upload, so its
-                 `attachmentBlob` is stale/absent — take the authoritative one
-                 from the confirmed body, and surface a failed transfer rather
-                 than letting the sender assume the recipient can play it. */
-              attachmentBlob: confirmed.attachmentBlob,
-              ...(transferFailed ? { attachmentTransferFailed: true } : {}),
-            };
+            /* The POST response body is still CIPHERTEXT, so the synchronous
+               toClientMessage() cannot hydrate the attachment envelope from
+               it: `confirmed.attachmentBlob` would always be undefined and
+               the line below would WIPE the envelope the optimistic row was
+               carrying. Decrypt first — the same path the sync/GET route
+               uses — so the sender's own message keeps its envelope (and its
+               `attachmentBlob.k`, which the bubble's effects key off). */
+            const [confirmed] = await decryptServerMessages(
+              [res.data.message],
+              myUserId
+            );
+            if (confirmed) {
+              serverMessage = {
+                ...confirmed,
+                ...message,
+                id: confirmed.id,
+                createdAt: confirmed.createdAt,
+                status: confirmed.status ?? "sent",
+                attachmentBlob: confirmed.attachmentBlob,
+                ...(transferFailed ? { attachmentTransferFailed: true } : {}),
+              };
+            }
           }
 
           set((s) => ({
@@ -2524,6 +2610,35 @@ export const useCloakStore = create<CloakState>()(
     }
   )
 );
+
+/*
+ * Keep the device vault key in step with the session, in ONE place.
+ *
+ * The vault key is what the local cache is sealed under, so it must be
+ * published before any cache write and dropped the moment the account changes —
+ * otherwise rows would be written unattributed, or one account's key would stay
+ * live while another is signed in. Subscribing covers EVERY path that touches
+ * `auth.user` (bootstrap, sign-in, register, sign-out, and Dagger's teardown)
+ * instead of sprinkling a call through each of them and missing one.
+ */
+useCloakStore.subscribe((state, prev) => {
+  const nextId = state.auth.user?.id ?? null;
+  const prevId = prev.auth.user?.id ?? null;
+  if (nextId === prevId) return;
+
+  setVaultUser(nextId);
+  if (!nextId) {
+    /* Signed out. Local content is RETAINED per account by design, so the
+       persisted vault key stays — only the in-memory copy and the write-dedupe
+       state go. */
+    forgetCachedSignatures();
+    return;
+  }
+  /* Best-effort: ask not to be evicted, then drop ghost rows whose timer ran
+     out while this device was away. */
+  void ensurePersistentStorage();
+  void purgeExpiredCachedMessages();
+});
 
 /* Convenience selector: the active conversation object. */
 export function useActiveConversation(): Conversation | null {

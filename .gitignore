@@ -68,7 +68,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-local-*
+# ROOT-SCOPED on purpose. A bare `local-*` matches a path segment at ANY
+# depth, so it silently swallowed src/lib/cloak/local-db.ts and
+# src/lib/crypto/local-vault.ts — a commit would have shipped a build with
+# unresolvable imports. Keep the leading slash.
+/local-*
 .claude
 .z-ai-config
 *.log

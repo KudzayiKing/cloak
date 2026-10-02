@@ -1,32 +1,75 @@
 "use client";
 
 /*
- * Device-local attachment storage.
+ * Device-local attachment storage — the LOCAL CACHE.
  *
- * This is now the LOCAL CACHE, not the whole story. Attachment bytes are still
- * written here first, so the device that created a note plays it instantly and
- * without a round trip — but the bytes are also sealed and uploaded (see
- * `attachment-remote.ts`) so the recipient can actually hear them. The envelope
- * therefore carries the crypto envelope needed to open the uploaded copy.
+ * Attachment bytes are written here so the device that created a note plays it
+ * instantly and without a round trip, and so a RECEIVED note stays playable
+ * offline and after the server's 30-day copy expires. The bytes are also sealed
+ * and uploaded (see `attachment-remote.ts`) so the recipient can fetch them in
+ * the first place.
  *
- * Keeping the local write is what makes the sender's own playback instant and
- * keeps working offline; it is no longer the only copy that exists.
+ * Everything written here is sealed under the DEVICE VAULT KEY, never under a
+ * conversation key — conversation keys are versioned and, under forward
+ * secrecy, deliberately destroyed, which would leave cached bytes permanently
+ * unopenable. See `local-vault.ts`.
  */
 
 import { parseBlobEnvelope, type BlobEnvelope } from "@/lib/crypto/e2ee";
+import {
+  currentVaultUserId,
+  openLocal,
+  parseSealedBox,
+  sealLocal,
+  vaultScope,
+  type SealedBox,
+} from "@/lib/crypto/local-vault";
+import { ATTACHMENT_TTL_MS } from "./attachment-constants";
+import {
+  STORE_ATTACHMENTS,
+  deleteFromStore,
+  getAllByIndex,
+  withStore,
+} from "./local-db";
 
-const DB_NAME = "cloak-attachments";
-const DB_VERSION = 1;
-const STORE = "attachments";
+/**
+ * Total bytes the attachment cache may hold before it starts evicting.
+ *
+ * Deliberately generous — the owner asked for "everything received" — but not
+ * unbounded. Browsers evict an origin's storage ALL-OR-NOTHING once quota is
+ * exceeded, so an unbounded cache would eventually take the cached MESSAGES
+ * down with it, which is the worst possible outcome. Messages are ~9 KB each
+ * and are never evicted; this budget covers the expensive part.
+ */
+export const ATTACHMENT_CACHE_BUDGET_BYTES = 1024 * 1024 * 1024; // 1 GiB
 
 export interface LocalAttachmentRecord {
   id: string;
+  /**
+   * Which account wrote this row. The database is keyed by ORIGIN while one
+   * install may serve several accounts, so without this account B could list
+   * account A's file names and sizes. Absent on rows cached before this field
+   * existed — those are matched by conversation alone, as they always were.
+   */
+  ownerUserId?: string;
   conversationId: string;
   name: string;
   mime: string;
+  /** Plaintext size, as reported to the recipient. */
   size: number;
   createdAt: number;
-  blob: Blob;
+  /** Vault-sealed bytes. Present on everything written since v2. */
+  sealed?: SealedBox;
+  /**
+   * Legacy (v1) plaintext blob. Written only when the vault is unavailable —
+   * a sender's own recording must still play even if sealing fails — and read
+   * as a fallback for rows cached before this format existed.
+   */
+  blob?: Blob;
+  /** Sealed byte count, used by the budget. */
+  byteSize?: number;
+  /** Last read; drives least-recently-used eviction. */
+  lastUsedAt?: number;
 }
 
 export interface AttachmentEnvelope {
@@ -54,42 +97,58 @@ export interface AttachmentEnvelope {
   blob?: BlobEnvelope;
 }
 
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        const store = db.createObjectStore(STORE, { keyPath: "id" });
-        store.createIndex("conversationId", "conversationId", { unique: false });
-        store.createIndex("createdAt", "createdAt", { unique: false });
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error ?? new Error("attachment_db_open_failed"));
-  });
+function recordSize(record: LocalAttachmentRecord): number {
+  if (typeof record.byteSize === "number" && record.byteSize > 0) return record.byteSize;
+  return typeof record.size === "number" ? record.size : 0;
 }
 
-async function withStore<T>(
-  mode: IDBTransactionMode,
-  run: (store: IDBObjectStore) => IDBRequest<T>
-): Promise<T> {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, mode);
-    const req = run(tx.objectStore(STORE));
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error ?? new Error("attachment_db_request_failed"));
-    tx.oncomplete = () => db.close();
-    tx.onerror = () => {
-      db.close();
-      reject(tx.error ?? new Error("attachment_db_transaction_failed"));
-    };
-    tx.onabort = () => {
-      db.close();
-      reject(tx.error ?? new Error("attachment_db_transaction_aborted"));
-    };
-  });
+/**
+ * Keep the cache inside its budget.
+ *
+ * Eviction is least-recently-used, but biased: rows the server can still serve
+ * are dropped FIRST, because any participant can simply download them again.
+ * Only once nothing re-fetchable remains does this touch content whose server
+ * copy has already expired — which is precisely the content the cache exists to
+ * preserve, so it is the last thing to go.
+ */
+async function enforceAttachmentBudget(): Promise<void> {
+  let rows: LocalAttachmentRecord[];
+  try {
+    rows = await getAllByIndex<LocalAttachmentRecord>(
+      STORE_ATTACHMENTS,
+      "createdAt",
+      IDBKeyRange.lowerBound(0)
+    );
+  } catch {
+    return;
+  }
+  if (!rows.length) return;
+
+  let total = rows.reduce((sum, r) => sum + recordSize(r), 0);
+  if (total <= ATTACHMENT_CACHE_BUDGET_BYTES) return;
+
+  const now = Date.now();
+  const ranked = rows
+    .map((r) => ({
+      record: r,
+      used: r.lastUsedAt ?? r.createdAt ?? 0,
+      refetchable: now - (r.createdAt ?? 0) < ATTACHMENT_TTL_MS,
+    }))
+    .sort((a, b) => a.used - b.used);
+
+  for (const refetchablePass of [true, false]) {
+    for (const candidate of ranked) {
+      if (total <= ATTACHMENT_CACHE_BUDGET_BYTES) return;
+      if (candidate.refetchable !== refetchablePass) continue;
+      await deleteFromStore(STORE_ATTACHMENTS, candidate.record.id);
+      total -= recordSize(candidate.record);
+    }
+  }
+}
+
+async function putRecord(record: LocalAttachmentRecord): Promise<void> {
+  await withStore(STORE_ATTACHMENTS, "readwrite", (store) => store.put(record));
+  void enforceAttachmentBudget();
 }
 
 export async function saveLocalAttachment(
@@ -102,16 +161,28 @@ export async function saveLocalAttachment(
       ? crypto.randomUUID()
       : `att-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const createdAt = Date.now();
+  const name = file.name || "Attachment";
+  const mime = file.type || "application/octet-stream";
+
+  const bytes = await file.arrayBuffer().catch(() => null);
+  const sealed = bytes ? await sealLocal(bytes, vaultScope.attachment(id)) : null;
+
+  const ownerUserId = currentVaultUserId() ?? undefined;
   const record: LocalAttachmentRecord = {
     id,
+    ...(ownerUserId ? { ownerUserId } : {}),
     conversationId,
-    name: file.name || "Attachment",
-    mime: file.type || "application/octet-stream",
+    name,
+    mime,
     size: file.size,
     createdAt,
-    blob: file,
+    lastUsedAt: createdAt,
+    ...(sealed
+      ? { sealed, byteSize: sealed.ct.byteLength }
+      : { blob: file, byteSize: file.size }),
   };
-  await withStore("readwrite", (store) => store.put(record));
+  await putRecord(record);
+
   const durationSec =
     typeof options?.durationSec === "number" && Number.isFinite(options.durationSec)
       ? Math.max(0, Math.round(options.durationSec))
@@ -122,8 +193,8 @@ export async function saveLocalAttachment(
       type: "cloak.attachment",
       v: 1,
       attachmentId: id,
-      name: record.name,
-      mime: record.mime,
+      name,
+      mime,
       size: record.size,
       storedAt: createdAt,
       ...(durationSec ? { durationSec } : {}),
@@ -132,10 +203,44 @@ export async function saveLocalAttachment(
 }
 
 /**
- * The envelope as it should TRAVEL, once the upload has produced a crypto
- * envelope. Called after `uploadAttachmentBlob` succeeds; on failure the caller
- * passes nothing and the note travels as metadata only.
+ * Cache a note or file this device RECEIVED.
+ *
+ * This is what makes a voice note playable offline and past the server's
+ * 30-day expiry. The caller has already decrypted it with the conversation key
+ * (which is about to become irrelevant) — the bytes are re-sealed here under
+ * the vault key so the cached copy does not depend on that key surviving.
  */
+export async function cacheReceivedAttachment(params: {
+  id: string;
+  conversationId: string;
+  name: string;
+  mime: string;
+  size: number;
+  createdAt: number;
+  bytes: ArrayBuffer;
+}): Promise<void> {
+  const { id, conversationId, name, mime, size, createdAt, bytes } = params;
+  const ownerUserId = currentVaultUserId();
+  if (!ownerUserId) return;
+  const sealed = await sealLocal(bytes, vaultScope.attachment(id));
+  if (!sealed) return;
+  await putRecord({
+    id,
+    ownerUserId,
+    conversationId,
+    name,
+    mime,
+    size,
+    createdAt,
+    lastUsedAt: Date.now(),
+    sealed,
+    byteSize: sealed.ct.byteLength,
+  });
+}
+
+/** The envelope as it should TRAVEL, once the upload has produced a crypto
+ *  envelope. Called after `uploadAttachmentBlob` succeeds; on failure the
+ *  caller passes nothing and the note travels as metadata only. */
 export function withBlobEnvelope(
   envelope: AttachmentEnvelope,
   blob: BlobEnvelope | undefined
@@ -157,12 +262,57 @@ export async function getLocalAttachment(
   conversationId: string
 ): Promise<LocalAttachmentRecord | null> {
   if (!id) return null;
-  const record = await withStore<LocalAttachmentRecord | undefined>("readonly", (store) =>
-    store.get(id)
-  );
+  let record: LocalAttachmentRecord | undefined;
+  try {
+    record = await withStore<LocalAttachmentRecord | undefined>(
+      STORE_ATTACHMENTS,
+      "readonly",
+      (store) => store.get(id)
+    );
+  } catch {
+    return null;
+  }
   if (!record) return null;
   if (record.conversationId !== conversationId) return null;
+  /* Rows written before account tagging existed have no owner and are matched
+     by conversation alone, exactly as they always were. Newer rows must belong
+     to the account currently signed in. */
+  const ownerUserId = currentVaultUserId();
+  if (record.ownerUserId !== undefined && record.ownerUserId !== ownerUserId) return null;
   return record;
+}
+
+/** Decode a stored record into playable bytes, whichever format it uses. */
+export async function openLocalAttachment(
+  record: LocalAttachmentRecord
+): Promise<Blob | null> {
+  if (record.sealed) {
+    const box = parseSealedBox(record.sealed);
+    if (!box) return null;
+    const plain = await openLocal(box, vaultScope.attachment(record.id));
+    if (!plain) return null;
+    return new Blob([plain], { type: record.mime || "application/octet-stream" });
+  }
+  if (record.blob) return record.blob;
+  return null;
+}
+
+/** Record a read so eviction can tell hot from cold. Fire-and-forget. */
+export function touchLocalAttachment(id: string): void {
+  void (async () => {
+    try {
+      const record = await withStore<LocalAttachmentRecord | undefined>(
+        STORE_ATTACHMENTS,
+        "readonly",
+        (store) => store.get(id)
+      );
+      if (!record) return;
+      record.lastUsedAt = Date.now();
+      await withStore(STORE_ATTACHMENTS, "readwrite", (store) => store.put(record));
+    } catch {
+      /* best effort */
+    }
+  })();
 }
 
 export function parseAttachmentEnvelope(body: string): AttachmentEnvelope | null {

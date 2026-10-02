@@ -8,7 +8,7 @@
  * /settings/storage, /settings/appearance.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/cloak/navigation/app-shell";
 import { useCloakStore } from "@/stores/cloak-store";
 import { Surface } from "@/components/cloak/shared/primitives";
@@ -66,6 +66,14 @@ import {
 } from "@animateicons/react/lucide";
 import { LanguagesIcon } from "lucide-react";
 import { formatBytes } from "@/lib/cloak/utils";
+import {
+  STORE_ATTACHMENTS,
+  STORE_MESSAGES,
+  clearLocalCache,
+  countStore,
+  localCacheEstimate,
+} from "@/lib/cloak/local-db";
+import { forgetCachedSignatures } from "@/lib/cloak/message-cache";
 
 type SectionId = "account" | "membership" | "cloak" | "privacy" | "notifications" | "ai" | "storage" | "appearance" | "admin";
 
@@ -927,6 +935,43 @@ function AISection() {
 /* Storage --------------------------------------------------------------------- */
 
 function StorageSection() {
+  const [counts, setCounts] = useState<{ messages: number; media: number } | null>(null);
+  const [usage, setUsage] = useState<{ usage?: number; quota?: number }>({});
+  const [confirming, setConfirming] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [cleared, setCleared] = useState(false);
+
+  const refresh = useCallback(async () => {
+    const [messages, media, estimate] = await Promise.all([
+      countStore(STORE_MESSAGES),
+      countStore(STORE_ATTACHMENTS),
+      localCacheEstimate(),
+    ]);
+    setCounts({ messages, media });
+    setUsage(estimate);
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const clear = async () => {
+    setClearing(true);
+    try {
+      await clearLocalCache();
+      /* Drop the write-dedupe state too, or the next poll would think those
+         messages are already cached and never write them back. */
+      forgetCachedSignatures();
+      await refresh();
+      setCleared(true);
+      setConfirming(false);
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
   return (
     <>
       <Surface className="p-5">
@@ -935,9 +980,74 @@ function StorageSection() {
           Local storage
         </h2>
         <div className="space-y-3 text-[13px]">
-          <StorageRow label="Message store" note="Encrypted application data (app-controlled)" value="4.2 MB" />
-          <StorageRow label="Cloak Dagger AI" note={MODEL_MANIFEST.gemma.url ? "Installed artifact" : "Not installed — nothing stored"} value={MODEL_MANIFEST.gemma.url ? formatBytes(MODEL_MANIFEST.gemma.sizeBytes) : "0 B"} />
-          <StorageRow label="Media cache" note="Cleared on session end" value="12.8 MB" />
+          <StorageRow
+            label="Saved messages"
+            note="Kept on this device so history opens instantly and survives the server's 200-message window"
+            value={counts ? plural(counts.messages, "message", "messages") : "…"}
+          />
+          <StorageRow
+            label="Saved media"
+            note="Notes and files you opened, re-encrypted for this device"
+            value={counts ? plural(counts.media, "item", "items") : "…"}
+          />
+          <StorageRow
+            label="Cloak Dagger AI"
+            note={MODEL_MANIFEST.gemma.url ? "Installed artifact" : "Not installed — nothing stored"}
+            value={MODEL_MANIFEST.gemma.url ? formatBytes(MODEL_MANIFEST.gemma.sizeBytes) : "0 B"}
+          />
+          <StorageRow
+            label="This browser"
+            note="All Cloak Dagger data for this origin"
+            value={usage.usage !== undefined ? formatBytes(usage.usage) : "—"}
+          />
+        </div>
+
+        <div className="mt-5 border-t border-cloak-border pt-4">
+          <p className="text-[12.5px] leading-relaxed text-cloak-text-secondary">
+            Saved content is sealed with a key that never leaves this device, so
+            it stays unreadable at rest. Clearing removes it from here only — it
+            does not delete anything from the server or affect your other
+            devices. Notes and files still on the server can be downloaded
+            again; anything older than 30 days cannot.
+          </p>
+          {cleared ? (
+            <p className="mt-3 text-[12.5px] text-cloak-text-secondary">
+              Saved messages and media cleared from this device.
+            </p>
+          ) : confirming ? (
+            <div className="mt-3 flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 border-cloak-border-strong bg-transparent text-[12.5px] text-cloak-danger hover:bg-cloak-surface-hover"
+                disabled={clearing}
+                onClick={() => void clear()}
+              >
+                {clearing ? "Clearing…" : "Yes, clear it"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2.5 text-[12.5px] text-cloak-text-muted hover:text-cloak-text"
+                disabled={clearing}
+                onClick={() => setConfirming(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 h-8 border-cloak-border-strong bg-transparent text-[12.5px] text-cloak-text hover:bg-cloak-surface-hover hover:text-cloak-text"
+              onClick={() => {
+                setCleared(false);
+                setConfirming(true);
+              }}
+            >
+              Clear saved data
+            </Button>
+          )}
         </div>
       </Surface>
       <Surface className="p-5">

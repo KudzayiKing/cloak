@@ -22,6 +22,7 @@
 
 import { create } from "zustand";
 import { wipeKeyringMemory } from "@/lib/crypto/e2ee-orchestrator";
+import { wipeVaultMemory } from "@/lib/crypto/local-vault";
 
 /* ---------- capability / result types (codex §29/§31) ---------- */
 
@@ -156,6 +157,11 @@ export async function destroyCryptoKeys(): Promise<void> {
         key &&
         (key.startsWith("cloak-identity-") ||
           key.startsWith("cloak-convkeys") ||
+          /* The device vault key seals the LOCAL CACHE (cached messages and
+             attachment bytes). It MUST die here, in the keys-first phase: a
+             surviving vault key would still open the entire cached history,
+             which is exactly what this wipe exists to prevent. */
+          key.startsWith("cloak-vault-") ||
           key === "cloak-memory-store-v1")
       ) {
         localStorage.removeItem(key);
@@ -165,6 +171,7 @@ export async function destroyCryptoKeys(): Promise<void> {
     /* ignore */
   }
   wipeKeyringMemory();
+  wipeVaultMemory();
 }
 
 /** All Cloak Dagger-controlled browser storage (codex §7-§10). Cloak owns the

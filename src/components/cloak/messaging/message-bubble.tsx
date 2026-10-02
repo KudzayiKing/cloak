@@ -9,7 +9,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatTime, formatVoiceClock } from "@/lib/cloak/utils";
-import { getLocalAttachment } from "@/lib/cloak/attachment-storage";
+import {
+  cacheReceivedAttachment,
+  getLocalAttachment,
+  openLocalAttachment,
+  touchLocalAttachment,
+} from "@/lib/cloak/attachment-storage";
 import { reactionById } from "@/lib/cloak/reactions";
 import type { Message } from "@/lib/cloak/types";
 import { useCloakStore } from "@/stores/cloak-store";
@@ -479,18 +484,25 @@ const attachmentBlobCache = new Map<string, Blob>();
 /**
  * Resolve attachment bytes for a message.
  *
- * Two routes, in order: the LOCAL cache on the device that created it (instant,
- * offline, no round trip), then the uploaded ciphertext — fetched and decrypted
- * with the conversation key, which is what lets a recipient read the payload at
- * all. Returns null when neither yields bytes, and the caller then renders the
- * honest unavailable state rather than an inert player.
+ * Two routes, in order: the LOCAL cache (instant, offline, no round trip) — the
+ * sender's own recording, or a note this device already received — then the
+ * uploaded ciphertext, fetched and decrypted with the conversation key, which
+ * is what lets a recipient read the payload at all. Returns null when neither
+ * yields bytes, and the caller then renders the honest unavailable state rather
+ * than an inert player.
  */
 async function resolveAttachmentBlob(message: Message): Promise<Blob | null> {
   const attachmentId = message.attachmentId;
   if (!attachmentId) return null;
 
   const local = await getLocalAttachment(attachmentId, message.conversationId).catch(() => null);
-  if (local?.blob) return local.blob;
+  if (local) {
+    const opened = await openLocalAttachment(local).catch(() => null);
+    if (opened) {
+      touchLocalAttachment(attachmentId);
+      return opened;
+    }
+  }
 
   const envelope = message.attachmentBlob;
   if (!envelope) return null;
@@ -507,14 +519,36 @@ async function resolveAttachmentBlob(message: Message): Promise<Blob | null> {
       message.attachmentMime ?? ""
     )
     .catch(() => null);
-  if (fetched) {
-    attachmentBlobCache.set(attachmentId, fetched);
-    /* Bounded FIFO: a long session in a busy thread must not pin everything. */
-    if (attachmentBlobCache.size > 40) {
-      const oldest = attachmentBlobCache.keys().next().value;
-      if (oldest) attachmentBlobCache.delete(oldest);
-    }
+  if (!fetched) return null;
+
+  attachmentBlobCache.set(attachmentId, fetched);
+  /* Bounded FIFO: a long session in a busy thread must not pin everything. */
+  if (attachmentBlobCache.size > 40) {
+    const oldest = attachmentBlobCache.keys().next().value;
+    if (oldest) attachmentBlobCache.delete(oldest);
   }
+
+  /* SAVE IT. This is what makes a RECEIVED note playable offline and after the
+     server's 30-day copy has expired. The bytes are re-sealed under the device
+     VAULT key, not the conversation key that just decrypted them — conversation
+     key versions are destroyed by forward secrecy, which would leave a cached
+     copy permanently unopenable. Best-effort: a failed cache write must never
+     fail playback. */
+  void fetched
+    .arrayBuffer()
+    .then((bytes) =>
+      cacheReceivedAttachment({
+        id: attachmentId,
+        conversationId: message.conversationId,
+        name: message.fileName ?? "Attachment",
+        mime: message.attachmentMime || fetched.type || "application/octet-stream",
+        size: message.fileSizeBytes ?? bytes.byteLength,
+        createdAt: message.createdAt,
+        bytes,
+      })
+    )
+    .catch(() => undefined);
+
   return fetched;
 }
 

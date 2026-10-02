@@ -191,6 +191,30 @@ check(
   /attachmentBlob:\s*confirmed\.attachmentBlob/.test(store),
   true
 );
+/* Regression guard. `confirmed` must come from the DECRYPTION pass, not the
+   synchronous toClientMessage(): the POST response body is still ciphertext,
+   so parsing it yields no envelope at all — and since the confirmed blob is
+   written over the optimistic one, that silently WIPES the sender's envelope
+   the moment the send is confirmed. This shipped once; the probe caught it
+   only because it asserted on the settled message rather than the optimistic
+   one. Scoped to the attachment action: the text path deliberately keeps its
+   local plaintext body instead (see the comment there). */
+const attachStart = store.indexOf("sendAttachment: async");
+/* lastIndexOf: the state INTERFACE declares updateMessageStatus long before
+   the implementation does, and indexOf would bound the slice to nothing. */
+const attachEnd = store.lastIndexOf("updateMessageStatus:");
+const attachSendBlock =
+  attachStart >= 0 && attachEnd > attachStart ? store.slice(attachStart, attachEnd) : "";
+check(
+  "the attachment confirmation is decrypted, not parsed as plaintext",
+  /const \[confirmed\] = await decryptServerMessages\(/.test(attachSendBlock),
+  true
+);
+check(
+  "the attachment send path never hydrates the raw ciphertext body",
+  attachSendBlock.length > 0 && !/toClientMessage\(res\.data\.message\)/.test(attachSendBlock),
+  true
+);
 check(
   "the sender is told when the transfer failed",
   /attachmentTransferFailed/.test(store) && /attachmentTransferFailed/.test(bubble),
@@ -201,9 +225,15 @@ check(
 
 check(
   "playback tries the local cache before the network",
-  /getLocalAttachment\(attachmentId, message\.conversationId\)[\s\S]{0,400}?fetchAttachmentBlob/.test(
-    bubble
-  ),
+  /* Order-based, not distance-based: the local lookup must simply appear
+     BEFORE the remote fetch in the resolver. A character-window version of
+     this broke the moment the local branch grew a decryption step, which is
+     a false alarm about the very behaviour being guarded. */
+  (() => {
+    const localAt = bubble.indexOf("getLocalAttachment(attachmentId, message.conversationId)");
+    const remoteAt = bubble.indexOf("fetchAttachmentBlob(");
+    return localAt >= 0 && remoteAt >= 0 && localAt < remoteAt;
+  })(),
   true
 );
 check(
