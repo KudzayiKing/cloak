@@ -26,9 +26,23 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  /*
+   * Feature policy for the app origin.
+   *
+   * `microphone` MUST be `(self)`, never `()`: an empty allowlist denies the
+   * feature to EVERY origin including this document, so getUserMedia rejects
+   * with NotAllowedError before the browser can even show a prompt — and no
+   * browser setting can undo a document-level block. Voice notes are live, so
+   * the app needs the microphone. (This is exactly the bug that made the mic
+   * look "broken" in production.)
+   *
+   * `camera` stays closed while calls are deferred (see CALLS_ENABLED); open it
+   * to `(self)` in the same change that ships video, or video calls will fail
+   * the same silent way.
+   */
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=()",
+    value: "camera=(), microphone=(self), geolocation=(), payment=()",
   },
   ...(isProduction
     ? [

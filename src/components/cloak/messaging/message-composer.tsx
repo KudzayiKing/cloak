@@ -51,6 +51,53 @@ function extensionFor(mime: string): string {
   return "webm";
 }
 
+/**
+ * Turn a getUserMedia rejection into something the user can act on.
+ *
+ * The first two branches are the ones that matter. An insecure origin or a
+ * Permissions-Policy block makes the browser reject BEFORE it ever prompts, so
+ * a generic "access is needed" message sends the user to browser settings that
+ * cannot possibly help — they are host/config problems, not user problems.
+ * Both are checked up front so a future regression names itself instead of
+ * masquerading as the user having declined.
+ *
+ * Guarded throughout: Safari ships neither `document.featurePolicy` nor
+ * `navigator.permissions.query({ name: "microphone" })`.
+ */
+function describeMicFailure(error: unknown): string {
+  if (typeof window !== "undefined" && !window.isSecureContext) {
+    return "Voice notes need a secure connection — open Cloak over HTTPS.";
+  }
+
+  const policy = (
+    document as Document & {
+      featurePolicy?: { allowsFeature?: (feature: string) => boolean };
+    }
+  ).featurePolicy;
+  try {
+    if (policy?.allowsFeature && !policy.allowsFeature("microphone")) {
+      return "The microphone is blocked for this page by the site's own policy.";
+    }
+  } catch {
+    /* Policy API absent or threw — fall through to the DOMException name. */
+  }
+
+  const name = (error as { name?: string } | null)?.name ?? "";
+  switch (name) {
+    case "NotAllowedError":
+    case "SecurityError":
+      return "Microphone access is blocked for this site. Tap the padlock in the address bar, allow Microphone, then tap the mic again.";
+    case "NotFoundError":
+    case "DevicesNotFoundError":
+      return "No microphone was found on this device.";
+    case "NotReadableError":
+    case "TrackStartError":
+      return "Another app is using the microphone. Close it and tap the mic again.";
+    default:
+      return "Could not start recording. Tap the mic to try again.";
+  }
+}
+
 export function MessageComposer({
   onSend,
   onAttach,
@@ -117,8 +164,8 @@ export function MessageComposer({
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setRecordError("Microphone access is needed to record a voice note.");
+    } catch (error) {
+      setRecordError(describeMicFailure(error));
       return;
     }
 
@@ -268,7 +315,7 @@ export function MessageComposer({
             disabled={disabled}
             onClick={() => fileInputRef.current?.click()}
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-cloak-text-secondary transition-colors hover:bg-cloak-surface-hover hover:text-cloak-text"
-            title="Attachments arrive with the secure transport layer"
+            title="Attach a file"
           >
             <PaperclipIcon size={17} />
           </button>

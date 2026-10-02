@@ -157,12 +157,19 @@ check(
 }
 
 {
-  /* Expired buckets are reclaimed — the leak this replaces. */
+  /* Expired buckets are reclaimed — the leak this replaces.
+   *
+   * The window must comfortably exceed the insertion loop. At 10 ms it did not:
+   * the loop takes ~3 ms idle but 40-60 ms under a concurrent dev-server
+   * compile, so the earliest buckets expired mid-insert and the count came back
+   * short (156/200 observed). That reads as "buckets are leaking" when it is
+   * really "the test raced its own clock". 500 ms gives the loop ~10x headroom
+   * over the worst observed stall and still expires well inside the test. */
   const store = new RateLimitBuckets(1000, 0);
-  for (let i = 0; i < 200; i += 1) store.take(`expire-${i}`, 1, 10);
+  for (let i = 0; i < 200; i += 1) store.take(`expire-${i}`, 1, 500);
   check("200 live buckets exist before expiry", store.size, 200);
-  await sleep(30);
-  store.take("trigger", 1, 10);
+  await sleep(550);
+  store.take("trigger", 1, 500);
   check("expired buckets are reclaimed, not retained", store.size, 1);
 }
 

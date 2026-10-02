@@ -18,6 +18,10 @@
  *     the bars are sized from Cloak's own tokens rather than a foreign palette.
  *  4. The clock is shared. The composer counts up while recording and the bubble
  *     reads back — one formatter, or the two drift.
+ *  5. The HOST grants the microphone. `Permissions-Policy: microphone=()` is an
+ *     empty allowlist and denies the feature to this document itself, so the
+ *     browser rejects before prompting and no browser setting can help. The mic
+ *     then looks broken while every check above still passes.
  *
  * Run: node_modules/.bin/tsx scripts/verify-voice-notes.mts
  */
@@ -56,6 +60,7 @@ const css = stripComments(read("src/app/globals.css"));
 const messageRoute = stripComments(
   read("src/app/api/conversations/[id]/messages/route.ts")
 );
+const nextConfig = stripComments(read("next.config.ts"));
 
 /* ------------------------- 1. the mic is wired --------------------------- */
 
@@ -83,12 +88,48 @@ check(
 );
 check(
   "a permission failure is reported instead of swallowed",
-  /Microphone access is needed to record a voice note/.test(composer),
+  /setRecordError\(describeMicFailure\(error\)\)/.test(composer),
+  true
+);
+check(
+  "an insecure origin is diagnosed, not blamed on the user",
+  /isSecureContext/.test(composer),
+  true
+);
+check(
+  "a Permissions-Policy block is diagnosed apart from a user denial",
+  /allowsFeature\("microphone"\)/.test(composer),
   true
 );
 check(
   "the microphone is released on unmount",
   /aliveRef\.current = false[\s\S]{0,220}releaseStream\(\)/.test(composer),
+  true
+);
+
+/* ----------------- 1b. the host actually grants the microphone ------------ */
+
+/*
+ * `microphone=()` is an EMPTY allowlist: it denies the feature to every origin
+ * INCLUDING this document. The browser then rejects getUserMedia with
+ * NotAllowedError before it can prompt, and because the block is document-level
+ * no browser setting can override it — so the user is told to go to settings
+ * that cannot possibly help. Asserted against next.config.ts because that is
+ * the single source of the header.
+ */
+check(
+  "the app origin grants itself the microphone",
+  /Permissions-Policy[\s\S]{0,140}?microphone=\(self\)/.test(nextConfig),
+  true
+);
+check(
+  "the empty microphone allowlist is not reintroduced",
+  /microphone=\(\)/.test(nextConfig),
+  false
+);
+check(
+  "camera stays closed while calls are deferred",
+  /camera=\(\)/.test(nextConfig),
   true
 );
 
