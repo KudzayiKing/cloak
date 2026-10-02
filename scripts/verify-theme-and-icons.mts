@@ -846,6 +846,41 @@ check(
     /onMouseEnter=\{onMouseEnter\}[\s\S]{0,120}onMouseLeave=\{onMouseLeave\}/.test(shell),
     true
   );
+
+  /*
+   * The Messages nav icon (owner-supplied reference, round 31): the speech
+   * bubble is a STATIC path and the three typing dots blink in a staggered
+   * wave. Both halves are pinned because either can regress silently — a
+   * refactor could restore the old animated bubble, or swap the blink for a
+   * scale-pop, and the icon would still read as "a message bubble with three
+   * dots". Measured in a real browser: each dot reaches opacity < 0.2, the
+   * three are out of lockstep, and the bubble never moves.
+   */
+  const icons = stripComments(read("src/components/cloak/shared/animated-icons.tsx"));
+  const messagesIcon = icons.slice(
+    icons.indexOf("const MessageCircleMoreIcon"),
+    icons.indexOf("MessageCircleMoreIcon.displayName"),
+  );
+  check(
+    "the Messages nav icon uses the owner-supplied bubble path",
+    /d="M7\.9 20A9 9 0 1 0 4 16\.1L2 22Z"/.test(messagesIcon),
+    true,
+  );
+  check(
+    "  ... and blinks its three dots rather than popping them",
+    /opacity: \[1, 0, 0, 1, 1, 0, 0, 1\]/.test(messagesIcon),
+    true,
+  );
+  check(
+    "  ... ending each dot at rest, so the 2s press stop stays silent",
+    /normal: \{ opacity: 1 \}/.test(messagesIcon),
+    true,
+  );
+  check(
+    "the Messages icon is wired into both the sidebar and the bottom nav",
+    (shell.match(/icon: MessageCircleMoreIcon/g) ?? []).length,
+    2,
+  );
   /*
    * Safe areas are painted by the chrome they belong to, not by a strip of
    * their own.

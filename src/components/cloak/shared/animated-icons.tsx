@@ -2,9 +2,14 @@
 
 /*
  * Animated nav icons from lucide-animated.com (user feedback round 5).
- * Both animate on hover on pointer devices and expose imperative
+ * They animate on hover on pointer devices and expose imperative
  * start/stop handles; on touch devices the app shell drives them with
  * useIconPressAnimation (press -> animate for two seconds).
+ *
+ * Engine note: every icon here runs on framer-motion. Owner-supplied
+ * references (rounds 17, 31) are written against `motion/react`; the two
+ * packages expose the identical API at v12, so the references are adapted
+ * to framer-motion rather than adding a second animation engine.
  */
 
 import { cn } from "@/lib/utils";
@@ -103,29 +108,31 @@ const MessageCircleMoreIcon = forwardRef<
       [controls, onMouseLeave],
     );
 
-    const bubbleVariants: Variants = {
-      normal: { scale: 1, opacity: 1 },
-      animate: {
-        scale: [0.3, 1.05, 1],
-        opacity: [0, 1, 1],
-        transition: {
-          duration: 0.55 * duration,
-          times: [0, 0.7, 1],
-          ease: [0.34, 1.4, 0.64, 1],
-        },
-      },
-    };
+    /* Owner-supplied reference (round 31): the three typing dots BLINK in a
+       staggered wave while the speech bubble stays still. `custom` offsets each
+       dot so the wave travels left to right.
 
+       Every keyframe ENDS at opacity 1 — the "normal" value — so the silent
+       stop is pixel-identical to rest (round 15: an animated return would read
+       as a second animation when the 2s press window closes). */
     const dotVariants: Variants = {
-      normal: { scale: 1, opacity: 1 },
-      animate: (i: number) => ({
-        scale: [0, 1.3, 1],
-        opacity: [0, 1, 1],
+      normal: { opacity: 1 },
+      animate: (custom: number) => ({
+        opacity: [1, 0, 0, 1, 1, 0, 0, 1],
         transition: {
-          duration: 0.4 * duration,
-          delay: (0.26 + i * 0.12) * duration,
-          times: [0, 0.6, 1],
-          ease: [0.34, 1.4, 0.64, 1],
+          opacity: {
+            times: [
+              0,
+              0.1,
+              0.1 + custom * 0.1,
+              0.1 + custom * 0.1 + 0.1,
+              0.5,
+              0.6,
+              0.6 + custom * 0.1,
+              0.6 + custom * 0.1 + 0.1,
+            ],
+            duration: 1.5 * duration,
+          },
         },
       }),
     };
@@ -152,29 +159,11 @@ const MessageCircleMoreIcon = forwardRef<
             animate={controls}
             initial="normal"
           >
-            <m.path
-              d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"
-              variants={bubbleVariants}
-              style={{ transformBox: "view-box", originX: "4px", originY: "20px" }}
-            />
-            <m.path
-              d="M8 12h.01"
-              custom={0}
-              variants={dotVariants}
-              style={{ transformBox: "view-box", originX: "8px", originY: "12px" }}
-            />
-            <m.path
-              d="M12 12h.01"
-              custom={1}
-              variants={dotVariants}
-              style={{ transformBox: "view-box", originX: "12px", originY: "12px" }}
-            />
-            <m.path
-              d="M16 12h.01"
-              custom={2}
-              variants={dotVariants}
-              style={{ transformBox: "view-box", originX: "16px", originY: "12px" }}
-            />
+            {/* The bubble is static — only the dots move. */}
+            <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+            <m.path d="M8 12h.01" custom={0} variants={dotVariants} />
+            <m.path d="M12 12h.01" custom={1} variants={dotVariants} />
+            <m.path d="M16 12h.01" custom={2} variants={dotVariants} />
           </m.svg>
         </m.div>
       </LazyMotion>
