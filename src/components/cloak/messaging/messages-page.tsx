@@ -87,10 +87,16 @@ export function MessagesPage() {
       mobileChrome={!(hasActive && mobileInConversation)}
     >
       <div className="flex h-full min-h-0 bg-cloak-bg">
-        {/* Column 1 — chat list */}
+        {/* Column 1 — chat list.
+            Web sidebar width is a single value now (owner, round 44): 450px at
+            every width from `md` up. It used to be tuned per breakpoint —
+            300px at `md`, 330px at `lg` — which meant the list reflowed as you
+            dragged a desktop window across 1024px. `md` is this app's "web"
+            tier (`isTablet` is the same 768px query), so one value covers
+            tablet and desktop alike, and `lg` needs no override. */}
         <div
           className={cn(
-            "w-full shrink-0 md:w-[300px] lg:w-[330px]",
+            "w-full shrink-0 md:w-[450px]",
             // Mobile: show list only when not inside a conversation
             isTablet ? "flex" : hasActive && mobileInConversation ? "hidden" : "flex"
           )}
