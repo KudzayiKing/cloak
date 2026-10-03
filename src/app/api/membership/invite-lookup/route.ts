@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   const invite = await db.guestPassInvite.findUnique({
     where: { tokenHash },
     include: {
-      pass: { select: { status: true } },
+      pass: { select: { status: true, program: true } },
     },
   });
   if (!invite) {
@@ -36,13 +36,14 @@ export async function GET(req: NextRequest) {
 
   const owner = await db.guestPass.findUnique({
     where: { id: invite.passId },
-    select: { owner: { select: { displayName: true } } },
+    select: { owner: { select: { displayName: true } }, program: true },
   });
 
   return NextResponse.json({
     found: true,
     status: invite.status, // pending | redeemed | expired | revoked
-    inviterName: owner?.owner.displayName ?? "A Cloak Dagger Reserve member",
+    ...(owner?.program === "reserve" ? { inviterName: owner.owner.displayName ?? "A Cloak Dagger Reserve member" } : {}),
+    program: owner?.program === "founding_adviser" ? "founding_adviser" : "reserve",
     method: invite.method,
     expiresAt: invite.expiresAt.toISOString(),
   });

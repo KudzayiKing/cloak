@@ -53,6 +53,7 @@ interface Invitation {
   createdAt: string;
   expiresAt: string;
   redeemedAt?: string;
+  redeemedByUserId?: string;
   revokedAt?: string;
   internalNote?: string;
   link?: string;
@@ -119,6 +120,10 @@ export function AdviserInvitationsAdmin({
   const [detailsTarget, setDetailsTarget] = useState<Invitation | null>(null);
   const [detailsEvents, setDetailsEvents] = useState<InvitationEvent[] | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [trustedCapacity, setTrustedCapacity] = useState<{ total: number; pending: number; redeemed: number; available: number } | null>(null);
+  const [trustedGrantAmount, setTrustedGrantAmount] = useState("1");
+  const [customTrustedGrantAmount, setCustomTrustedGrantAmount] = useState("");
+  const [trustedGrantBusy, setTrustedGrantBusy] = useState(false);
 
   useEffect(() => {
     setInvitations(initialInvitations);
@@ -242,6 +247,29 @@ export function AdviserInvitationsAdmin({
     };
     setDetailsLoading(false);
     setDetailsEvents(json.invitation?.events ?? []);
+    setTrustedCapacity(null);
+    if (invitation.status === "redeemed" && invitation.redeemedByUserId) {
+      const capacityRes = await fetch(`/api/admin/founding-advisers/${invitation.redeemedByUserId}/trusted-invites`, { cache: "no-store" });
+      const capacityJson = (await capacityRes.json().catch(() => ({}))) as { ok?: boolean; allocation?: typeof trustedCapacity };
+      if (capacityJson.ok && capacityJson.allocation) setTrustedCapacity(capacityJson.allocation);
+    }
+  }
+
+  async function grantMoreTrustedInvites() {
+    if (!detailsTarget?.redeemedByUserId || trustedGrantBusy) return;
+    setTrustedGrantBusy(true);
+    try {
+      const res = await fetch(`/api/admin/founding-advisers/${detailsTarget.redeemedByUserId}/trusted-invites`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Number(trustedGrantAmount === "custom" ? customTrustedGrantAmount : trustedGrantAmount) }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; allocation?: typeof trustedCapacity };
+      if (json.ok && json.allocation) setTrustedCapacity(json.allocation);
+      else setError("Additional Trusted Invites could not be granted.");
+    } finally {
+      setTrustedGrantBusy(false);
+    }
   }
 
   return (
@@ -523,10 +551,36 @@ export function AdviserInvitationsAdmin({
                 )}
               </div>
               {detailsTarget.status === "redeemed" && (
-                <p className="text-xs leading-relaxed text-cloak-text-muted">
-                  A redeemed invitation cannot be reset or reused. The membership it granted is independent of this
-                  record.
-                </p>
+                <div className="space-y-3 rounded-lg border border-cloak-border bg-cloak-bg/60 p-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-cloak-text-muted">Trusted Invites</h3>
+                  {trustedCapacity ? (
+                    <p className="text-sm text-cloak-text-secondary">
+                      {trustedCapacity.total} total · {trustedCapacity.pending} pending · {trustedCapacity.redeemed} redeemed · {trustedCapacity.available} available
+                    </p>
+                  ) : (
+                    <p className="text-xs text-cloak-text-muted">Loading invite capacity…</p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      aria-label="Additional Trusted Invite amount"
+                      value={trustedGrantAmount}
+                      onChange={(event) => setTrustedGrantAmount(event.target.value)}
+                      className="h-9 rounded-md border border-cloak-border bg-cloak-bg px-2 text-sm text-cloak-text"
+                    >
+                      <option value="1">+1</option>
+                      <option value="3">+3</option>
+                      <option value="5">+5</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                    {trustedGrantAmount === "custom" && (
+                      <Input aria-label="Custom Trusted Invite amount" type="number" min={1} max={100} value={customTrustedGrantAmount} onChange={(event) => setCustomTrustedGrantAmount(event.target.value)} className="h-9 w-24 border-cloak-border bg-cloak-bg text-cloak-text" />
+                    )}
+                    <Button disabled={trustedGrantBusy || !trustedCapacity || !detailsTarget.redeemedByUserId || (trustedGrantAmount === "custom" && (!Number.isInteger(Number(customTrustedGrantAmount)) || Number(customTrustedGrantAmount) < 1 || Number(customTrustedGrantAmount) > 100))} onClick={() => void grantMoreTrustedInvites()} className="h-9 bg-cloak-gold text-black hover:bg-cloak-gold-bright">
+                      {trustedGrantBusy ? "Granting…" : "Grant More Invites"}
+                    </Button>
+                  </div>
+                  <p className="text-xs leading-relaxed text-cloak-text-muted">Capacity changes are recorded in the admin audit log. Redeemed memberships remain independent.</p>
+                </div>
               )}
             </div>
           )}

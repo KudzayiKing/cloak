@@ -1119,7 +1119,7 @@ export const useCloakStore = create<CloakState>()(
           });
           void checkPendingDaggerCommand().catch(() => undefined);
           /* Reserve members: hydrate the pass registry for this session. */
-          if (membership?.membership === "reserve") void get().fetchGuestPasses();
+          if (membership?.membership === "reserve" || (membership?.membership === "private" && membership.origin === "founding_adviser")) void get().fetchGuestPasses();
           const convs = await api<{
             contacts: ServerContact[];
             conversations: ServerConversation[];
@@ -1179,7 +1179,7 @@ export const useCloakStore = create<CloakState>()(
         );
         if (identityStatus) set({ identityStatus });
         /* Reserve members: hydrate the pass registry for this session. */
-        if (membership?.membership === "reserve") void get().fetchGuestPasses();
+          if (membership?.membership === "reserve" || (membership?.membership === "private" && membership.origin === "founding_adviser")) void get().fetchGuestPasses();
         const list = await api<{
           contacts: ServerContact[];
           conversations: ServerConversation[];
@@ -1236,7 +1236,7 @@ export const useCloakStore = create<CloakState>()(
           IDENTITY_PROVISION_TIMEOUT_MS
         );
         if (identityStatus) set({ identityStatus });
-        if (membership?.membership === "reserve") void get().fetchGuestPasses();
+          if (membership?.membership === "reserve" || (membership?.membership === "private" && membership.origin === "founding_adviser")) void get().fetchGuestPasses();
         const list = await api<{
           contacts: ServerContact[];
           conversations: ServerConversation[];
@@ -2199,7 +2199,8 @@ export const useCloakStore = create<CloakState>()(
       passAllocation: null,
       passesLoading: false,
       fetchGuestPasses: async () => {
-        if (get().membership.membership !== "reserve") return;
+        const membership = get().membership;
+        if (membership.membership !== "reserve" && !(membership.membership === "private" && membership.origin === "founding_adviser")) return;
         set({ passesLoading: true });
         try {
           const data = await membershipService.getGuestPasses();

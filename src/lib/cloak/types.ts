@@ -18,6 +18,7 @@ export type MembershipOrigin =
   | "direct_usdc"
   | "reserve_guest_pass"
   | "founding_adviser"
+  | "founding_adviser_trusted_invite"
   | "bank_transfer"
   | "invoice"
   | "contract"

@@ -4,11 +4,13 @@ import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/cloak/server/auth";
 import {
   allocationFromPasses,
-  ensureReservePasses,
+  ensureGrantPasses,
+  grantProgramAllowance,
   generateInviteTokenServer,
   hashInviteTokenServer,
   lazyExpireInvites,
   serializePass,
+  type MembershipGrantProgram,
 } from "@/lib/cloak/server/membership-server";
 import type { IssueGuestPassInput } from "@/lib/cloak/membership";
 import { RESERVE_GUEST_INVITE_EXPIRY_DAYS } from "@/lib/cloak/config";
@@ -17,7 +19,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /*
- * POST /api/membership/passes/invite — issue one Reserve pass as a pending
+ * POST /api/membership/passes/invite — issue one shared membership grant as a pending
  * invitation (pricing spec §12, §43). Only two delivery methods exist:
  * "secure_link" and "qr" — a pre-payment guest cannot have a Cloak Dagger ID, and
  * email/phone collection is not part of the flow. The raw token is returned
@@ -38,9 +40,14 @@ export async function POST(req: NextRequest) {
 
   const full = await db.user.findUnique({
     where: { id: user.id },
-    select: { membershipTier: true },
+    select: { membershipTier: true, membershipOrigin: true },
   });
-  if (full?.membershipTier !== "reserve") {
+  const program: MembershipGrantProgram | null = full?.membershipTier === "reserve"
+    ? "reserve"
+    : full?.membershipTier === "private" && full.membershipOrigin === "founding_adviser"
+      ? "founding_adviser"
+      : null;
+  if (!program) {
     return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
   }
 
@@ -54,24 +61,24 @@ export async function POST(req: NextRequest) {
     body.method === "qr" ? "qr" : "secure_link"; // secure link is the default; no other methods exist
 
   await lazyExpireInvites(user.id);
-  await ensureReservePasses(db, user.id);
+  await ensureGrantPasses(db, user.id, program, grantProgramAllowance(program));
 
   const rows = await db.guestPass.findMany({
-    where: { ownerUserId: user.id },
+    where: { ownerUserId: user.id, program },
     include: { invites: { where: { status: "pending" }, take: 1 } },
     orderBy: { slotIndex: "asc" },
   });
   const passes = rows.map((row) => serializePass(row));
-  const allocation = allocationFromPasses(passes);
+  const allocation = allocationFromPasses(passes, rows.length);
   if (allocation.available <= 0) {
     return NextResponse.json(
-      { ok: false, error: "allocation_exhausted", message: "All 10 passes are used." },
+      { ok: false, error: "allocation_exhausted", message: "All membership grants are used." },
       { status: 409 }
     );
   }
 
   const target =
-    (body.passId && rows.find((r) => r.id === body.passId)) ||
+    (body.passId && rows.find((r) => r.id === body.passId && r.program === program)) ||
     rows.find((r) => r.status === "available");
   if (!target || target.status !== "available" || target.invites.length > 0) {
     return NextResponse.json({ ok: false, error: "not_pending" }, { status: 409 });
@@ -85,10 +92,11 @@ export async function POST(req: NextRequest) {
   const expiresAt = new Date(Date.now() + RESERVE_GUEST_INVITE_EXPIRY_DAYS * 24 * 3600 * 1000);
 
   const { pass, invite } = await db.$transaction(async (txDb) => {
-    await txDb.guestPass.update({
-      where: { id: target.id },
+    const reserved = await txDb.guestPass.updateMany({
+      where: { id: target.id, ownerUserId: user.id, program, status: "available" },
       data: { status: "issued", issuedAt: new Date() },
     });
+    if (reserved.count !== 1) throw new Error("allocation_race");
     const invite = await txDb.guestPassInvite.create({
       data: { passId: target.id, tokenHash, method, expiresAt },
     });
@@ -99,8 +107,9 @@ export async function POST(req: NextRequest) {
     return { pass: serializePass(fresh), invite };
   });
 
-  const origin = req.nextUrl.origin;
-  const link = `${origin}/#/invite/${token}`;
+  const link = program === "founding_adviser"
+    ? `https://cloakdagger.app/invite/trusted/${encodeURIComponent(token)}`
+    : `${req.nextUrl.origin}/#/invite/${token}`;
   let qrDataUrl: string | null = null;
   if (method === "qr") {
     try {

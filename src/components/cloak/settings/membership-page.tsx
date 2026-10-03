@@ -4,8 +4,8 @@
  * Settings > Membership (pricing & membership update spec §11-§14, §37-§38,
  * §62-§63).
  *
- * Shows the current entitlement and, for Cloak Dagger Reserve members, the Private
- * pass management area: 10 included passes, invite flow (secure link or QR
+ * Shows the current entitlement and shared Reserve/Founding Adviser Private
+ * grant management area (secure link or QR
  * — a pre-payment guest cannot have a Cloak Dagger ID), pending/redeemed lists,
  * revocation before redemption only. All state is a mirror of the server
  * registry (/api/membership/*); nothing here is authoritative. Membership
@@ -64,6 +64,7 @@ const ORIGIN_LABELS: Record<string, string> = {
   direct_usdc: "USDC settlement",
   reserve_guest_pass: `${BRAND.cloakReserve} invitation`,
   founding_adviser: "Founding Adviser",
+  founding_adviser_trusted_invite: "Trusted Invite",
   bank_transfer: "Bank transfer",
   invoice: "Invoice",
   contract: "Contract",
@@ -80,7 +81,7 @@ export function MembershipSection() {
 
   /* Keep the pass registry fresh while the surface is open. */
   useEffect(() => {
-    if (membership.membership !== "reserve") return;
+    if (membership.membership !== "reserve" && !(membership.membership === "private" && membership.origin === "founding_adviser")) return;
     void fetchGuestPasses();
     const id = window.setInterval(() => void fetchGuestPasses(), 30000);
     return () => window.clearInterval(id);
@@ -90,10 +91,10 @@ export function MembershipSection() {
     <div className="space-y-6">
       <EntitlementCard />
 
-      {membership.membership === "reserve" && <ReservePassManager />}
+      {membership.membership === "reserve" && <ReservePassManager program="reserve" />}
 
-      {membership.membership === "private" && membership.origin === "reserve_guest_pass" && (
-        <GuestGrantedCard />
+      {membership.membership === "private" && (membership.origin === "reserve_guest_pass" || membership.origin === "founding_adviser_trusted_invite") && (
+        <GuestGrantedCard origin={membership.origin} />
       )}
 
       {membership.membership === "private" && membership.origin === "founding_adviser" && (
@@ -202,12 +203,12 @@ function EntitlementCard() {
 
 /* ---------- Guest-granted Private (spec §63) ---------- */
 
-function GuestGrantedCard() {
+function GuestGrantedCard({ origin }: { origin: string }) {
   return (
     <Surface className="p-5">
       <h2 className="mb-2 text-sm font-semibold text-cloak-text">About your membership</h2>
       <p className="text-[13px] leading-relaxed text-cloak-text-secondary">
-        Your membership was granted through a Cloak Dagger Reserve invitation.
+        Your membership was granted through {origin === "founding_adviser_trusted_invite" ? "a Trusted Invite" : "a Cloak Dagger Reserve invitation"}.
       </p>
       <p className="mt-3 text-[12.5px] leading-relaxed text-cloak-text-muted">
         Your account remains private and independent. The person who invited
@@ -221,8 +222,12 @@ function GuestGrantedCard() {
 function FoundingAdviserCard() {
   return (
     <Surface className="p-5">
-      <h2 className="mb-2 text-sm font-semibold text-cloak-text">Founding Adviser access</h2>
-      <dl className="space-y-2 text-[13px]">
+      <h2 className="cloak-display text-xl font-medium tracking-wide text-cloak-text">Founding Adviser</h2>
+      <p className="mt-1 text-sm font-medium text-cloak-text">{BRAND.cloakPrivate} · Active</p>
+      <p className="mt-3 text-[12.5px] leading-relaxed text-cloak-text-secondary">
+        Complimentary access for invited Founding Advisers.
+      </p>
+      <dl className="mt-4 space-y-2 text-[13px]">
         <div className="flex items-center justify-between">
           <dt className="text-cloak-text-secondary">Access</dt>
           <dd className="text-cloak-text">Founding Adviser</dd>
@@ -236,6 +241,10 @@ function FoundingAdviserCard() {
           <dd className="text-cloak-text">Never</dd>
         </div>
       </dl>
+      <p className="mt-3 text-[12.5px] leading-relaxed text-cloak-text-secondary">
+        Cloak Dagger is built around trusted conversations. Invite people you trust so you can evaluate messaging, Groups, Circles, calls and privacy controls together.
+      </p>
+      <ReservePassManager program="founding_adviser" />
       <p className="mt-3 text-[12.5px] leading-relaxed text-cloak-text-muted">
         Your adviser access is private. It is not shown on your profile,
         contacts, messages, groups, Circles, or Cloak Dagger ID lookup.
@@ -278,7 +287,7 @@ function UpgradeCard() {
 
 /* ---------- Reserve pass manager (spec §11-§13, §62) ---------- */
 
-function ReservePassManager() {
+function ReservePassManager({ program }: { program: "reserve" | "founding_adviser" }) {
   const guestPasses = useCloakStore((s) => s.guestPasses);
   const passAllocation = useCloakStore((s) => s.passAllocation);
   const passesLoading = useCloakStore((s) => s.passesLoading);
@@ -286,20 +295,21 @@ function ReservePassManager() {
   const pending = guestPasses.filter((p) => p.status === "issued");
   const redeemed = guestPasses.filter((p) => p.status === "redeemed");
   const availableCount = passAllocation?.available ?? 0;
-  const total = passAllocation?.total ?? CLOAK_PRICING.reserve.includedPrivatePasses;
+  const total = passAllocation?.total ?? totalAllowance(program);
 
   return (
     <Surface className="p-5">
       <div className="mb-1 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-cloak-text">Private passes</h2>
+        <h2 className="text-sm font-semibold text-cloak-text">{program === "reserve" ? "Private passes" : "Trusted Invites"}</h2>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-cloak-gold/25 bg-cloak-gold-soft px-2.5 py-0.5 text-[10.5px] font-medium text-cloak-gold-bright">
           <TicketIcon size={11} />
-          {total} included
+          {total} {program === "reserve" ? "included" : "total"}
         </span>
       </div>
       <p className="text-[12px] text-cloak-text-muted">
-        Each pass grants one person full Cloak Dagger Private lifetime core access.
-        Redeemed passes cannot be reused.
+        {program === "reserve"
+          ? "Each pass grants one person full Cloak Dagger Private lifetime core access. Redeemed passes cannot be reused."
+          : "Each invite grants one person full Cloak Dagger Private membership. Redeemed invites cannot be reused."}
       </p>
 
       {/* Allocation summary (spec §11: 7 available / 3 redeemed / 10 total) */}
@@ -309,7 +319,10 @@ function ReservePassManager() {
         <PassStat label="Redeemed" value={redeemed.length} />
       </div>
 
-      <InviteDialog />
+      {availableCount > 0 && <InviteDialog program={program} />}
+      {program === "founding_adviser" && availableCount === 0 && redeemed.length >= total && (
+        <p className="mt-4 text-[12.5px] text-cloak-text-muted">All Trusted Invites have been used.</p>
+      )}
 
       {passesLoading && guestPasses.length === 0 && (
         <p className="mt-4 flex items-center gap-2 text-[12.5px] text-cloak-text-secondary">
@@ -322,7 +335,7 @@ function ReservePassManager() {
       {pending.length > 0 && (
         <div className="mt-5">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-cloak-text-muted">
-            Invite pending
+            {program === "reserve" ? "Invite pending" : "Pending Trusted Invites"}
           </p>
           <ul className="space-y-2">
             {pending.map((pass) => (
@@ -356,6 +369,10 @@ function PassStat({ label, value }: { label: string; value: number }) {
       <p className="mt-0.5 text-[10.5px] uppercase tracking-wider text-cloak-text-muted">{label}</p>
     </div>
   );
+}
+
+function totalAllowance(program: "reserve" | "founding_adviser") {
+  return program === "reserve" ? CLOAK_PRICING.reserve.includedPrivatePasses : 3;
 }
 
 function PassRow({ pass }: { pass: { id: string; status: string; expiresAt?: string; note?: string; redeemedByName?: string } }) {
@@ -438,8 +455,9 @@ function PassRow({ pass }: { pass: { id: string; status: string; expiresAt?: str
 
 /* ---------- Invite flow (spec §12 — secure link + QR only) ---------- */
 
-function InviteDialog() {
+function InviteDialog({ program }: { program: "reserve" | "founding_adviser" }) {
   const issueGuestPass = useCloakStore((s) => s.issueGuestPass);
+  const available = useCloakStore((s) => s.passAllocation?.available ?? 0);
   const [open, setOpen] = useState(false);
   const [method, setMethod] = useState<"secure_link" | "qr">("secure_link");
   const [busy, setBusy] = useState(false);
@@ -456,8 +474,8 @@ function InviteDialog() {
         setError(
           result.error === "allocation_exhausted"
             ? "No available passes — redeemed passes cannot be reused."
-            : result.error === "forbidden"
-              ? "Only Reserve members can issue passes."
+              : result.error === "forbidden"
+              ? "Your membership cannot create these invitations."
               : "The invitation could not be created."
         );
       } else {
@@ -481,7 +499,7 @@ function InviteDialog() {
         className="bg-cloak-gold/20 hover:bg-cloak-gold/25 mt-4 h-10 w-full border border-cloak-gold/30 text-[13px] font-medium text-cloak-gold hover:text-cloak-gold"
         onClick={() => setOpen(true)}
       >
-        Invite someone
+        {program === "reserve" ? "Invite someone" : "Create Trusted Invite"}
       </Button>
 
       <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : reset())}>
@@ -489,10 +507,11 @@ function InviteDialog() {
           {!issued ? (
             <>
               <DialogHeader>
-                <DialogTitle className="cloak-display text-xl">Invite someone</DialogTitle>
+                <DialogTitle className="cloak-display text-xl">{program === "reserve" ? "Invite someone" : "Invite someone you trust"}</DialogTitle>
                 <DialogDescription className="text-cloak-text-secondary">
-                  Grant Cloak Dagger Private to one person — no purchase, wallet, or
-                  card required for them, ever.
+                  {program === "founding_adviser"
+                    ? "Give someone you trust a full Cloak Dagger Private membership so you can experience Cloak Dagger together."
+                    : "Grant Cloak Dagger Private to one person — no purchase, wallet, or card required for them, ever."}
                 </DialogDescription>
               </DialogHeader>
 
@@ -516,6 +535,12 @@ function InviteDialog() {
                   </p>
                 </div>
 
+                {program === "founding_adviser" && (
+                  <div className="rounded-lg border border-cloak-border bg-cloak-bg/60 px-3.5 py-3 text-[12.5px] text-cloak-text-secondary">
+                    Trusted Invites · {available} available
+                  </div>
+                )}
+
                 {/* Pre-issue confirmation (spec §12) */}
                 <div className="rounded-lg border border-cloak-gold/25 bg-cloak-gold-soft/20 p-4">
                   <div className="flex items-center gap-2 text-[13px] font-medium text-cloak-text">
@@ -523,9 +548,7 @@ function InviteDialog() {
                     Grant Cloak Dagger Private?
                   </div>
                   <p className="mt-1.5 text-[12px] leading-relaxed text-cloak-text-secondary">
-                    This will reserve one of your {CLOAK_PRICING.reserve.includedPrivatePasses}{" "}
-                    included Cloak Dagger Private passes. Once the recipient accepts,
-                    the pass is permanently used.
+                    This will reserve one of your {totalAllowance(program)} {program === "reserve" ? "included Cloak Dagger Private passes" : "Trusted Invites"}. Once the recipient accepts, the grant is permanently used.
                   </p>
                 </div>
 

@@ -90,7 +90,7 @@ const nextConfig: NextConfig = {
      * With the two swapped, the catch-all's `Referrer-Policy:
      * strict-origin-when-cross-origin` silently beat the invitation page's
      * `no-referrer` — verified against the running production server, which
-     * returned strict-origin for /invite/adviser/*. That is exactly the leak
+     * returned strict-origin for /invite/*. That is exactly the leak
      * spec §19 exists to prevent: a token-bearing URL travelling out in a
      * Referer header.
      */
@@ -103,7 +103,7 @@ const nextConfig: NextConfig = {
         /* Invitation pages are sensitive: a live token sits in the path, so
            the URL must not travel anywhere as a referrer, and no shared cache
            may retain the page (spec §19). */
-        source: "/invite/adviser/:path*",
+        source: "/invite/:path*",
         headers: [
           ...securityHeaders.filter((header) => header.key !== "Referrer-Policy"),
           { key: "Referrer-Policy", value: "no-referrer" },

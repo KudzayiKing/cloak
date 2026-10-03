@@ -104,17 +104,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let invite: { id: string; passId: string } | null = null;
+  let invite: { id: string; passId: string; program: string } | null = null;
   let adviserInvite: { token: string } | null = null;
   let paymentClaim: { id: string; membership: string } | null = null;
   if (inviteToken) {
     await lazyExpireInvites();
     const found = await db.guestPassInvite.findUnique({
       where: { tokenHash: hashInviteTokenServer(inviteToken) },
-      select: { id: true, status: true, passId: true, pass: { select: { status: true } } },
+      select: { id: true, status: true, passId: true, pass: { select: { status: true, program: true } } },
     });
     if (found && found.status === "pending" && found.pass.status === "issued") {
-      invite = { id: found.id, passId: found.passId };
+      invite = { id: found.id, passId: found.passId, program: found.pass.program };
     }
   }
   if (adviserInviteToken) {
@@ -189,11 +189,17 @@ export async function POST(req: NextRequest) {
           data: { status: "redeemed", redeemedAt: new Date() },
         });
         if (updated.count !== 1) throw new Error("invite_race");
-        await txDb.guestPass.update({
-          where: { id: invite.passId },
+        const consumedPass = await txDb.guestPass.updateMany({
+          where: { id: invite.passId, status: "issued" },
           data: { status: "redeemed", redeemedByUserId: user.id, redeemedAt: new Date() },
         });
-        await grantMembership(txDb, user.id, "private", "reserve_guest_pass");
+        if (consumedPass.count !== 1) throw new Error("invite_race");
+        await grantMembership(
+          txDb,
+          user.id,
+          "private",
+          invite.program === "founding_adviser" ? "founding_adviser_trusted_invite" : "reserve_guest_pass"
+        );
       }
       if (adviserInvite) {
         await redeemAdviserInvitationInTransaction(txDb, {

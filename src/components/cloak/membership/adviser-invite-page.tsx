@@ -158,14 +158,19 @@ export function AdviserInvitePage({ token }: { token: string }) {
         {invite.kind === "success" && (
           <Panel icon={<ShieldCheckIcon size={20} />} title={`Welcome to ${BRAND.name}`}>
             <p className="text-sm leading-relaxed text-cloak-text-secondary">
-              Your complimentary {BRAND.cloakPrivate} membership is active.
+              Your complimentary {BRAND.cloakPrivate}<br />membership is active.
+            </p>
+            <p className="mt-3 text-sm font-medium text-cloak-text">You also have 3 Trusted Invites.</p>
+            <p className="mt-3 text-sm leading-relaxed text-cloak-text-secondary">
+              Cloak Dagger is designed around trusted conversations. Invite up to three people you trust so you can properly evaluate messaging, Groups, Circles, calls and privacy controls together.
             </p>
             <dl className="mt-5 space-y-2 text-sm">
+              <Row label="Membership" value={BRAND.cloakPrivate} />
               <Row label="Access" value="Founding Adviser" />
               <Row label="Payment" value="Not required" />
               <Row label="Renewal" value="Never" />
             </dl>
-            <Button className="mt-7 h-11 w-full bg-cloak-gold text-black hover:bg-cloak-gold-bright" onClick={() => { window.location.href = "/messages"; }}>
+            <Button className="mt-7 h-11 w-full bg-cloak-gold text-black hover:bg-cloak-gold-bright" onClick={() => { window.location.href = "/#/app/settings/membership"; }}>
               Open {BRAND.name}
             </Button>
           </Panel>

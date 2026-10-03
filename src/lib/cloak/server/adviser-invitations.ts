@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { RateLimitBuckets } from "@/lib/cloak/rate-limit";
 import { appUrl, BRAND } from "@/lib/cloak/config";
-import { entitlementForUser, generateInviteTokenServer, grantMembership, hashInviteTokenServer } from "@/lib/cloak/server/membership-server";
+import { entitlementForUser, ensureGrantPasses, FOUNDING_ADVISER_TRUSTED_INVITES, generateInviteTokenServer, grantMembership, hashInviteTokenServer } from "@/lib/cloak/server/membership-server";
 import type { SessionUser } from "@/lib/cloak/server/auth";
 
 type Db = Prisma.TransactionClient | PrismaClient;
@@ -565,6 +565,7 @@ export async function redeemAdviserInvitationInTransaction(
   if (updated.count !== 1) throw new Error("already_redeemed");
 
   await grantMembership(tx, input.userId, ADVISER_INVITE_MEMBERSHIP_SKU, ADVISER_INVITE_MEMBERSHIP_ORIGIN);
+  await ensureGrantPasses(tx, input.userId, "founding_adviser", FOUNDING_ADVISER_TRUSTED_INVITES);
   await tx.adviserInvitationEvent.create({
     data: { invitationId: invitation.id, actorUserId: input.userId, event: "redeemed" },
   });

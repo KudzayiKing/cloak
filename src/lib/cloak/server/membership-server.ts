@@ -102,21 +102,42 @@ export function hashInviteTokenServer(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-/* ---------- Guest passes (Reserve allocation, spec §7-§13) ---------- */
+/* ---------- Shared membership grants (Reserve + Founding Adviser) ---------- */
 
 export const RESERVE_PASS_SLOTS = 10;
+export const FOUNDING_ADVISER_TRUSTED_INVITES = 3;
+export type MembershipGrantProgram = "reserve" | "founding_adviser";
+
+export function grantProgramForOrigin(origin: string | null | undefined): MembershipGrantProgram | null {
+  if (origin === "founding_adviser") return "founding_adviser";
+  return null;
+}
+
+export function grantProgramAllowance(program: MembershipGrantProgram): number {
+  return program === "reserve" ? RESERVE_PASS_SLOTS : FOUNDING_ADVISER_TRUSTED_INVITES;
+}
 
 /** Creates the 10 pass slots for a fresh Reserve entitlement (idempotent). */
 export async function ensureReservePasses(tx: Db, ownerId: string): Promise<void> {
-  const existing = await tx.guestPass.count({ where: { ownerUserId: ownerId } });
-  if (existing > 0) return;
+  await ensureGrantPasses(tx, ownerId, "reserve", RESERVE_PASS_SLOTS);
+}
+
+/** Creates default slots idempotently; extended adviser capacity is additive. */
+export async function ensureGrantPasses(
+  tx: Db,
+  ownerId: string,
+  program: MembershipGrantProgram,
+  count: number
+): Promise<void> {
+  const existing = await tx.guestPass.count({ where: { ownerUserId: ownerId, program } });
+  if (existing >= count) return;
   await tx.guestPass.createMany({
-    data: Array.from({ length: RESERVE_PASS_SLOTS }, (_, slotIndex) => ({
+    data: Array.from({ length: count - existing }, (_, offset) => ({
       ownerUserId: ownerId,
-      slotIndex,
+      program,
+      slotIndex: existing + offset,
     })),
-    /* SQLite createMany has no skipDuplicates — the count guard above is
-       the idempotency mechanism (and the slot unique constraint backs it). */
+    skipDuplicates: true,
   });
 }
 
@@ -195,11 +216,11 @@ export interface SerializedInvite {
   expiresAt: string;
   createdAt: string;
   slotIndex: number;
+  program: MembershipGrantProgram;
 }
 
 /** Allocation accounting identical to the client-side pure helper. */
-export function allocationFromPasses(passes: ReserveGuestPass[]) {
-  const total = RESERVE_PASS_SLOTS;
+export function allocationFromPasses(passes: ReserveGuestPass[], total = RESERVE_PASS_SLOTS) {
   let pending = 0;
   let redeemed = 0;
   for (const p of passes) {

@@ -57,6 +57,8 @@ model User {
   adviserInvitationsRedeemed AdviserInvitation[]      @relation("adviserInvitationRedemptions")
   adviserInvitationsRevoked  AdviserInvitation[]      @relation("adviserInvitationRevocations")
   adviserInvitationEvents    AdviserInvitationEvent[] @relation("adviserInvitationEventActors")
+  trustedInviteAdminEvents   TrustedInviteAdminEvent[] @relation("trustedInviteAdminActors")
+  trustedInviteCapacityEvents TrustedInviteAdminEvent[] @relation("trustedInviteCapacityOwners")
   circlesOwned       Circle[]              @relation("circleOwnerships")
   circleMemberships  CircleMember[]        @relation("circleMemberships")
   circleJoinRequests CircleJoinRequest[]   @relation("circleJoinRequests")
@@ -383,15 +385,16 @@ model MembershipClaim {
   @@index([redeemedByUserId])
 }
 
-// Reserve membership includes 10 Private guest passes (spec §7). One row per
-// slot. Status uses the shared client vocabulary: available | issued |
+// Shared Reserve/Founding Adviser Private grant slots. One row per slot;
+// Reserve has 10 included slots, Advisers start with 3. Status uses the shared client vocabulary: available | issued |
 // redeemed | expired | revoked_before_redemption. Redeemed = permanently
 // consumed; expired/revoked slots return to the allocation.
 model GuestPass {
   id               String            @id @default(cuid())
   ownerUserId      String
   owner            User              @relation("passGrants", fields: [ownerUserId], references: [id], onDelete: Cascade)
-  slotIndex        Int // 0..9
+  program          String            @default("reserve") // reserve | founding_adviser
+  slotIndex        Int // unique within the owner's grant program
   status           String            @default("available")
   redeemedByUserId String?
   redeemedBy       User?             @relation("passRedemptions", fields: [redeemedByUserId], references: [id], onDelete: SetNull)
@@ -401,8 +404,8 @@ model GuestPass {
   updatedAt        DateTime          @updatedAt
   invites          GuestPassInvite[]
 
-  @@unique([ownerUserId, slotIndex])
-  @@index([ownerUserId])
+  @@unique([ownerUserId, program, slotIndex])
+  @@index([ownerUserId, program])
 }
 
 /**
@@ -653,5 +656,20 @@ model AdviserInvitationEvent {
   createdAt    DateTime           @default(now())
 
   @@index([invitationId, createdAt])
+  @@index([actorUserId])
+}
+
+// Admin-only capacity changes for a Founding Adviser's Trusted Invites.
+// This records membership grant administration only; no communication data.
+model TrustedInviteAdminEvent {
+  id                 String   @id @default(cuid())
+  ownerUserId        String
+  owner              User     @relation("trustedInviteCapacityOwners", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  actorUserId        String?
+  actor              User?    @relation("trustedInviteAdminActors", fields: [actorUserId], references: [id], onDelete: SetNull)
+  amount             Int
+  createdAt          DateTime @default(now())
+
+  @@index([ownerUserId, createdAt])
   @@index([actorUserId])
 }

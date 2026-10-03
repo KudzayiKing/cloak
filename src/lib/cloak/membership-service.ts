@@ -60,6 +60,7 @@ export interface InviteLookupResult {
   inviterName?: string;
   method?: string;
   expiresAt?: string;
+  program?: "reserve" | "founding_adviser";
 }
 
 export interface MembershipService {
@@ -148,7 +149,7 @@ export class ServerMembershipService implements MembershipService {
     input: IssueGuestPassInput
   ): Promise<InviteIssueResult | { ok: false; error: string }> {
     const entitlement = useCloakStore.getState().membership;
-    if (!canCapability(entitlement, "guest_pass.issue")) {
+    if (!canCapability(entitlement, "guest_pass.issue") && entitlement.origin !== "founding_adviser") {
       return { ok: false, error: "missing_capability" };
     }
     try {
@@ -223,6 +224,7 @@ export class ServerMembershipService implements MembershipService {
         inviterName?: string;
         method?: string;
         expiresAt?: string;
+        program?: "reserve" | "founding_adviser";
       };
       if (!json.found) return { found: false, reason: "unknown_token" };
       return {
@@ -231,6 +233,7 @@ export class ServerMembershipService implements MembershipService {
         inviterName: json.inviterName,
         method: json.method,
         expiresAt: json.expiresAt,
+        program: json.program === "founding_adviser" ? "founding_adviser" : "reserve",
       };
     } catch {
       return { found: false, reason: "unknown_token" };

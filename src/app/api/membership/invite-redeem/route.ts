@@ -85,11 +85,17 @@ export async function POST(req: NextRequest) {
         data: { status: "redeemed", redeemedByUserId: user.id, redeemedAt: new Date() },
       });
       if (updated.count !== 1) throw new Error("invite_race");
-      await txDb.guestPass.update({
-        where: { id: invite.passId },
+      const consumed = await txDb.guestPass.updateMany({
+        where: { id: invite.passId, status: "issued" },
         data: { status: "redeemed", redeemedByUserId: user.id, redeemedAt: new Date() },
       });
-      await grantMembership(txDb, user.id, "private", "reserve_guest_pass");
+      if (consumed.count !== 1) throw new Error("invite_race");
+      await grantMembership(
+        txDb,
+        user.id,
+        "private",
+        invite.pass.program === "founding_adviser" ? "founding_adviser_trusted_invite" : "reserve_guest_pass"
+      );
       const fresh = await txDb.user.findUniqueOrThrow({
         where: { id: user.id },
         select: { membershipTier: true, membershipOrigin: true, membershipGrantedAt: true },

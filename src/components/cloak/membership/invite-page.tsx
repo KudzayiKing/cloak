@@ -28,9 +28,9 @@ import type { MembershipEntitlement } from "@/lib/cloak/types";
 
 type Phase =
   | { kind: "checking" }
-  | { kind: "invitation"; inviterName: string; expiresAt?: string }
+  | { kind: "invitation"; inviterName?: string; expiresAt?: string; program: "reserve" | "founding_adviser" }
   | { kind: "activating" }
-  | { kind: "active" }
+  | { kind: "active"; program: "reserve" | "founding_adviser" }
   | { kind: "invalid"; reason: "unknown_token" | "already_redeemed" | "already_expired" | "already_revoked" }
   | { kind: "blocked"; reason: "recipient_already_private" | "recipient_already_reserve" };
 
@@ -68,8 +68,9 @@ export function InvitePage({ token }: { token: string }) {
       } else if (lookup.status === "pending") {
         setPhase({
           kind: "invitation",
-          inviterName: lookup.inviterName ?? "A Cloak Dagger Reserve member",
+          inviterName: lookup.inviterName,
           expiresAt: lookup.expiresAt,
+          program: lookup.program === "founding_adviser" ? "founding_adviser" : "reserve",
         });
       } else {
         setPhase({ kind: "invalid", reason: "unknown_token" });
@@ -80,7 +81,7 @@ export function InvitePage({ token }: { token: string }) {
     };
   }, [token]);
 
-  const done = () => setPhase({ kind: "active" });
+  const done = (program: "reserve" | "founding_adviser") => setPhase({ kind: "active", program });
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-cloak-bg px-5 py-16">
@@ -120,15 +121,17 @@ export function InvitePage({ token }: { token: string }) {
             <SignedInAccept
               token={token}
               inviterName={phase.inviterName}
+              program={phase.program}
               onActivating={() => setPhase({ kind: "activating" })}
-              onDone={done}
+              onDone={() => done(phase.program)}
               onPhase={setPhase}
             />
           ) : (
             <GuestRegister
               token={token}
               inviterName={phase.inviterName}
-              onDone={done}
+              program={phase.program}
+              onDone={() => done(phase.program)}
               onPhase={setPhase}
             />
           )
@@ -152,9 +155,9 @@ export function InvitePage({ token }: { token: string }) {
               Active
             </div>
             <p className="mt-4 text-sm leading-relaxed text-cloak-text-secondary">
-              Granted through Cloak Dagger Reserve.
-              <br />
-              Lifetime core access.
+              {phase.program === "founding_adviser"
+                ? "Your Cloak Dagger Private membership is active. You can now securely communicate with the person who invited you and build your trusted network."
+                : "Granted through Cloak Dagger Reserve. Lifetime core access."}
             </p>
             <Button
               className="bg-cloak-gold/20 hover:bg-cloak-gold/25 mt-8 h-12 w-full border border-cloak-gold/30 text-[15px] font-medium text-cloak-gold hover:text-cloak-gold"
@@ -217,12 +220,14 @@ export function InvitePage({ token }: { token: string }) {
 function SignedInAccept({
   token,
   inviterName,
+  program,
   onActivating,
   onDone,
   onPhase,
 }: {
   token: string;
-  inviterName: string;
+  inviterName?: string;
+  program: "reserve" | "founding_adviser";
   onActivating: () => void;
   onDone: () => void;
   onPhase: (phase: Phase) => void;
@@ -259,23 +264,26 @@ function SignedInAccept({
         <MailIcon size={20} />
       </span>
       <h1 className="cloak-display text-2xl font-medium text-cloak-text">
-        You have been invited to Cloak Dagger.
+        {program === "founding_adviser" ? "Private invitation" : "You have been invited to Cloak Dagger."}
       </h1>
       <p className="mt-4 text-sm leading-relaxed text-cloak-text-secondary">
-        {inviterName} has granted you Cloak Dagger Private membership.
+        {program === "founding_adviser"
+          ? "You’ve been invited to join Cloak Dagger. This invitation includes a complimentary Cloak Dagger Private membership. No payment required."
+          : `${inviterName ?? "A Cloak Dagger Reserve member"} has granted you Cloak Dagger Private membership. No purchase is required.`}
       </p>
       <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">
-        No purchase is required. Your membership has been provided for you.
+        This invitation is single-use.
       </p>
       <Button
         className="bg-cloak-gold/20 hover:bg-cloak-gold/25 mt-8 h-12 w-full border border-cloak-gold/30 text-[15px] font-medium text-cloak-gold hover:text-cloak-gold"
         onClick={accept}
       >
-        Accept Cloak Dagger Private
+        {program === "founding_adviser" ? "Accept Invitation" : "Accept Cloak Dagger Private"}
       </Button>
       <p className="mt-4 text-[11.5px] leading-relaxed text-cloak-text-muted">
-        Cloak Dagger Private — lifetime core access. Your account will remain
-        private and independent.
+        {program === "founding_adviser"
+          ? "This invitation is single-use. Your account remains private and independent."
+          : "Cloak Dagger Private — lifetime core access. Your account will remain private and independent."}
       </p>
     </div>
   );
@@ -286,11 +294,13 @@ function SignedInAccept({
 function GuestRegister({
   token,
   inviterName,
+  program,
   onDone,
   onPhase,
 }: {
   token: string;
-  inviterName: string;
+  inviterName?: string;
+  program: "reserve" | "founding_adviser";
   onDone: () => void;
   onPhase: (phase: Phase) => void;
 }) {
@@ -331,13 +341,15 @@ function GuestRegister({
       </span>
       <div className="text-center">
         <h1 className="cloak-display text-2xl font-medium text-cloak-text">
-          You have been invited to Cloak Dagger.
+          {program === "founding_adviser" ? "Private invitation" : "You have been invited to Cloak Dagger."}
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-cloak-text-secondary">
-          {inviterName} has granted you Cloak Dagger Private membership.
+          {program === "founding_adviser"
+            ? "You’ve been invited to join Cloak Dagger. This invitation includes a complimentary Cloak Dagger Private membership. No payment required."
+            : `${inviterName ?? "A Cloak Dagger Reserve member"} has granted you Cloak Dagger Private membership.`}
         </p>
         <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">
-          Create your Cloak Dagger ID to accept — no wallet, no payment.
+          {program === "founding_adviser" ? "This invitation is single-use." : "Create your Cloak Dagger ID to accept — no wallet, no payment."}
         </p>
       </div>
 

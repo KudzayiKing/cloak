@@ -45,6 +45,8 @@ import {
 import {
   generateInviteTokenServer,
   hashInviteTokenServer,
+  FOUNDING_ADVISER_TRUSTED_INVITES,
+  ensureReservePasses,
 } from "../src/lib/cloak/server/membership-server";
 
 const root = process.cwd();
@@ -121,6 +123,7 @@ class FakeDb {
   invitations: InviteRow[] = [];
   events: EventRow[] = [];
   users: UserRow[] = [];
+  guestPasses: { id: string; ownerUserId: string; program: string; slotIndex: number; status: string }[] = [];
   private seq = 0;
 
   /**
@@ -135,6 +138,27 @@ class FakeDb {
   private nextId(prefix: string) {
     this.seq += 1;
     return `${prefix}_${this.seq}`;
+  }
+
+  get guestPass() {
+    const self = this;
+    return {
+      async count({ where }: { where: Record<string, unknown> }) {
+        return self.guestPasses.filter((row) => matches(row, where)).length;
+      },
+      async createMany({ data }: { data: Record<string, unknown>[] }) {
+        for (const entry of data) {
+          self.guestPasses.push({
+            id: self.nextId("pass"),
+            ownerUserId: String(entry.ownerUserId),
+            program: String(entry.program),
+            slotIndex: Number(entry.slotIndex),
+            status: "available",
+          });
+        }
+        return { count: data.length };
+      },
+    };
   }
 
   get adviserInvitation() {
@@ -475,6 +499,11 @@ const redeemed = await redeemAdviserInvitation(
 check("a valid redemption succeeds", redeemed.ok, true);
 check("redemption grants Private", redeemFake.users[0]!.membershipTier, "private");
 check("redemption records the founding_adviser origin", redeemFake.users[0]!.membershipOrigin, "founding_adviser");
+check("adviser redemption provisions exactly three Trusted Invites", redeemFake.guestPasses.length, FOUNDING_ADVISER_TRUSTED_INVITES);
+check("all adviser grant slots use the adviser program", redeemFake.guestPasses.every((pass) => pass.program === "founding_adviser"), true);
+check("Founding Adviser slots start available", redeemFake.guestPasses.every((pass) => pass.status === "available"), true);
+await ensureReservePasses(asClient(redeemFake), "reserve_1");
+check("Reserve still provisions ten grant slots", redeemFake.guestPasses.filter((pass) => pass.ownerUserId === "reserve_1" && pass.program === "reserve").length, 10);
 check("redemption marks the invitation redeemed", redeemFake.invitations[0]!.status, "redeemed");
 check("redemption records who redeemed it", redeemFake.invitations[0]!.redeemedByUserId, "adviser_1");
 check("redemption records when", redeemFake.invitations[0]!.redeemedAt instanceof Date, true);
@@ -820,6 +849,29 @@ const redeemRouteSrc = read("src/app/api/adviser-invitations/[token]/redeem/rout
 check("the redeem route requires a session", /getSessionUser\(req\)/.test(redeemRouteSrc), true);
 check("  ... and rejects cross-site posts", /requireSameOrigin\(req\)/.test(redeemRouteSrc), true);
 
+const passListRoute = read("src/app/api/membership/passes/route.ts");
+const passInviteRoute = read("src/app/api/membership/passes/invite/route.ts");
+const passRedeemRoute = read("src/app/api/membership/invite-redeem/route.ts");
+const trustedInvitePage = read("src/app/invite/trusted/[token]/page.tsx");
+check("shared grants are authorized for Reserve and Founding Adviser origins", /membershipOrigin === \"founding_adviser\"/.test(passListRoute) && /membershipOrigin === \"founding_adviser\"/.test(passInviteRoute), true);
+check("Founding Adviser links use the canonical .app trusted route", /https:\/\/cloakdagger\.app\/invite\/trusted\//.test(passInviteRoute), true);
+check("QR generation encodes the secure invitation URL", /QRCode\.toDataURL\(link/.test(passInviteRoute), true);
+check("trusted invite redemption uses its distinct membership origin", /founding_adviser_trusted_invite/.test(passRedeemRoute), true);
+check("the trusted invitation has a direct recipient page route", /InvitePage token=\{token\}/.test(trustedInvitePage), true);
+
+const adviserWelcome = read("src/components/cloak/membership/adviser-invite-page.tsx");
+const membershipCard = read("src/components/cloak/settings/membership-page.tsx");
+check("Founding Adviser welcome screen includes three Trusted Invites", /You also have 3 Trusted Invites/.test(adviserWelcome), true);
+check("Founding Adviser welcome CTA opens Membership settings", /#\/app\/settings\/membership/.test(adviserWelcome), true);
+check("Founding Adviser membership card uses the shared grant manager", /ReservePassManager program=\"founding_adviser\"/.test(membershipCard), true);
+check("the Reserve card retains ten included Private grants", /includedPrivatePasses: 10/.test(read("src/lib/cloak/config.ts")), true);
+
+const adminTrustedRoute = read("src/app/api/admin/founding-advisers/[userId]/trusted-invites/route.ts");
+const adminTrustedUi = read("src/components/cloak/admin/adviser-invitations-admin.tsx");
+check("only allowlisted admins can inspect and increase Trusted Invite capacity", /isAdminUser\(actor\)/.test(adminTrustedRoute), true);
+check("additional Trusted Invite capacity is audit logged", /trustedInviteAdminEvent\.create/.test(adminTrustedRoute), true);
+check("admin invitation detail provides the grant capacity control", /Grant More Invites/.test(adminTrustedUi), true);
+
 /* Asserted on the real serialized objects rather than on source text: the
    service legitimately mentions `tokenHash` in `where` and `data` clauses, so
    a grep would prove nothing either way. */
@@ -844,7 +896,7 @@ check("the invitation page sends no referrer", /Referrer-Policy": "no-referrer"/
 check("the invitation API is uncacheable", /Cache-Control": "no-store, max-age=0"/.test(serviceSrc), true);
 check(
   "the invitation page itself is no-store and no-referrer",
-  /source: "\/invite\/adviser\/:path\*"/.test(nextConfigSrc),
+  /source: "\/invite\/:path\*"/.test(nextConfigSrc),
   true
 );
 /* Next lets the LAST matching header rule win, so the broad catch-all must
@@ -852,7 +904,7 @@ check(
    Referrer-Policy silently defeats the invitation page's no-referrer — which
    it did, and which was caught by probing the running server. */
 const catchAllAt = nextConfigSrc.indexOf('source: "/(.*)"');
-const inviteAt = nextConfigSrc.indexOf('source: "/invite/adviser/:path*"');
+const inviteAt = nextConfigSrc.indexOf('source: "/invite/:path*"');
 check("both header rules are declared", catchAllAt > -1 && inviteAt > -1, true);
 check("the catch-all header rule precedes the invitation override", catchAllAt < inviteAt, true);
 
