@@ -69,7 +69,7 @@
   --radius: 0.75rem;
 
   /* Cloak core palette (spec §11) */
-  --cloak-bg: #0b0b0c;
+  --cloak-bg: #121214;
   /*
    * The elevated surface — and, deliberately, the exact colour Android paints
    * its own gesture navigation bar with on the owner's device (#131313).
@@ -91,14 +91,14 @@
    * repaints that band, re-measure and move this token with it.
    */
   --cloak-bg-elevated: #131313;
-  --cloak-surface: #151517;
-  --cloak-surface-hover: #1b1b1e;
-  --cloak-border: rgba(255, 255, 255, 0.08);
-  --cloak-border-strong: rgba(255, 255, 255, 0.13);
+  --cloak-surface: #1b1b1e;
+  --cloak-surface-hover: #242428;
+  --cloak-border: rgba(255, 255, 255, 0.1);
+  --cloak-border-strong: rgba(255, 255, 255, 0.16);
 
   --cloak-text: #f4f2ec;
-  --cloak-text-secondary: #a4a3a0;
-  --cloak-text-muted: #747474;
+  --cloak-text-secondary: #b0afac;
+  --cloak-text-muted: #858582;
 
   --cloak-gold: #d6b15e;
   --cloak-gold-bright: #e7c56f;
@@ -109,43 +109,43 @@
   --cloak-warning: #c8a35a;
 
   /* Map shadcn primitives onto the Cloak palette (dark-first, dark is the theme) */
-  --background: #0b0b0c;
+  --background: #121214;
   --foreground: #f4f2ec;
-  --card: #151517;
+  --card: #1b1b1e;
   --card-foreground: #f4f2ec;
-  --popover: #111113;
+  --popover: #19191c;
   --popover-foreground: #f4f2ec;
   --primary: #d6b15e;
   --primary-foreground: #0b0b0c;
-  --secondary: #1b1b1e;
+  --secondary: #242428;
   --secondary-foreground: #f4f2ec;
-  --muted: #1b1b1e;
-  --muted-foreground: #a4a3a0;
-  --accent: #1b1b1e;
+  --muted: #242428;
+  --muted-foreground: #b0afac;
+  --accent: #242428;
   --accent-foreground: #f4f2ec;
   --destructive: #c86a6a;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.14);
   --ring: rgba(214, 177, 94, 0.55);
   --chart-1: #d6b15e;
   --chart-2: #6fa987;
   --chart-3: #c86a6a;
-  --chart-4: #a4a3a0;
+  --chart-4: #b0afac;
   --chart-5: #c8a35a;
-  --sidebar: #111113;
+  --sidebar: #19191c;
   --sidebar-foreground: #f4f2ec;
   --sidebar-primary: #d6b15e;
   --sidebar-primary-foreground: #0b0b0c;
-  --sidebar-accent: #1b1b1e;
+  --sidebar-accent: #242428;
   --sidebar-accent-foreground: #f4f2ec;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-border: rgba(255, 255, 255, 0.1);
   --sidebar-ring: rgba(214, 177, 94, 0.55);
 
   /* Chrome that is not a cloak-* token but still has to follow the theme. */
-  --cloak-scroll-thumb: rgba(255, 255, 255, 0.14);
+  --cloak-scroll-thumb: rgba(255, 255, 255, 0.18);
   --cloak-selection: rgba(214, 177, 94, 0.28);
-  --cloak-message-outgoing: #1d1a12;
-  --cloak-message-outgoing-border: rgba(214, 177, 94, 0.15);
+  --cloak-message-outgoing: #242016;
+  --cloak-message-outgoing-border: rgba(214, 177, 94, 0.2);
 }
 
 /*
