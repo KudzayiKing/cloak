@@ -24,10 +24,16 @@ import { RateLimitBuckets } from "@/lib/cloak/rate-limit";
  *     shape for that, so the read-only property is asserted by a test.
  *
  *  3. FIXTURES ARE NOT USERS. Operator handles (`CLOAK_ADMIN_HANDLES`) and the
- *     seeded dev identities are subtracted from account counts. `@admin` is a
- *     real row; counting it as a signup is how a growth number starts lying.
- *     Both lists are read from the same places that decide access and seeding,
- *     so they cannot drift from the truth they describe.
+ *     seeded dev identities are subtracted from EVERY account-derived figure —
+ *     the headline count, the signup trend and the membership split alike. An
+ *     excluded row that still shows up in one panel makes the page contradict
+ *     itself, and "0 accounts" printed beside "3 hold a tier" is how a dashboard
+ *     teaches a reader to distrust all of it. Both lists are read from the same
+ *     places that decide access and seeding, so they cannot drift from the truth
+ *     they describe.
+ *
+ *     The subtraction is a WHERE filter, never a widened SELECT: the exclusion
+ *     names handles to *match on* and returns nothing about them.
  *
  *  4. UNKNOWN IS NOT A CATEGORY OF ITS OWN. An account holding a tier with no
  *     recorded origin is reported as `unattributed` rather than being folded
@@ -157,15 +163,26 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     pushAccountRows,
   ] = await Promise.all([
     db.user.count(),
-    db.user.count({ where: { emailVerifiedAt: { not: null } } }),
+    db.user.count({
+      where: { emailVerifiedAt: { not: null }, handle: { notIn: reserved } },
+    }),
     reserved.length > 0 ? db.user.count({ where: { handle: { in: reserved } } }) : Promise.resolve(0),
-    db.user.findMany({ where: { createdAt: { gte: trendStart } }, select: { createdAt: true } }),
-    db.user.groupBy({ by: ["membershipTier"], _count: { _all: true } }),
+    /* A fixture created last week is not a signup. `handle` appears here as a
+       filter only — the projection stays `createdAt` alone. */
+    db.user.findMany({
+      where: { createdAt: { gte: trendStart }, handle: { notIn: reserved } },
+      select: { createdAt: true },
+    }),
+    db.user.groupBy({
+      by: ["membershipTier"],
+      where: { handle: { notIn: reserved } },
+      _count: { _all: true },
+    }),
     /* Entitled accounts only: a null origin here means "holds a tier, origin
        unrecorded", never "has no membership". */
     db.user.groupBy({
       by: ["membershipOrigin"],
-      where: { membershipTier: { not: null } },
+      where: { membershipTier: { not: null }, handle: { notIn: reserved } },
       _count: { _all: true },
     }),
     db.adviserInvitation.groupBy({ by: ["status"], _count: { _all: true } }),
@@ -192,6 +209,10 @@ export async function getAdminOverview(): Promise<AdminOverview> {
   ]);
 
   /* -------- accounts -------- */
+
+  /* The population every account-derived figure below is measured against:
+     real rows only. Fixtures are reported as `excluded`, never as users. */
+  const counted = totalUsers - excludedUsers;
 
   const trendBuckets = new Map<string, number>();
   for (let index = 0; index < TREND_DAYS; index += 1) {
@@ -246,7 +267,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     accounts: {
       total: totalUsers,
       excluded: excludedUsers,
-      counted: totalUsers - excludedUsers,
+      counted,
       newLast7Days: trend.slice(-7).reduce((sum, entry) => sum + entry.count, 0),
       newLast30Days: trend.reduce((sum, entry) => sum + entry.count, 0),
       emailVerified,
@@ -255,7 +276,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     },
     membership: {
       withTier,
-      withoutTier: totalUsers - withTier,
+      withoutTier: counted - withTier,
       byTier,
       byOrigin,
     },

@@ -89,15 +89,24 @@ check(
 );
 
 /* Asserted on the call's *content* rather than its exact formatting: the point
-   is that the one per-row user read takes a timestamp and no identifying field,
-   so a reformat must not be able to satisfy this while widening the select. */
+   is that the one per-row user read RETURNS a timestamp and no identifying
+   field. A `handle` in the WHERE clause is a filter and leaks nothing, so the
+   assertion is made against the projection alone — pinning the whole call would
+   forbid the fixture exclusion, which needs a handle filter to work at all. */
 const userFindMany = metrics.match(/db\.user\.findMany\(\{[^)]*\}\)/)?.[0] ?? "";
+const userFindManySelect = userFindMany.match(/select:\s*\{([^}]*)\}/)?.[1] ?? "";
 
 check(
   "the only per-row user read selects the signup timestamp and nothing else",
   userFindMany.length > 0 &&
-    /select:\s*\{\s*createdAt:\s*true\s*\}/.test(userFindMany) &&
-    !/handle|email|displayName|membershipTier|identity/.test(userFindMany),
+    /createdAt:\s*true/.test(userFindManySelect) &&
+    !/handle|email|displayName|membershipTier|membershipOrigin|identity/.test(userFindManySelect),
+  true
+);
+
+check(
+  "that read is restricted to real accounts, so a fixture is not a signup",
+  /where:\s*\{[\s\S]{0,120}?handle:\s*\{\s*notIn:\s*reserved\s*\}/.test(userFindMany),
   true
 );
 
@@ -222,7 +231,8 @@ check(
 check(
   "the excluded rows are counted and reported, not silently dropped",
   /db\.user\.count\(\{\s*where:\s*\{\s*handle:\s*\{\s*in:\s*reserved\s*\}\s*\}\s*\}\)/.test(metrics) &&
-    /counted:\s*totalUsers - excludedUsers/.test(metrics),
+    /const counted = totalUsers - excludedUsers/.test(metrics) &&
+    /excludedHandles:\s*reserved/.test(metrics),
   true
 );
 
@@ -256,7 +266,31 @@ check(
 
 check(
   "the origin chart is restricted to entitled accounts so NULL means unrecorded",
-  /where:\s*\{\s*membershipTier:\s*\{\s*not:\s*null\s*\}\s*\}/.test(metrics),
+  /where:\s*\{\s*membershipTier:\s*\{\s*not:\s*null\s*\}/.test(metrics),
+  true
+);
+
+/* ---------------- 7. every account figure shares one population ------------ */
+
+/* The defect this pins: `accounts.counted` excluded fixtures while the
+   membership split and the signup trend did not, so the page printed
+   "0 accounts" next to "3 hold a tier" and "3 signups in 30 days". A reader
+   cannot tell which half to believe, which is worse than either number alone. */
+
+for (const [label, pattern] of [
+  ["the membership split counts real accounts only", /by:\s*\["membershipTier"\][\s\S]{0,120}?handle:\s*\{\s*notIn:\s*reserved\s*\}/],
+  ["the origin split counts real accounts only", /by:\s*\["membershipOrigin"\][\s\S]{0,160}?handle:\s*\{\s*notIn:\s*reserved\s*\}/],
+  ["the signup trend counts real accounts only", /createdAt:\s*\{\s*gte:\s*trendStart\s*\},\s*handle:\s*\{\s*notIn:\s*reserved\s*\}/],
+  ["email verification counts real accounts only", /emailVerifiedAt:\s*\{\s*not:\s*null\s*\},\s*handle:\s*\{\s*notIn:\s*reserved\s*\}/],
+] as const) {
+  check(label, pattern.test(metrics), true);
+}
+
+check(
+  "the tier split is measured against the same denominator the headline prints",
+  /const counted = totalUsers - excludedUsers/.test(metrics) &&
+    /counted,/.test(metrics) &&
+    /withoutTier:\s*counted - withTier/.test(metrics),
   true
 );
 

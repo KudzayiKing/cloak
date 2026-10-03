@@ -21,6 +21,9 @@
  *  4. Send order is UPLOAD THEN BODY, because the body carries the crypto
  *     envelope the recipient needs; the reverse would ship an unopenable note.
  *  5. Playback resolves LOCAL FIRST then remote, and never re-fetches on a poll.
+ *  6. An attachment is VISIBLE outside its own bubble: the chat list names the
+ *     kind instead of rendering a blank row, and a tap on the card opens or
+ *     saves with confirmation rather than doing something silent.
  *
  * Run: node_modules/.bin/tsx scripts/verify-attachment-transport.mts
  */
@@ -60,6 +63,7 @@ const uploadRoute = stripComments(
   read("src/app/api/conversations/[id]/attachments/route.ts")
 );
 const downloadRoute = stripComments(read("src/app/api/attachments/[id]/route.ts"));
+const nextConfig = read("next.config.ts");
 
 /* ------------------- 1. encryption, in its own domain ------------------- */
 
@@ -296,6 +300,129 @@ check(
 check(
   "the bitrate is 32 kbps, transparent for speech",
   /VOICE_BITS_PER_SECOND\s*=\s*32_000/.test(composer),
+  true
+);
+
+/* ---------- 6. what an attachment looks like outside the thread ----------- */
+/*
+ * Two owner reports, both about an attachment being invisible rather than
+ * broken.
+ *
+ * 1. The chat LIST showed a blank preview for documents and photos while voice
+ *    notes read correctly. A voice note had its own `case`; everything else
+ *    fell through to `last.body`, and an attachment message has no body — its
+ *    metadata rides the encrypted envelope — so the row rendered empty.
+ * 2. Tapping a file forced a download and said nothing, so a tap produced no
+ *    feedback whether it worked or not.
+ *
+ * Both are asserted because both are the kind of defect that passes every
+ * transport check above: the bytes move perfectly and the user still sees
+ * nothing.
+ */
+
+const sidebar = stripComments(read("src/components/cloak/messaging/chat-sidebar.tsx"));
+
+check(
+  "the chat list names a document instead of rendering a blank row",
+  /case "file":[\s\S]{0,200}?"Document"/.test(sidebar),
+  true
+);
+check(
+  "the chat list names a photo",
+  /case "image":[\s\S]{0,200}?"Photo"/.test(sidebar),
+  true
+);
+check(
+  "the chat list still names a voice note",
+  /case "voice":[\s\S]{0,200}?"Voice note"/.test(sidebar),
+  true
+);
+check(
+  "the chat list names a view-once payload",
+  /case "view-once":[\s\S]{0,200}?"View-once media"/.test(sidebar),
+  true
+);
+check(
+  "the kind glyph is not drawn in Cloak Mode, where it would leak the kind",
+  (() => {
+    const cloakBranch = sidebar.match(/cloakMode \? \(([\s\S]{0,400}?)\) : \(/)?.[1] ?? "";
+    return cloakBranch.length > 0 && !/previewIcon/.test(cloakBranch);
+  })(),
+  true
+);
+
+check(
+  "a download confirms itself — the owner's report was that nothing did",
+  /toast\(\{ title: "Download started", description: name \}\)/.test(bubble),
+  true
+);
+check(
+  "the in-chat viewer opens for anything we can render, not just photos",
+  /if \(rendersInChat\) \{\s*setViewerOpen\(true\);/.test(bubble) && /role="dialog"/.test(bubble),
+  true
+);
+check(
+  "the viewer draws an image as an image and text as text",
+  /kind === "image" \? \(/.test(bubble) && /<pre[\s\S]{0,400}?\{inlineText\}/.test(bubble),
+  true
+);
+check(
+  "the viewer is portalled, so a scrolling ancestor cannot capture it",
+  /createPortal\(/.test(bubble),
+  true
+);
+/*
+ * The trap this guard exists for.
+ *
+ * The obvious way to preview a PDF is an `<iframe src={blobUrl}>`. It CANNOT
+ * work here: next.config.ts sets `frame-src 'none'` and `object-src 'none'`, so
+ * the browser refuses to load the frame and renders "This content is blocked"
+ * instead — for a same-origin blob URL exactly as much as for a remote page.
+ * That is deliberate hardening on a privacy product, so the answer is to render
+ * what we can ourselves and hand the rest to the browser's own viewer, never to
+ * loosen the policy for a preview.
+ */
+check(
+  "the CSP still forbids framing anything",
+  /"frame-src 'none'"/.test(nextConfig) && /"object-src 'none'"/.test(nextConfig),
+  true
+);
+check(
+  "so the attachment viewer does not pretend an iframe can render a file",
+  /<iframe/.test(bubble),
+  false
+);
+check(
+  "a text payload is read out of its blob, not framed",
+  /fetch\(url\)[\s\S]{0,120}?\.text\(\)/.test(bubble) && /MAX_INLINE_TEXT_BYTES/.test(bubble),
+  true
+);
+check(
+  "a PDF goes to the browser's own viewer in a tab",
+  /if \(opensInBrowser\) \{\s*openInBrowserTab\(\)/.test(bubble) &&
+    /ExternalLinkIcon/.test(bubble),
+  true
+);
+check(
+  "a blocked pop-up is reported rather than swallowed",
+  /if \(!window\.open\(url, "_blank", "noopener,noreferrer"\)\)/.test(bubble) &&
+    /"Pop-up blocked"/.test(bubble),
+  true
+);
+check(
+  "only payloads a browser can actually render are offered as openable",
+  /canPreviewHere\(name, message\.attachmentMime\)/.test(bubble),
+  true
+);
+check(
+  "the card itself is the open target, not just the small icon",
+  /`Open \$\{name\}`/.test(bubble) &&
+    /className="flex min-w-0 flex-1 items-center gap-3 text-left/.test(bubble),
+  true
+);
+check(
+  "a payload with no in-browser viewer is offered as Save, not Open",
+  /`Save \$\{name\} to this device`/.test(bubble),
   true
 );
 

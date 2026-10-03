@@ -65,6 +65,11 @@ function formatCount(value: number): string {
   return new Intl.NumberFormat("en-US").format(value);
 }
 
+/** "1 day" / "2 days" — a count printed next to a noun has to agree with it. */
+function plural(count: number, noun: string): string {
+  return `${formatCount(count)} ${noun}${count === 1 ? "" : "s"}`;
+}
+
 function formatBytes(bytes: number): string {
   if (bytes <= 0) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -159,7 +164,7 @@ export function AdminOverview({ overview }: { overview: AdminOverviewData }) {
             value={formatCount(accounts.counted)}
             detail={
               accounts.excluded > 0
-                ? `${formatCount(accounts.excluded)} operator/fixture rows excluded`
+                ? `${plural(accounts.excluded, "operator/fixture row")} excluded`
                 : "No operator rows to exclude"
             }
           />
@@ -179,7 +184,7 @@ export function AdminOverview({ overview }: { overview: AdminOverviewData }) {
             detail={
               storage.oldestBlobAgeDays === null
                 ? "No attachments stored"
-                : `Oldest ${storage.oldestBlobAgeDays} days · ${formatCount(storage.expiredBlobs)} past TTL`
+                : `Oldest ${plural(storage.oldestBlobAgeDays, "day")} · ${formatCount(storage.expiredBlobs)} past TTL`
             }
           />
         </section>
@@ -261,7 +266,7 @@ export function AdminOverview({ overview }: { overview: AdminOverviewData }) {
               <HealthStat
                 label="Push-enabled accounts"
                 value={formatCount(push.accounts)}
-                detail={`${formatCount(push.subscriptions)} install subscriptions`}
+                detail={`${plural(push.subscriptions, "install subscription")}`}
               />
               <HealthStat
                 label="Active devices"

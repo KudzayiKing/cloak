@@ -517,7 +517,19 @@ export function AppShell({
           </div>
         )}
 
-        <main className="cloak-scroll min-h-0 flex-1 overflow-y-auto bg-cloak-bg md:overflow-hidden">
+        {/* The page scroller. `overflow-y-auto` alone computes `overflow-x` to
+            `auto`, so ANY horizontal overflow in any page becomes a scrollbar
+            band across the bottom of the screen — which is exactly what the
+            owner photographed between the chat composer and the gesture bar
+            (the band measured rgb(52,52,52), i.e. --cloak-scroll-thumb over
+            --cloak-bg-elevated).
+
+            The app shell is a VERTICAL scroller by construction, and desktop
+            already hides both axes (`md:overflow-hidden`). Stating the inline
+            axis makes mobile match, instead of letting a stray few pixels paint
+            chrome. Every route is swept at phone width by the layout probe, so
+            this clips nothing that was meant to pan. */}
+        <main className="cloak-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-cloak-bg md:overflow-hidden">
           {children}
         </main>
 

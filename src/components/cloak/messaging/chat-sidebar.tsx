@@ -7,7 +7,7 @@
  * and a Cloak Mode redacted preview state.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { formatListTime } from "@/lib/cloak/utils";
 import { useCloakStore } from "@/stores/cloak-store";
@@ -24,6 +24,10 @@ import {
   UserPlusIcon,
   XIcon,
   UsersRoundIcon,
+  MicIcon,
+  ImageIcon,
+  FileTextIcon,
+  EyeOffIcon,
 } from "@animateicons/react/lucide";
 import { navigate } from "@/hooks/use-hash-route";
 import {
@@ -345,21 +349,36 @@ function ChatListItem({
   const last = conversation.messages[conversation.messages.length - 1];
   const name = conversation.isGroup ? conversation.groupName ?? "Group" : contact?.name ?? "Unknown";
 
-  const lastLine = () => {
-    if (!last) return "No messages yet";
+  /* The preview line.
+   *
+   * An attachment message has NO body — its metadata rides the encrypted
+   * envelope, not the text — so `default: last.body` rendered the row BLANK for
+   * every document and photo while voice notes (which had their own case) read
+   * correctly. The owner reported exactly that asymmetry.
+   *
+   * So the kind is what the row says, and it carries the same glyph the bubble
+   * uses: the list and the thread then agree at a glance rather than the list
+   * saying "Document" next to a bubble that says something else. */
+  const preview = (): { icon: ReactNode; text: string } => {
+    if (!last) return { icon: null, text: "No messages yet" };
     switch (last.kind) {
       case "system":
-        return last.body;
+        return { icon: null, text: last.body };
       case "ai":
-        return "Cloak Dagger AI · answer";
+        return { icon: null, text: "Cloak Dagger AI · answer" };
       case "view-once":
-        return "View-once media";
+        return { icon: <EyeOffIcon size={12} className="shrink-0" />, text: "View-once media" };
       case "voice":
-        return "Voice note";
+        return { icon: <MicIcon size={12} className="shrink-0" />, text: "Voice note" };
+      case "image":
+        return { icon: <ImageIcon size={12} className="shrink-0" />, text: "Photo" };
+      case "file":
+        return { icon: <FileTextIcon size={12} className="shrink-0" />, text: "Document" };
       default:
-        return last.body;
+        return { icon: null, text: last.body };
     }
   };
+  const { icon: previewIcon, text: previewText } = preview();
 
   return (
     <li>
@@ -407,25 +426,29 @@ function ChatListItem({
             </span>
           </span>
           <span className="mt-0.5 flex items-center justify-between gap-2">
-            {/* Spec: 14px regular preview both breakpoints; gray = theme muted token (dark-theme equivalent of #667781) */}
-            <span
-              className={cn(
-                "truncate text-[14px]",
-                conversation.unreadCount
-                  ? "text-cloak-text-secondary"
-                  : "text-cloak-text-muted"
-              )}
-            >
-              {/* Cloak Mode: only the redacted bar — no preview text at all */}
-              {cloakMode ? (
+            {/* Spec: 14px regular preview both breakpoints; gray = theme muted token (dark-theme equivalent of #667781).
+                Cloak Mode keeps only the redacted bar — no preview text at all,
+                and no kind glyph either: the glyph would leak the kind. */}
+            {cloakMode ? (
+              <span
+                aria-hidden="true"
+                className="cloak-redacted inline-block h-3 w-24 max-w-full align-middle"
+              />
+            ) : (
+              <span className="flex min-w-0 items-center gap-1.5">
+                {previewIcon}
                 <span
-                  aria-hidden="true"
-                  className="cloak-redacted inline-block h-3 w-24 max-w-full align-middle"
-                />
-              ) : (
-                lastLine()
-              )}
-            </span>
+                  className={cn(
+                    "truncate text-[14px]",
+                    conversation.unreadCount
+                      ? "text-cloak-text-secondary"
+                      : "text-cloak-text-muted"
+                  )}
+                >
+                  {previewText}
+                </span>
+              </span>
+            )}
             {conversation.unreadCount ? (
               <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-cloak-gold/20 px-1.5 text-[10px] font-semibold text-cloak-gold">
                 {conversation.unreadCount}

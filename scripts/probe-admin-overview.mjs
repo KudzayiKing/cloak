@@ -162,9 +162,41 @@ async function main() {
     true
   );
   check(
-    "an unrecorded origin is reported as unattributed, never as an operator grant",
-    overview.membership.byOrigin.every((row) => row.key !== "admin_grant" || row.count >= 0) &&
-      !overview.membership.byOrigin.some((row) => row.key === null),
+    "every origin row carries a real key, never a null or blank one",
+    overview.membership.byOrigin.every((row) => typeof row.key === "string" && row.key.length > 0),
+    true
+  );
+  /* Population invariants. The earlier form of this check was
+     `row.count >= 0`, which is true of every possible payload and therefore
+     proved nothing — it could not have caught "0 accounts" printed beside
+     "3 hold a tier". These three can. */
+  check(
+    "the origin split sums to the entitled count",
+    overview.membership.byOrigin.reduce((sum, row) => sum + row.count, 0),
+    overview.membership.withTier
+  );
+  check(
+    "the tier split sums to the entitled count",
+    overview.membership.byTier
+      .filter((row) => row.key !== "none")
+      .reduce((sum, row) => sum + row.count, 0),
+    overview.membership.withTier
+  );
+  check(
+    "with-tier and without-tier are measured against the printed account count",
+    overview.membership.withTier + overview.membership.withoutTier,
+    overview.accounts.counted
+  );
+  check(
+    "the signup trend sums to the 30-day figure printed beside it",
+    overview.accounts.trend.reduce((sum, entry) => sum + entry.count, 0),
+    overview.accounts.newLast30Days
+  );
+  check(
+    "no excluded fixture handle is ever counted as a user",
+    overview.accounts.excludedHandles.every(
+      (handle) => !overview.membership.byOrigin.some((row) => row.key === handle)
+    ),
     true
   );
 

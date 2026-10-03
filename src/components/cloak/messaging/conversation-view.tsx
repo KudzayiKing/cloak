@@ -177,7 +177,7 @@ export function ConversationView({
 
   if (!conversation) {
     return (
-      <div className="flex h-full min-h-0 flex-1 flex-col md:p-3">
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col md:p-3">
         <div className="cloak-light-shadowless flex flex-1 flex-col items-center justify-center border-0 bg-cloak-bg px-8 text-center md:rounded-3xl md:border md:border-cloak-border md:shadow-xl md:shadow-black/25">
         <span className="grid h-14 w-14 place-items-center rounded-2xl border border-cloak-border bg-cloak-surface text-cloak-gold">
           <KeyRoundIcon size={22} />
@@ -264,7 +264,22 @@ export function ConversationView({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col bg-cloak-bg md:p-3">
+    /* `min-w-0` is load-bearing, not tidying.
+     *
+     * This box is a flex ITEM in the row MessagesPage builds, so its
+     * `min-width` is `auto`, which resolves to the content's min-content width
+     * and refuses to shrink below it. That floor was measured at 436px on a
+     * 432px viewport, which laid the whole column out 4px too wide — and `main`
+     * above it scrolls vertically, so its computed `overflow-x` is `auto` too,
+     * and those 4px became a full-width horizontal scrollbar across the bottom
+     * of the chat: the grey band the owner photographed between the composer and
+     * the gesture bar.
+     *
+     * The floor depends on what happens to be in the thread (an attachment
+     * mid-resolve, a row queued in the outbox), so it comes and goes with state.
+     * That is why the fix removes the floor rather than chasing whichever row
+     * set it: nothing in a chat ever needs to be wider than the chat. */
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-cloak-bg md:p-3">
       {/* Fullscreen chat on mobile — no outer border, square header top and
           composer bottom edges (user feedback round 4). Desktop keeps the
           floating rounded card. */}
@@ -364,7 +379,13 @@ export function ConversationView({
             onScroll={handleScroll}
             style={{ "--chat-bubble-text": bubbleTextSize } as CSSProperties}
             className={cn(
-              "cloak-scroll min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4 md:px-6",
+              /* `overflow-x-hidden` is stated rather than left to the
+                 shorthand: `overflow-y-auto` alone computes `overflow-x` to
+                 `auto`, so ANY horizontal overflow in a thread turns into a
+                 scrollbar band across the bottom of the chat. A vertical
+                 message list must never pan sideways — a bubble that is too
+                 wide should clip, not produce chrome. */
+              "cloak-scroll min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-3 py-4 md:px-6",
               conversation.ghost && "border-x-0"
             )}
           >
@@ -471,7 +492,6 @@ export function ConversationView({
             onSend={handleSend}
             onAttach={handleAttach}
             onVoice={handleVoice}
-            ghost={conversation.ghost}
             disabled={isLocked}
           />
         </>

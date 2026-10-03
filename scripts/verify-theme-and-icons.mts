@@ -1006,9 +1006,17 @@ check(
     true
   );
 
-  /* The composer's classes are the first argument of cn(), after a block
-     comment that stripComments has already removed. */
-  const composerOpen = composer.match(/className=\{cn\(\s*"([^"]*)"/)?.[1] ?? "";
+  /* The composer's class list, whichever wrapper it is written in — a bare
+     `className="…"` or the first argument of `cn()`. The guard is about the
+     CLASSES, not about the wrapper that happens to be in fashion; an earlier
+     version of it matched `cn(` literally and broke the moment the wrapper
+     changed, which is a false alarm about the very behaviour being guarded.
+     Anchored on the safe-area padding, which only this bar carries, so it
+     cannot drift onto a child element. */
+  const composerOpen =
+    composer.match(/className=\{cn\(\s*"([^"]*pb-\[calc\(0\.75rem[^"]*)"/)?.[1] ??
+    composer.match(/className="([^"]*pb-\[calc\(0\.75rem[^"]*)"/)?.[1] ??
+    "";
   check(
     "the chat screen's composer wears the same chrome surface",
     /bg-cloak-bg-elevated/.test(composerOpen),
@@ -1018,6 +1026,70 @@ check(
   check(
     "  ... and keeps its content clear of the gesture bar",
     /pb-\[calc\([^\]]*env\(safe-area-inset-bottom\)\)\]/.test(composerOpen),
+    true
+  );
+  /* The owner reported a line above the input and asked for it removed. The
+     surface change is already the edge, so a border laid on top of it is a
+     stray line — and it must not come back. `length > 0` keeps this from
+     passing vacuously if the extraction above ever breaks. */
+  check(
+    "  ... with no separator line above the input",
+    composerOpen.length > 0 && !/\bborder-t\b/.test(composerOpen),
+    true
+  );
+  check(
+    "  ... and no `ghost` prop left behind to switch one off",
+    /\bghost\b/.test(composer),
+    false
+  );
+
+  /*
+   * The strip under the composer must not be able to grow a horizontal
+   * scrollbar.
+   *
+   * The owner photographed a full-width grey band between the composer and the
+   * gesture bar. Sampling it gave rgb(52,52,52) — exactly --cloak-scroll-thumb
+   * (rgba(255,255,255,0.14)) composited over --cloak-bg-elevated — so it was a
+   * horizontal SCROLLBAR, not a border, and the band was nearly full width
+   * because the overflow was only a few pixels.
+   *
+   * The cause: the conversation column is a flex item, so its `min-width` is
+   * `auto`, which resolves to the content's min-content width. That floor
+   * measured 436px against a 432px viewport, so the column was laid out 4px too
+   * wide; `main` above it scrolls vertically, which computes `overflow-x: auto`
+   * as well, so those 4px painted a band across the whole screen.
+   *
+   * Both halves are asserted, because either one alone brings the band back:
+   * the column must be ALLOWED to shrink, and the thread must be UNABLE to pan
+   * sideways.
+   */
+  const convoColumns = [...convo.matchAll(/className="(flex h-full min-h-0[^"]*)"/g)].map(
+    (m) => m[1]
+  );
+  check(
+    "every conversation column is allowed to shrink (min-w-0)",
+    convoColumns.length > 0 && convoColumns.every((c) => /\bmin-w-0\b/.test(c)),
+    true
+  );
+  const messageList = convo.match(/cn\(\s*"([^"]*space-y-3[^"]*)"/)?.[1] ?? "";
+  check(
+    "the message list states overflow-x-hidden, not just overflow-y-auto",
+    messageList.length > 0 &&
+      /overflow-y-auto/.test(messageList) &&
+      /overflow-x-hidden/.test(messageList),
+    true
+  );
+  /* And the page scroller itself, which is where the band was actually painted.
+     Desktop already hides both axes (`md:overflow-hidden`); stating the inline
+     axis makes mobile match instead of letting a stray few pixels anywhere in
+     any page become chrome. A route sweep at phone width confirms nothing
+     overflows, so this clips nothing that was meant to pan. */
+  const shellMain = shell.match(/<main className="([^"]*)"/)?.[1] ?? "";
+  check(
+    "the page scroller never pans sideways",
+    shellMain.length > 0 &&
+      /overflow-y-auto/.test(shellMain) &&
+      /overflow-x-hidden/.test(shellMain),
     true
   );
 

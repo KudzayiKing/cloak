@@ -111,13 +111,11 @@ export function MessageComposer({
   onAttach,
   onVoice,
   disabled,
-  ghost,
 }: {
   onSend: (body: string) => void;
   onAttach?: (files: File[]) => void;
   onVoice?: (file: File, durationSec: number) => void;
   disabled?: boolean;
-  ghost?: boolean;
 }) {
   const [value, setValue] = useState("");
   const [recording, setRecording] = useState(false);
@@ -262,25 +260,27 @@ export function MessageComposer({
     el.style.height = Math.min(el.scrollHeight, 140) + "px";
   };
 
-  return (
-    <div
-      className={cn(
-        /* Opaque, like the chat-list bottom nav (round 22). Inside a
-           conversation the nav is hidden, so this bar is what sits against the
-           gesture area — and a surface that has to match something the platform
-           paints has to be a known colour, not a blend of whatever is behind it.
+  /* The composer bar. Opaque, like the chat-list bottom nav (round 22). Inside
+     a conversation the nav is hidden, so this bar is what sits against the
+     gesture area — and a surface that has to match something the platform
+     paints has to be a known colour, not a blend of whatever is behind it.
 
-           No gesture-area bleed here, unlike the nav: the composer is IN FLOW,
-           so its box already ends at the viewport bottom and its background
-           already owns that strip. The nav is `fixed`, which is why it needs
-           the documented grow-then-pull-down pattern instead. The safe-area
-           padding keeps the content clear of the gesture bar either way, and
-           resolves to 0 where there is no inset. */
-        "bg-cloak-bg-elevated p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:p-4",
-        /* Ghost chats: no separator line above the input (user feedback) */
-        !ghost && "border-t border-cloak-border"
-      )}
-    >
+     No gesture-area bleed here, unlike the nav: the composer is IN FLOW, so its
+     box already ends at the viewport bottom and its background already owns that
+     strip. The nav is `fixed`, which is why it needs the documented
+     grow-then-pull-down pattern instead. The safe-area padding keeps the content
+     clear of the gesture bar either way, and resolves to 0 where there is no
+     inset.
+
+     NO TOP BORDER. There used to be a `border-t border-cloak-border` here,
+     suppressed only for ghost chats. The owner reported a line above the input
+     that "was not there all along" and asked for it gone, and it was redundant
+     anyway: this bar is --cloak-bg-elevated against the thread's --cloak-bg, so
+     the surface change is already the edge, and a 1px hairline laid on top of it
+     only reads as a stray line. Removing it also retired the `ghost` prop, whose
+     single job was to switch it off. */
+  return (
+    <div className="bg-cloak-bg-elevated p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:p-4">
       {recording ? (
         <div
           data-testid="voice-recording-bar"

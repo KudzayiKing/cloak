@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { formatTime, formatVoiceClock } from "@/lib/cloak/utils";
 import {
@@ -21,6 +22,7 @@ import { useCloakStore } from "@/stores/cloak-store";
 import { useTranslationStore, type MessageTranslation } from "@/stores/translation-store";
 import { translationLanguageByCode } from "@/lib/cloak/translation-languages";
 import { useLongPress } from "@/hooks/use-long-press";
+import { useToast } from "@/hooks/use-toast";
 import { MessageActionSheet } from "./message-action-sheet";
 import {
   CheckIcon,
@@ -36,6 +38,8 @@ import {
   ChevronDownIcon,
   LockIcon,
   TriangleAlertIcon,
+  XIcon,
+  ExternalLinkIcon,
 } from "@animateicons/react/lucide";
 import { GhostGlyph } from "@/components/cloak/shared/ghost-icon";
 import { CloakMark } from "@/components/cloak/brand/CloakLogo";
@@ -311,6 +315,39 @@ export function MessageBubble({
   );
 }
 
+/*
+ * Which payloads the in-chat viewer can render.
+ *
+ * An image renders as an `<img>`. Everything else has to be rendered BY US,
+ * because `next.config.ts` sets `frame-src 'none'` and `object-src 'none'` — so
+ * an `<iframe>` or `<embed>` cannot load anything at all here, not even a
+ * same-origin blob URL. That is a deliberate piece of the app's hardening, not
+ * an oversight, so the viewer works WITH it: a text payload is read out of its
+ * blob and drawn as text, and a PDF — which we could never render as well as the
+ * browser does — is handed to the browser's own viewer in a tab.
+ *
+ * Anything else (docx, xlsx, zip) has no viewer at all, so for those Open IS
+ * Save and the card says so. MIME first, because it is the sender's own claim
+ * about the bytes; the filename is the fallback for envelopes that carry none.
+ */
+const PREVIEWABLE_MIME = /^(image\/|text\/|application\/(pdf|json|xml))/i;
+const PREVIEWABLE_EXT = /\.(png|jpe?g|gif|webp|avif|bmp|svg|pdf|txt|csv|md|json|log)$/i;
+const TEXT_MIME = /^text\/|application\/(json|xml)/i;
+const TEXT_EXT = /\.(txt|csv|md|json|log|xml|ya?ml)$/i;
+/* A preview is a glance, not a reader. Past this the file is reported as too
+   large to show inline and offered as a tab or a download instead. */
+const MAX_INLINE_TEXT_BYTES = 200_000;
+/* Sentinel in the text slot: "there is nothing to show here". */
+const TOO_BIG = "\u0000too-big";
+
+function canPreviewHere(name: string, mime: string | undefined): boolean {
+  return PREVIEWABLE_MIME.test(mime ?? "") || PREVIEWABLE_EXT.test(name);
+}
+
+function isTextLike(name: string, mime: string | undefined): boolean {
+  return TEXT_MIME.test(mime ?? "") || TEXT_EXT.test(name);
+}
+
 function AttachmentBubble({
   message,
   outgoing,
@@ -325,8 +362,12 @@ function AttachmentBubble({
   const [url, setUrl] = useState<string | null>(null);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  /* The decoded text of a text payload, once the viewer asks for it. */
+  const [inlineText, setInlineText] = useState<string | null>(null);
   const openActionSheet = useCallback(() => setActionSheetOpen(true), []);
   const { longPressHandlers } = useLongPress(openActionSheet);
+  const { toast } = useToast();
 
   /* Same reason as the voice player: key the effect on primitives so a sync
      poll cannot re-run it and re-download, while `attachmentBlob.k` still
@@ -360,14 +401,89 @@ function AttachmentBubble({
   const size = formatBytes(message.fileSizeBytes ?? 0);
   const canOpen = Boolean(url);
 
-  const openAttachment = () => {
+  /* Three ways to open, and which one applies is decided by what the app can
+     actually render — not by what would be nicest. */
+  const rendersInChat = kind === "image" || isTextLike(name, message.attachmentMime);
+  const opensInBrowser =
+    !rendersInChat && canPreviewHere(name, message.attachmentMime);
+
+  /* Saving a blob is fire-and-forget: the browser gives no completion event, so
+     the honest confirmation is that the save was STARTED, naming the file. The
+     owner's report was that there was no feedback at all — a tap produced
+     nothing visible whether it worked or not. */
+  const downloadAttachment = () => {
     if (!url) return;
     const a = document.createElement("a");
     a.href = url;
     a.download = name;
     a.rel = "noopener";
     a.click();
+    toast({ title: "Download started", description: name });
   };
+
+  /* The browser's own viewer, in its own tab — reported if the pop-up is
+     blocked rather than swallowed. */
+  const openInBrowserTab = () => {
+    if (!url) return;
+    if (!window.open(url, "_blank", "noopener,noreferrer")) {
+      toast({
+        title: "Pop-up blocked",
+        description: "Allow pop-ups for Cloak to open this file in a tab.",
+      });
+    }
+  };
+
+  const openAttachment = () => {
+    if (!url) return;
+    /* The owner asked for files to open IN the chat. A photo and a text file
+       can, so they do; leaving the conversation to look at them loses the
+       thread, and the viewer keeps the download one tap away. */
+    if (rendersInChat) {
+      setViewerOpen(true);
+      return;
+    }
+    /* A PDF has a better viewer than we could build, and the app cannot embed
+       it here (see TEXT_MIME above), so the tab IS the open action. */
+    if (opensInBrowser) {
+      openInBrowserTab();
+      return;
+    }
+    /* Nothing can render it: Open is Save. */
+    downloadAttachment();
+  };
+
+  /* Escape closes the viewer. Bound only while it is open, so the thread's own
+     key handling is untouched the rest of the time. */
+  useEffect(() => {
+    if (!viewerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setViewerOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [viewerOpen]);
+
+  /* Read a text payload out of its blob for the in-chat preview. Keyed on the
+     open flag and the id, so a sync poll cannot re-read it. */
+  useEffect(() => {
+    if (!viewerOpen || kind === "image" || !url) return;
+    if ((message.fileSizeBytes ?? 0) > MAX_INLINE_TEXT_BYTES) {
+      setInlineText(TOO_BIG);
+      return;
+    }
+    let cancelled = false;
+    void fetch(url)
+      .then((r) => r.text())
+      .then((t) => {
+        if (!cancelled) setInlineText(t.slice(0, MAX_INLINE_TEXT_BYTES));
+      })
+      .catch(() => {
+        if (!cancelled) setInlineText(TOO_BIG);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [viewerOpen, kind, url, message.fileSizeBytes]);
 
   return (
     <div
@@ -385,30 +501,60 @@ function AttachmentBubble({
             type="button"
             onClick={openAttachment}
             className="mb-2 block overflow-hidden rounded-xl border border-cloak-border bg-black/20"
-            title="Open photo"
+            title="View photo"
           >
             <img src={url} alt={name} className="max-h-64 w-full object-cover" />
           </button>
         ) : null}
 
         <div className="flex items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-cloak-surface-hover text-cloak-text-secondary">
-            {kind === "image" ? <ImageIcon size={16} /> : <FileTextIcon size={16} />}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-medium text-cloak-text">{name}</p>
-            <p className="text-[11px] text-cloak-text-muted">
-              {size}
-              {available === null
-                ? " · checking device storage"
-                : available
-                  ? " · saved on this device"
-                  : " · stored on sender device"}
-            </p>
-          </div>
+          {/* The card itself is the open target. Tapping the file is the obvious
+              gesture, and it is what makes "open it in the chat" discoverable
+              without a second button nobody would press. */}
           <button
             type="button"
             onClick={openAttachment}
+            disabled={!canOpen}
+            aria-label={
+              canOpen
+                ? rendersInChat
+                  ? `Open ${name}`
+                  : opensInBrowser
+                    ? `Open ${name} in a new tab`
+                    : `Save ${name} to this device`
+                : `${name} is not stored on this device`
+            }
+            title={
+              canOpen
+                ? rendersInChat
+                  ? "Open"
+                  : opensInBrowser
+                    ? "Open in a new tab"
+                    : "Save to this device"
+                : undefined
+            }
+            className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-not-allowed"
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-cloak-surface-hover text-cloak-text-secondary">
+              {kind === "image" ? <ImageIcon size={16} /> : <FileTextIcon size={16} />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-medium text-cloak-text">
+                {name}
+              </span>
+              <span className="block text-[11px] text-cloak-text-muted">
+                {size}
+                {available === null
+                  ? " · checking device storage"
+                  : available
+                    ? " · saved on this device"
+                    : " · stored on sender device"}
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={downloadAttachment}
             disabled={!canOpen}
             aria-label={canOpen ? `Download ${name}` : `${name} is not stored on this device`}
             className={cn(
@@ -444,6 +590,93 @@ function AttachmentBubble({
           />
         )}
       </div>
+
+      {/* In-chat attachment viewer — photos and anything else the browser can
+          render. Portalled to the body rather than left in the bubble: this sits
+          inside a scroll container, and a `fixed` overlay inside one is at the
+          mercy of any ancestor that later acquires a transform. The portal
+          removes the question, and the bubble's own max-width no longer has to
+          be reasoned about either. Sits under the toaster (z-100) so a download
+          from here still confirms itself. */}
+      {viewerOpen && url
+        ? createPortal(
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={name}
+              onClick={() => setViewerOpen(false)}
+              className="fixed inset-0 z-[70] flex flex-col bg-black/95"
+            >
+              <div className="flex items-center gap-2 px-3 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+                <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-white/90">
+                  {name}
+                </p>
+                {/* Only for a payload we are rendering ourselves: it is how the
+                    file reaches the browser's full viewer, which is the honest
+                    fallback for anything a `<pre>` renders poorly. */}
+                {kind !== "image" && (
+                  <button
+                    type="button"
+                    aria-label={`Open ${name} in a new tab`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openInBrowserTab();
+                    }}
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white/80 transition-colors hover:bg-white/10"
+                  >
+                    <ExternalLinkIcon size={16} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  aria-label={`Download ${name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    downloadAttachment();
+                  }}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-cloak-gold transition-colors hover:bg-white/10"
+                >
+                  <DownloadIcon size={17} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Close attachment"
+                  onClick={() => setViewerOpen(false)}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white/80 transition-colors hover:bg-white/10"
+                >
+                  <XIcon size={18} />
+                </button>
+              </div>
+              <div className="flex min-h-0 flex-1 items-center justify-center px-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                {kind === "image" ? (
+                  <img
+                    src={url}
+                    alt={name}
+                    onClick={(e) => e.stopPropagation()}
+                    className="max-h-full max-w-full rounded-xl object-contain"
+                  />
+                ) : inlineText === null ? (
+                  <p className="text-[13px] text-white/60">Preparing preview…</p>
+                ) : inlineText === TOO_BIG ? (
+                  <p className="max-w-xs text-center text-[13px] leading-relaxed text-white/70">
+                    This file is too large to preview here. Open it in a tab or save it.
+                  </p>
+                ) : (
+                  /* Rendered as TEXT, never as markup: React escapes the
+                     string, so a payload full of angle brackets is displayed
+                     rather than executed. */
+                  <pre
+                    onClick={(e) => e.stopPropagation()}
+                    className="cloak-scroll h-full w-full overflow-auto rounded-xl bg-cloak-surface p-4 text-left text-[12px] leading-relaxed whitespace-pre-wrap break-words text-cloak-text"
+                  >
+                    {inlineText}
+                  </pre>
+                )}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
