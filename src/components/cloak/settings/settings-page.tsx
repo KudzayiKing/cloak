@@ -1271,26 +1271,38 @@ function StorageRow({ label, note, value }: { label: string; note: string; value
 /* Admin ------------------------------------------------------------------------ */
 
 /*
- * The Founding Adviser dashboard is a standalone server-rendered page at
- * /admin/invitations — outside the hash router, so it needs a real anchor
- * rather than navigate(), which only writes location.hash.
+ * The operator panel is a standalone server-rendered page at /admin — outside
+ * the hash router, so it needs a real anchor rather than navigate(), which only
+ * writes location.hash. The overview is the entry point; the Founding Adviser
+ * invitations hang off it.
  *
  * This section is a doorway, not a gate. It renders only for allowlisted
- * accounts, but the page it links to and every /api/admin/* route re-check
+ * accounts, but the pages it links to and every /api/admin/* route re-check
  * isAdminUser() server-side, so a non-admin who guesses the URL gets the
  * "Admin access required" screen either way (spec §4).
+ *
+ * The panel is read-only, and that is why there is no third link here. There is
+ * no grant, no suspension and no delete to open: entitlements come only from
+ * payment verification and invite redemption, and removing an account belongs
+ * to the account holder.
  */
 function AdminSection() {
   return (
     <Surface className="p-5">
       <h2 className="mb-1 text-sm font-semibold text-cloak-text">Admin</h2>
       <p className="mb-4 text-[12.5px] leading-relaxed text-cloak-text-muted">
-        Invite Founding Advisers. Each invitation is a single-use link granting complimentary{" "}
-        {BRAND.cloakPrivate} — it is shown once, when it is created, and only a hash is stored.
+        Operator overview — accounts, membership and the invite funnel, in aggregate. Invite Founding Advisers:
+        each invitation is a single-use link granting complimentary {BRAND.cloakPrivate} — it is shown once, when
+        it is created, and only a hash is stored.
       </p>
-      <Button asChild variant="outline">
-        <a href="/admin/invitations">Open adviser invitations</a>
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild variant="outline">
+          <a href="/admin">Open overview</a>
+        </Button>
+        <Button asChild variant="outline">
+          <a href="/admin/invitations">Open adviser invitations</a>
+        </Button>
+      </div>
     </Surface>
   );
 }

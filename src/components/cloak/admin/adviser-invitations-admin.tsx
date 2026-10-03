@@ -18,6 +18,7 @@
  *      and sends it personally (§40).
  */
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -258,6 +259,12 @@ export function AdviserInvitationsAdmin({
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/admin"
+              className="rounded-lg border border-cloak-border px-3 py-2 text-xs text-cloak-text-secondary hover:bg-cloak-surface"
+            >
+              Overview
+            </Link>
             <Button
               variant="outline"
               className="border-cloak-border-strong text-cloak-text hover:bg-cloak-surface"

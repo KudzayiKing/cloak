@@ -68,6 +68,9 @@ const ORIGIN_LABELS: Record<string, string> = {
   invoice: "Invoice",
   contract: "Contract",
   admin_grant: `Granted by ${BRAND.name}`,
+  /* A tier with no recorded origin. Named as unknown rather than attributed to
+     anyone, so the label never claims a grant that no code path performed. */
+  unattributed: "Origin unrecorded",
   purchase: "Purchased",
 };
 

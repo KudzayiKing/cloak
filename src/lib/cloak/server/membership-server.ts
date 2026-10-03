@@ -53,7 +53,11 @@ export function entitlementForUser(user: {
   if (user.membershipTier) {
     return {
       membership: user.membershipTier as MembershipEntitlement["membership"],
-      origin: (user.membershipOrigin ?? "admin_grant") as MembershipOrigin,
+      /* A NULL origin is reported as `unattributed`, never as `admin_grant`.
+         The old fallback invented an operator grant for any tier written
+         without an origin, which is exactly the reading an operator view is
+         meant to trust — so it must not be the default. */
+      origin: (user.membershipOrigin ?? "unattributed") as MembershipOrigin,
       active: true,
       grantedAt: (user.membershipGrantedAt ?? new Date()).toISOString(),
       renewal: "never" as MembershipRenewal,
@@ -62,7 +66,7 @@ export function entitlementForUser(user: {
   return (
     devEntitlementFallback() ?? {
       membership: "none",
-      origin: "admin_grant",
+      origin: "unattributed",
       active: false,
       renewal: "never",
     }

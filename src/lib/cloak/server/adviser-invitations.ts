@@ -75,6 +75,15 @@ export function isAdminUser(user: Pick<SessionUser, "id" | "handle"> | null): bo
   return ids.has(user.id.toLowerCase()) || handles.has(user.handle.toLowerCase());
 }
 
+/**
+ * The configured admin handles, lowercased. Exported so an administrative view
+ * can subtract operator accounts from user counts — the same env var that
+ * decides who may read the view also decides which rows are not users.
+ */
+export function adminHandles(): Set<string> {
+  return csvEnv(ADMIN_HANDLE_ENV);
+}
+
 export function normalizeEmail(input: string | undefined | null): string | null {
   const normalized = (input ?? "").trim().toLowerCase();
   if (!normalized || normalized.length > 254 || !EMAIL_PATTERN.test(normalized)) return null;

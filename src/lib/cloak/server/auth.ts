@@ -433,6 +433,14 @@ const DEV_ACCOUNTS = [
 ];
 
 /**
+ * The seeded dev handles, exported so an administrative view can tell a real
+ * account from a fixture. Seeding is gated on `CLOAK_ALLOW_DEV_ACTIVATION`, so
+ * on production these rows usually do not exist — the list is still subtracted
+ * from account counts because a stray one must never inflate a growth number.
+ */
+export const DEV_ACCOUNT_HANDLES: readonly string[] = DEV_ACCOUNTS.map((account) => account.handle);
+
+/**
  * Ensures the dev test identities exist with the shared dev passphrase and
  * aurora+blake share a seeded conversation. Runs on login/me only when dev
  * activation is enabled — upserts are no-ops once every account exists.

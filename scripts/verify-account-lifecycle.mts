@@ -369,7 +369,7 @@ check(
 
 /* --------------------------- 12. cache busting ------------------------- */
 
-check("the service worker version was bumped for the new client bundle", /cloak-shell-v45/.test(sw), true);
+check("the service worker version was bumped for the new client bundle", /cloak-shell-v46/.test(sw), true);
 
 /* ------------------------------- report ----------------------------- */
 

@@ -22,6 +22,13 @@ export type MembershipOrigin =
   | "invoice"
   | "contract"
   | "admin_grant"
+  /**
+   * A tier exists but nothing recorded where it came from. This is the honest
+   * answer for a NULL `membershipOrigin`, and it replaced a fallback that
+   * answered `admin_grant` instead — which would have invented operator grants
+   * in the very chart built to detect them.
+   */
+  | "unattributed"
   /** Legacy purchase origin (pre direct-settlement entitlements). */
   | "purchase";
 
