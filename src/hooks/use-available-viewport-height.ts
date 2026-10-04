@@ -59,3 +59,47 @@ export function useAvailableViewportHeight() {
 
   return height;
 }
+
+/*
+ * Distance from the BOTTOM of the layout viewport up to the keyboard's top
+ * edge — how far a BOTTOM-ANCHORED sheet must rise to stay visible.
+ *
+ * A top-anchored sheet needs only a max-height (above). A bottom-anchored
+ * one needs an OFFSET instead, because `bottom: 0` is the bottom of the
+ * LAYOUT viewport, and on iOS that stays put while the keyboard covers it:
+ * a sheet anchored there would sit entirely behind the keyboard, footer
+ * and all. Subtracting the two viewport heights gives the lift.
+ *
+ * Returns 0 in the two cases where no lift is wanted:
+ * - no keyboard open, where the visual viewport fills the layout viewport
+ *   (true in this standalone PWA — no URL bar to disagree over), and
+ * - engines that shrink the layout viewport itself (Android with
+ *   `interactive-widget=resizes-content`), where `bottom: 0` is already
+ *   the keyboard's top edge and lifting again would double-count.
+ */
+export function useKeyboardInset() {
+  const [inset, setInset] = useState(0);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      const keyboardTop = vv.offsetTop + vv.height;
+      setInset(Math.max(0, Math.round(window.innerHeight - keyboardTop)));
+    };
+
+    const firstFrame = requestAnimationFrame(update);
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    window.addEventListener("orientationchange", update);
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      window.removeEventListener("orientationchange", update);
+    };
+  }, []);
+
+  return inset;
+}

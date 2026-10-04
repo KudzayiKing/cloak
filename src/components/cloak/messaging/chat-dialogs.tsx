@@ -339,7 +339,15 @@ export function NewChatModal({
         if (!v) setTab("direct");
       }}
     >
-      <SheetDialogContent className="max-w-md border-cloak-border bg-cloak-bg-elevated p-0 text-cloak-text sm:max-w-md">
+      {/* Bottom sheet on phones (user request): this is a short, scannable
+          list of people, so it sits where the thumb already is rather than
+          hanging from the top. 70% of the screen, keyboard-aware — see
+          SheetDialogContent. The create-group and create-filter dialogs are
+          forms and stay top-anchored. */}
+      <SheetDialogContent
+        anchor="bottom"
+        className="max-w-md border-cloak-border bg-cloak-bg-elevated p-0 text-cloak-text sm:max-w-md"
+      >
         <DialogHeader className="shrink-0 px-5 pb-1 pt-5">
           <DialogTitle className="cloak-display text-lg font-medium">
             New chat
