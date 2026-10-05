@@ -166,9 +166,9 @@ export function SecurityPage() {
       <section id="nearby-communication" className="scroll-mt-20 border-y border-cloak-border bg-cloak-bg-elevated/35 py-20 md:py-24">
         <Container>
           <SectionHeading
-            eyebrow="Nearby communication · beta"
+            eyebrow="Nearby communication"
             title="A local network is a transport, not a trust boundary."
-            lead="Cloak Dagger Nearby beta supports text messaging between existing one-to-one contacts over a shared local Wi-Fi network or hotspot. The local network does not grant conversation access."
+            lead="Cloak Dagger Nearby supports encrypted text in existing verified one-to-one chats and groups over a shared local Wi-Fi network or hotspot. The local network does not grant conversation access."
           />
           <div className="grid gap-4 md:grid-cols-2">
             <Surface className="p-6">
@@ -182,7 +182,7 @@ export function SecurityPage() {
               </ul>
             </Surface>
           </div>
-          <p className="mt-5 text-xs leading-relaxed text-cloak-text-muted">Nearby is feature-flagged for beta testing. It supports verified one-to-one and group text; group messages are sent to connected members and may be partially delivered until internet synchronization. Reactions and attachments are not available over Nearby. Physical-device testing is required before general release, and a membership removal cannot reach a device while it is offline.</p>
+          <p className="mt-5 text-xs leading-relaxed text-cloak-text-muted">Nearby supports verified one-to-one and group text; group messages are sent to connected members and may be partially delivered until internet synchronization. Reactions and attachments are not available over Nearby. Every participant must first connect on a shared local network, and a membership removal cannot reach a device while it is offline.</p>
         </Container>
       </section>
 

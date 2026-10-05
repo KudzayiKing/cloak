@@ -26,7 +26,8 @@ const worker = readFileSync(join(root, "public/sw.js"), "utf8");
 const store = readFileSync(join(root, "src/stores/cloak-store.ts"), "utf8");
 const cache = readFileSync(join(root, "src/lib/cloak/message-cache.ts"), "utf8");
 const bubble = readFileSync(join(root, "src/components/cloak/messaging/message-bubble.tsx"), "utf8");
-const config = readFileSync(join(root, "src/lib/cloak/config.ts"), "utf8");
+const sidebar = readFileSync(join(root, "src/components/cloak/messaging/chat-sidebar.tsx"), "utf8");
+const nearbyPage = readFileSync(join(root, "src/components/cloak/messaging/nearby-page.tsx"), "utf8");
 const serverConversations = readFileSync(join(root, "src/lib/cloak/server/conversations.ts"), "utf8");
 
 const message: EncryptedEnvelope = {
@@ -105,7 +106,7 @@ async function main() {
   check("Nearby messages persist sync-pending state", /message\.syncPending \? \{ syncPending: true \}/.test(cache), true);
   check("server synchronization preserves the Nearby route label", /function retainNearbyRoute\([\s\S]{0,220}?syncPending: false/.test(store), true);
   check("outgoing Nearby messages have a delivery indicator", /Delivered directly nearby/.test(bubble), true);
-  check("Nearby remains controlled by a public feature flag", /NEXT_PUBLIC_NEARBY_MESSAGING_ENABLED === "true"/.test(config), true);
+  check("Nearby entry is available without a deploy-time feature flag", /Open Nearby/.test(sidebar) && !/NEXT_PUBLIC_NEARBY_MESSAGING_ENABLED/.test(sidebar + nearbyPage), true);
   closeNearby();
   check("connection teardown returns the transport to idle", nearbyState().status, "idle");
 

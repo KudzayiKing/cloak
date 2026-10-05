@@ -5,7 +5,6 @@ import QRCode from "qrcode";
 import { AppShell } from "@/components/cloak/navigation/app-shell";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/cloak/shared/primitives";
-import { NEARBY_MESSAGING_ENABLED } from "@/lib/cloak/config";
 import {
   acceptNearbyAnswer,
   acceptNearbyOffer,
@@ -219,9 +218,7 @@ export function NearbyPage() {
             </div>
           </div>
 
-          {!NEARBY_MESSAGING_ENABLED ? (
-            <Surface className="p-5"><p className="font-medium text-cloak-text">Nearby beta is not enabled for this release.</p><p className="mt-2 text-sm text-cloak-text-secondary">Enable NEXT_PUBLIC_NEARBY_MESSAGING_ENABLED for internal testing. No local discovery runs until you start a session.</p></Surface>
-          ) : typeof window === "undefined" || !("RTCPeerConnection" in window) ? (
+          {typeof window === "undefined" || !("RTCPeerConnection" in window) ? (
             <Surface className="p-5"><p className="font-medium text-cloak-text">This browser cannot start a Nearby connection.</p><p className="mt-2 text-sm text-cloak-text-secondary">Use a current browser with WebRTC support, or continue when internet access is available.</p></Surface>
           ) : connected && flow !== "network" ? (
             <Surface className="p-6">

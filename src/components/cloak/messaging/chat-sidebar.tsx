@@ -41,7 +41,6 @@ import { GhostGlyph } from "@/components/cloak/shared/ghost-icon";
 import { NewChatModal, CreateFilterDialog, CreateGroupDialog } from "./chat-dialogs";
 import { E2eeRestoreBanner } from "./e2ee-restore-banner";
 import { initialsOf } from "@/lib/cloak/utils";
-import { NEARBY_MESSAGING_ENABLED } from "@/lib/cloak/config";
 
 export function ChatSidebar({
   activeId,
@@ -161,7 +160,7 @@ export function ChatSidebar({
           restore (only renders when the store marks keys-pending) */}
       <E2eeRestoreBanner className="mx-3.5" />
 
-      {NEARBY_MESSAGING_ENABLED && typeof window !== "undefined" && "RTCPeerConnection" in window && (
+      {typeof window !== "undefined" && "RTCPeerConnection" in window && (
         <div className="mx-3.5 mb-3 flex items-start gap-2 rounded-xl border border-cloak-gold/25 bg-cloak-gold-soft/10 p-3">
           <WifiIcon size={15} className="mt-0.5 shrink-0 text-cloak-gold" />
           <div className="min-w-0 flex-1">
