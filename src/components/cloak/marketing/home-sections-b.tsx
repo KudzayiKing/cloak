@@ -8,6 +8,7 @@
  */
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   Container,
   SectionHeading,
@@ -235,6 +236,16 @@ export function NearbyResilienceSection() {
             <p className="mt-5 text-xs leading-relaxed text-cloak-text-muted">The Local Relay is not currently available. No purchase or availability claims are being made.</p>
           </Surface>
         </div>
+        <figure className="mt-6 overflow-hidden rounded-2xl border border-cloak-border bg-cloak-bg">
+          <Image
+            src="/Cloak Dagger Local Relay Product Showcase.png"
+            alt="Cloak Dagger Local Relay product showcase"
+            width={1448}
+            height={1086}
+            sizes="(max-width: 768px) 100vw, 1200px"
+            className="h-auto w-full"
+          />
+        </figure>
       </Container>
     </section>
   );

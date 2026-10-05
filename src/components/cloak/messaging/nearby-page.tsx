@@ -213,7 +213,7 @@ export function NearbyPage() {
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-cloak-gold/25 bg-cloak-gold-soft/20 text-cloak-gold"><WifiIcon size={21} /></span>
             <div>
               <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-cloak-gold">Nearby</p>
-              <h1 className="cloak-display mt-1 text-3xl font-medium text-cloak-text">Cloak Dagger Nearby</h1>
+              <h1 className="cloak-display mt-1 text-3xl font-medium text-cloak-text">Stay connected when the internet is unavailable.</h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-cloak-text-secondary">Connect verified people in an existing conversation over the same Wi-Fi or phone hotspot. For groups, create a separate direct connection to each member who is nearby.</p>
             </div>
           </div>
