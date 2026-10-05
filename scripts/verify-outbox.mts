@@ -288,8 +288,8 @@ check(
   true
 );
 check(
-  "re-painted pending sends carry the 'queued' status",
-  /status:\s*"queued" as MessageStatus/.test(hydrateBlock),
+  "re-painted sends retain queued or Nearby-delivered state",
+  /status:\s*entry\.nearbyDelivered\s*\?\s*"delivered" as MessageStatus\s*:\s*"queued" as MessageStatus/.test(hydrateBlock),
   true
 );
 check(

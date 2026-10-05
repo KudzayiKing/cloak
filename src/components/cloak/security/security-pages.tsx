@@ -19,7 +19,7 @@ import {
 import { AIModelCard } from "@/components/cloak/intelligence/model-install-card";
 import { cn } from "@/lib/utils";
 import { navigate } from "@/hooks/use-hash-route";
-import { BRAND } from "@/lib/cloak/config";
+import { BRAND, NEARBY_MESSAGING_ENABLED } from "@/lib/cloak/config";
 import {
   ShieldCheckIcon,
   LockIcon,
@@ -338,6 +338,16 @@ export function SecurityCentrePage() {
           <div className="mb-6">
             <CloakModeToggle />
           </div>
+
+          <Surface className="mb-6 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-cloak-text">Nearby Communication</p>
+                <p className="mt-1 text-xs text-cloak-text-secondary">{NEARBY_MESSAGING_ENABLED ? "Beta enabled · manual session only" : "Off · not enabled for this release"}</p>
+              </div>
+              <Button variant="outline" className="border-cloak-border text-cloak-text" onClick={() => navigate("/app/nearby")}>Details</Button>
+            </div>
+          </Surface>
 
           {/* Rows */}
           <div className="space-y-2.5">

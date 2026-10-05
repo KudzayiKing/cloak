@@ -26,6 +26,7 @@ import {
   InstallSection,
   FAQSection,
   ClosingCTA,
+  NearbyResilienceSection,
 } from "./home-sections-b";
 
 export function HomePage() {
@@ -39,6 +40,7 @@ export function HomePage() {
       <DaggerSection />
       <IntelligenceSection />
       <SecurityEvidenceSection />
+      <NearbyResilienceSection />
       <IdentitySection />
       <GhostChatsSection />
       <MembershipSection />

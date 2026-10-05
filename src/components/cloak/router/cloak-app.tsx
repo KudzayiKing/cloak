@@ -31,6 +31,7 @@ import { AdvisersPage } from "@/components/cloak/marketing/advisers-page";
 import { PartnersPage } from "@/components/cloak/marketing/partners-page";
 import { AboutPage } from "@/components/cloak/marketing/about-page";
 import { MessagesPage } from "@/components/cloak/messaging/messages-page";
+import { NearbyPage } from "@/components/cloak/messaging/nearby-page";
 import { IntelligencePage } from "@/components/cloak/intelligence/intelligence-page";
 import { ContactsPage } from "@/components/cloak/contacts/contacts-page";
 import { CirclesPage } from "@/components/cloak/circles/circles-page";
@@ -47,7 +48,7 @@ import { navigate } from "@/hooks/use-hash-route";
 import { useCloakStore } from "@/stores/cloak-store";
 import { LoaderCircleIcon } from "@animateicons/react/lucide";
 
-const APP_SEGMENTS = ["messages", "intelligence", "contacts", "circles", "security", "settings"];
+const APP_SEGMENTS = ["messages", "intelligence", "contacts", "circles", "security", "settings", "nearby"];
 
 const KNOWN_MARKETING = [
   "/",
@@ -167,6 +168,8 @@ export function CloakApp({ route }: { route: RouteInfo }) {
     switch (segments[1]) {
       case "messages":
         return <MessagesPage />;
+      case "nearby":
+        return <NearbyPage />;
       case "circles":
         return segments[2] ? <CirclePage circleId={segments[2]} /> : <CirclesPage />;
       case "intelligence":

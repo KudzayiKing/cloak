@@ -24,6 +24,7 @@ node_modules
 !/scripts/verify-pwa-update.mts
 !/scripts/verify-theme-and-icons.mts
 !/scripts/verify-outbox.mts
+!/scripts/verify-nearby-transport.mts
 !/scripts/verify-account-lifecycle.mts
 # Operator-overview guard: asserts the metrics module reads no graph table and
 # performs no mutation, and that authorization is decided before any aggregate.

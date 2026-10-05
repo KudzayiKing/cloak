@@ -14,7 +14,7 @@
  *   see tagFor/targetUrlFor below.
  */
 
-const VERSION = "cloak-shell-v48";
+const VERSION = "cloak-shell-v49";
 const SHELL_CACHE = `cloak-shell-${VERSION}`;
 const STATIC_CACHE = `cloak-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -24,6 +24,10 @@ self.addEventListener("install", (event) => {
     (async () => {
       const cache = await caches.open(SHELL_CACHE);
       await cache.addAll([OFFLINE_URL, "/icons/icon.svg"]);
+      // The public root is the client-rendered Cloak shell. Cache that safe
+      // application frame so an installed PWA can reopen its cached bundles
+      // offline. Conversation content and /api responses remain uncached.
+      try { await cache.add("/"); } catch { /* offline fallback remains available */ }
       /* Deliberately NO self.skipWaiting() here.
        *
        * A new worker must park in `waiting` so the app keeps running the bundle
@@ -121,7 +125,8 @@ self.addEventListener("fetch", (event) => {
           return await fetch(request);
         } catch {
           const cache = await caches.open(SHELL_CACHE);
-          return (await cache.match(OFFLINE_URL)) || Response.error();
+          const appShell = url.pathname === "/" ? await cache.match("/") : null;
+          return appShell || (await cache.match(OFFLINE_URL)) || Response.error();
         }
       })()
     );

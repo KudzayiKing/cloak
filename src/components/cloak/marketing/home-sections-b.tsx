@@ -208,6 +208,38 @@ export function SecurityEvidenceSection() {
   );
 }
 
+/** Nearby beta copy stays explicit about its currently supported scope. */
+export function NearbyResilienceSection() {
+  return (
+    <section className="border-y border-cloak-border bg-cloak-bg-elevated/35 py-20 md:py-24">
+      <Container>
+        <SectionHeading
+          eyebrow="Communication resilience · beta"
+          title="Stay connected when the internet is unavailable."
+          lead="Cloak Dagger Nearby beta lets trusted users share encrypted text over a local Wi-Fi network or phone hotspot. It uses direct peer connections and Cloak Dagger’s existing end-to-end encryption."
+        />
+        <div className="grid gap-4 md:grid-cols-2">
+          <Surface className="p-6">
+            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-cloak-gold">Cloak Dagger Nearby</p>
+            <h3 className="mt-3 text-xl font-medium text-cloak-text">A local route for trusted teams.</h3>
+            <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">Designed for travel, remote operations, executive protection, network outages and private sites. Everyone must share the same local Wi-Fi or hotspot; this does not provide unlimited range.</p>
+            <ul className="mt-5 grid gap-2 text-sm text-cloak-text-secondary">
+              {["Shared local Wi-Fi or phone hotspot", "Normal internet access is not required for the local route", "Message content remains protected by Cloak Dagger E2EE", "Internet synchronization and delivery recovery are included in the beta; current scope is trusted one-to-one text chats"].map((item) => <li key={item} className="flex items-start gap-2"><span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-cloak-gold" />{item}</li>)}
+            </ul>
+            <Button variant="outline" className="mt-6 border-cloak-border text-cloak-text" onClick={() => navigateToSection("/security", "nearby-communication")}>Learn about Nearby</Button>
+          </Surface>
+          <Surface className="p-6">
+            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-cloak-text-muted">Coming later</p>
+            <h3 className="mt-3 text-xl font-medium text-cloak-text">Cloak Dagger Local Relay</h3>
+            <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">A dedicated local communications layer being explored for executive protection, remote operations, private sites and high-assurance deployments. Local communication is designed to continue when external networks are unavailable.</p>
+            <p className="mt-5 text-xs leading-relaxed text-cloak-text-muted">The Local Relay is not currently available. No purchase or availability claims are being made.</p>
+          </Surface>
+        </div>
+      </Container>
+    </section>
+  );
+}
+
 /* B. Identity (review spec §47, §48) --------------------------------------- */
 
 const IDENTITY_FEATURES: { icon: typeof QrCodeIcon; title: string; body: string }[] = [

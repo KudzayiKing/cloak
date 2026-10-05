@@ -24,6 +24,7 @@ import {
   KeyRoundIcon,
   ChevronUpIcon,
   LoaderCircleIcon,
+  WifiIcon,
 } from "@animateicons/react/lucide";
 import { GhostGlyph } from "@/components/cloak/shared/ghost-icon";
 import { CloakMark } from "@/components/cloak/brand/CloakLogo";
@@ -31,6 +32,7 @@ import { navigate } from "@/hooks/use-hash-route";
 import { Button } from "@/components/ui/button";
 import { initialsOf } from "@/lib/cloak/utils";
 import { CALLS_ENABLED, ORCHESTRATOR_TRIGGER } from "@/lib/cloak/config";
+import { nearbyState, subscribeNearby, type NearbyState } from "@/lib/cloak/transports";
 
 export function ConversationView({
   onOpenSecurityPanel,
@@ -72,6 +74,9 @@ export function ConversationView({
   const [scrollerEl, setScrollerEl] = useState<HTMLDivElement | null>(null);
   const [unlocked, setUnlocked] = useState<Record<string, boolean>>({});
   const [cloakPending, setCloakPending] = useState(false);
+  const [nearby, setNearby] = useState<NearbyState>(nearbyState());
+
+  useEffect(() => subscribeNearby(setNearby), []);
 
   /* Scroll anchoring (history pagination): auto-scroll to the bottom ONLY
      when the conversation switches or a NEW message arrives (last id
@@ -328,9 +333,15 @@ export function ConversationView({
                 ? `${contact?.cloakId} · verified`
                 : contact?.cloakId}
           </p>
+          {nearby.status === "connected" && nearby.conversationId === conversation.id && (
+            <p className="mt-0.5 flex items-center gap-1 text-[10px] text-cloak-gold">
+              <WifiIcon size={10} /> Nearby · Encrypted directly
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-0.5">
+          <HeaderAction label="Cloak Dagger Nearby" icon={WifiIcon} onClick={() => navigate("/app/nearby")} />
           {/* Hidden while calls are deferred — see CALLS_ENABLED. */}
           {CALLS_ENABLED && (
             <>

@@ -25,6 +25,8 @@
 import {
   generateConversationKeyRaw,
   generateIdentityKeyPair,
+  importPrivateKey,
+  importPublicKey,
   identityFingerprint,
   unwrapConversationKeyFrom,
   unwrapIdentityWithPassphrase,
@@ -179,6 +181,70 @@ export async function myIdentityInfo(userId: string): Promise<IdentityInfo | nul
   };
 }
 
+/**
+ * Prove possession of the existing account ECDH identity key to a peer who
+ * already knows its public key. This is a handshake proof only; it does not
+ * derive or replace any conversation key.
+ */
+export async function createNearbyIdentityProof(
+  localUserId: string,
+  peerPublicKeyB64: string,
+  sessionId: string,
+  transcript: string
+): Promise<string | null> {
+  const local = identity?.userId === localUserId ? identity : readJson<LocalIdentity>(LS_IDENTITY(localUserId));
+  if (!local?.privateJwk) return null;
+  try {
+    const shared = await crypto.subtle.deriveBits(
+      { name: "ECDH", public: await importPublicKey(peerPublicKeyB64) },
+      await importPrivateKey(local.privateJwk),
+      256
+    );
+    const key = await crypto.subtle.importKey("raw", shared, "HKDF", false, ["deriveKey"]);
+    const proofKey = await crypto.subtle.deriveKey(
+      { name: "HKDF", hash: "SHA-256", salt: new TextEncoder().encode(sessionId), info: new TextEncoder().encode("cloak/nearby/identity-proof/v1") },
+      key,
+      { name: "HMAC", hash: "SHA-256", length: 256 },
+      false,
+      ["sign", "verify"]
+    );
+    const signature = new Uint8Array(await crypto.subtle.sign("HMAC", proofKey, new TextEncoder().encode(transcript)));
+    return btoa(String.fromCharCode(...signature));
+  } catch {
+    return null;
+  }
+}
+
+export async function verifyNearbyIdentityProof(
+  localUserId: string,
+  peerPublicKeyB64: string,
+  sessionId: string,
+  transcript: string,
+  proofB64: string
+): Promise<boolean> {
+  const local = identity?.userId === localUserId ? identity : readJson<LocalIdentity>(LS_IDENTITY(localUserId));
+  if (!local?.privateJwk) return false;
+  try {
+    const shared = await crypto.subtle.deriveBits(
+      { name: "ECDH", public: await importPublicKey(peerPublicKeyB64) },
+      await importPrivateKey(local.privateJwk),
+      256
+    );
+    const key = await crypto.subtle.importKey("raw", shared, "HKDF", false, ["deriveKey"]);
+    const proofKey = await crypto.subtle.deriveKey(
+      { name: "HKDF", hash: "SHA-256", salt: new TextEncoder().encode(sessionId), info: new TextEncoder().encode("cloak/nearby/identity-proof/v1") },
+      key,
+      { name: "HMAC", hash: "SHA-256", length: 256 },
+      false,
+      ["sign", "verify"]
+    );
+    const bytes = Uint8Array.from(atob(proofB64), (char) => char.charCodeAt(0));
+    return await crypto.subtle.verify("HMAC", proofKey, bytes, new TextEncoder().encode(transcript));
+  } catch {
+    return false;
+  }
+}
+
 export function currentKeyVersion(conversationId: string): number {
   return currentVersions[conversationId] ?? 0;
 }
@@ -227,17 +293,22 @@ export async function waitForConversationKey(
 /* ---------- identity lifecycle ---------- */
 
 async function api<T>(path: string, init?: RequestInit): Promise<T | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8_000);
   try {
     const res = await fetch(path, {
       ...init,
       headers: init?.body ? { "Content-Type": "application/json" } : undefined,
       cache: "no-store",
+      signal: init?.signal ?? controller.signal,
     });
     const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok || json.ok !== true) return null;
     return json as T;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

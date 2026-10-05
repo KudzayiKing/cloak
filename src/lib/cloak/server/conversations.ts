@@ -28,6 +28,7 @@ export async function purgeExpiredMessages() {
 
 export interface ServerMessagePayload {
   id: string;
+  clientKey?: string | null;
   conversationId: string;
   authorId: string;
   kind: string;
@@ -47,6 +48,8 @@ export interface ServerConversationPayload {
   groupName?: string;
   groupDescription?: string;
   memberCount?: number;
+  /** Active group members only; used for cached offline authorization. */
+  groupMemberIds?: string[];
   myRole?: GroupRole;
   /** Circle association (circles spec §53): set when this group belongs to
    *  a Cloak Dagger Circle. The circle surface + group header show it. */
@@ -95,6 +98,7 @@ type ParticipationRow = {
 
 type MessageRow = {
   id: string;
+  clientKey?: string | null;
   conversationId: string;
   authorId: string | null;
   kind: string;
@@ -154,6 +158,7 @@ export function mapMessage(
   }
   return {
     id: m.id,
+    clientKey: m.clientKey,
     conversationId: m.conversationId,
     authorId: mine ? "me" : (m.authorId ?? "system"),
     kind: m.kind,
@@ -236,6 +241,7 @@ export function mapConversation(
     groupName: conv.title ?? undefined,
     groupDescription: conv.description ?? undefined,
     memberCount: conv.isGroup ? active.length : undefined,
+    groupMemberIds: conv.isGroup ? active.map((member) => member.userId) : undefined,
     myRole: conv.isGroup ? roleOf(mine?.role) : undefined,
     circleId: conv.circleId ?? undefined,
     circleName: conv.circle?.name,

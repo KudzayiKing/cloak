@@ -36,7 +36,7 @@ import {
 import { cn } from "@/lib/utils";
 import { navigate } from "@/hooks/use-hash-route";
 import type { AIProcessingPreference, PreviewVisibility } from "@/lib/cloak/types";
-import { BRAND, MODEL_MANIFEST } from "@/lib/cloak/config";
+import { BRAND, MODEL_MANIFEST, NEARBY_MESSAGING_ENABLED } from "@/lib/cloak/config";
 import { TRANSLATION_LANGUAGES } from "@/lib/cloak/translation-languages";
 import { DEFAULT_CLOAK_THEME, type CloakTheme } from "@/lib/cloak/theme";
 import {
@@ -893,6 +893,18 @@ function PrivacySection() {
   return (
     <>
       <CloakModeToggle />
+      <Surface className="p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="max-w-lg">
+            <h2 className="text-sm font-semibold text-cloak-text">Nearby Communication</h2>
+            <p className="mt-1 text-[13px] leading-relaxed text-cloak-text-secondary">Connect with a trusted user over the same local Wi-Fi or hotspot. Nearby starts only when you open it; the app does not broadcast your identity.</p>
+          </div>
+          <Button variant="outline" className="border-cloak-border text-cloak-text" onClick={() => navigate("/app/nearby")}>
+            {NEARBY_MESSAGING_ENABLED ? "Open Nearby" : "View Nearby beta"}
+          </Button>
+        </div>
+        <p className="mt-4 border-t border-cloak-border pt-3 text-xs leading-relaxed text-cloak-text-muted">Using a local hotspot does not make its owner a member of your conversations. Nearby supports text in verified one-to-one chats and groups; group messages go only to connected, verified members and may be partially delivered until internet synchronization.</p>
+      </Surface>
       <Surface className="p-5">
         <h2 className="mb-4 text-sm font-semibold text-cloak-text">Activity</h2>
         <div className="divide-y divide-cloak-border">

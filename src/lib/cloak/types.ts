@@ -150,6 +150,8 @@ export interface Contact {
   blocked?: boolean;
   /** ISO date the identity was safety-number verified, when verified. */
   verifiedAt?: string;
+  /** Public E2EE identity key published in the trusted contact directory. */
+  identityPublicKey?: string | null;
 }
 
 /* ---------- Messaging (spec §17, §18, §24) ---------- */
@@ -202,6 +204,8 @@ export interface AIProcessingDetails {
 
 export interface Message {
   id: string;
+  /** Database identifier used by server-side message actions when available. */
+  serverId?: string;
   conversationId: string;
   authorId: string; // "me" for outgoing, member id, or "cloak"
   kind: MessageKind;
@@ -248,6 +252,13 @@ export interface Message {
   /** For AI answers: where and how processing happened. */
   ai?: AIProcessingDetails;
   reactions?: MessageReactionSummary[];
+  deliveryRoute?: "internet" | "nearby";
+  /** The recipient received this over Nearby; server synchronization is pending. */
+  syncPending?: boolean;
+  /** Group member accounts that acknowledged direct Nearby delivery. */
+  nearbyDeliveredTo?: string[];
+  /** Number of other active group members at the cached membership snapshot. */
+  nearbyRecipientCount?: number;
 }
 
 export interface MessageReactionSummary {
@@ -259,6 +270,9 @@ export interface MessageReactionSummary {
 export interface Conversation {
   id: string;
   contactId: string;
+  /** Cached identity anchor for this existing 1:1 peer; groups leave it empty. */
+  peerIdentityPublicKey?: string | null;
+  peerVerification?: ContactVerification;
   isGroup?: boolean;
   groupName?: string;
   groupDescription?: string;

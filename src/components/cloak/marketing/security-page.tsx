@@ -142,6 +142,7 @@ export function SecurityPage() {
               {[
                 ["Threat model", "threat-model"],
                 ["Encryption", "encryption"],
+                ["Nearby communication", "nearby-communication"],
                 ["Dagger", "dagger"],
                 ["Groups & Circles", "circles"],
                 ["Audit status", "audit"],
@@ -158,6 +159,30 @@ export function SecurityPage() {
               ))}
             </nav>
           </div>
+        </Container>
+      </section>
+
+      {/* Nearby communications boundaries */}
+      <section id="nearby-communication" className="scroll-mt-20 border-y border-cloak-border bg-cloak-bg-elevated/35 py-20 md:py-24">
+        <Container>
+          <SectionHeading
+            eyebrow="Nearby communication · beta"
+            title="A local network is a transport, not a trust boundary."
+            lead="Cloak Dagger Nearby beta supports text messaging between existing one-to-one contacts over a shared local Wi-Fi network or hotspot. The local network does not grant conversation access."
+          />
+          <div className="grid gap-4 md:grid-cols-2">
+            <Surface className="p-6">
+              <h3 className="text-base font-medium text-cloak-text">What the design protects</h3>
+              <p className="mt-2 text-sm leading-relaxed text-cloak-text-secondary">Text is encrypted with the existing conversation key before the peer transport receives it. Peer transport encryption is an additional layer, not a replacement for Cloak Dagger E2EE. Local Wi-Fi does not determine who is trusted or authorized.</p>
+            </Surface>
+            <Surface className="p-6">
+              <h3 className="text-base font-medium text-cloak-text">Local-network risks</h3>
+              <ul className="mt-3 space-y-2 text-sm leading-relaxed text-cloak-text-secondary">
+                {["A hostile hotspot owner or another user on the same LAN may observe or disrupt traffic.", "Attackers may attempt replay or peer impersonation; identity and conversation authorization must remain authoritative.", "Short-lived QR setup data can be copied before it expires; expired or mismatched codes must be rejected.", "A lost or compromised device can still expose information already available to that device.", "A device offline during a remote revocation cannot know about that revocation until it receives authenticated state.", "Nearby requires everyone to share a local network and does not provide unlimited range or multi-hop routing."].map((item) => <li key={item} className="flex items-start gap-2"><span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-cloak-warning" />{item}</li>)}
+              </ul>
+            </Surface>
+          </div>
+          <p className="mt-5 text-xs leading-relaxed text-cloak-text-muted">Nearby is feature-flagged for beta testing. It supports verified one-to-one and group text; group messages are sent to connected members and may be partially delivered until internet synchronization. Reactions and attachments are not available over Nearby. Physical-device testing is required before general release, and a membership removal cannot reach a device while it is offline.</p>
         </Container>
       </section>
 

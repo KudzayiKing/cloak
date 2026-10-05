@@ -22,6 +22,9 @@
  * display AND internal type ("reserve"). The old "black" vocabulary is fully
  * retired; no persisted client state ever depended on it.
  */
+/** Nearby is explicitly opt-in at deploy time while the direct transport is in beta. */
+export const NEARBY_MESSAGING_ENABLED = process.env.NEXT_PUBLIC_NEARBY_MESSAGING_ENABLED === "true";
+
 export const MEMBERSHIP_NAMES = {
   private: "Cloak Dagger Private",
   reserve: "Cloak Dagger Reserve",

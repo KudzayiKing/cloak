@@ -71,6 +71,9 @@ export interface OutboxRow {
   /** FIFO order within the conversation. */
   queuedAt: number;
   attempts: number;
+  nearbyDelivered?: boolean;
+  nearbyDeliveredTo?: string[];
+  nearbyRecipientCount?: number;
   lastAttemptAt?: number;
 }
 
@@ -211,6 +214,23 @@ export async function updateOutboxBody(id: string, plaintext: string): Promise<b
     return true;
   } catch {
     return false;
+  }
+}
+
+export async function markOutboxNearbyDelivered(id: string, details?: { deliveredTo?: string[]; recipientCount?: number }): Promise<void> {
+  const ownerUserId = currentVaultUserId();
+  if (!ownerUserId) return;
+  try {
+    const row = await withStore<OutboxRow | undefined>(STORE_OUTBOX, "readonly", (store) => store.get(id));
+    if (!row || row.ownerUserId !== ownerUserId) return;
+    await withStore(STORE_OUTBOX, "readwrite", (store) => store.put({
+      ...row,
+      nearbyDelivered: true,
+      ...(details?.deliveredTo ? { nearbyDeliveredTo: details.deliveredTo } : {}),
+      ...(details?.recipientCount !== undefined ? { nearbyRecipientCount: details.recipientCount } : {}),
+    }));
+  } catch {
+    /* Best effort; the message remains safely queued for server sync. */
   }
 }
 

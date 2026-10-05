@@ -23,6 +23,7 @@
 import { create } from "zustand";
 import { wipeKeyringMemory } from "@/lib/crypto/e2ee-orchestrator";
 import { wipeVaultMemory } from "@/lib/crypto/local-vault";
+import { closeNearby } from "@/lib/cloak/transports";
 
 /* ---------- capability / result types (codex §29/§31) ---------- */
 
@@ -150,6 +151,8 @@ export function deviceIdentity(): DeviceIdentity {
  *  a remote-wipe pickup may still need it; the full storage clear below
  *  removes it as part of the private-data phase.) */
 export async function destroyCryptoKeys(): Promise<void> {
+  // Tear down local peer channels before removing keys and session state.
+  closeNearby();
   try {
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i);

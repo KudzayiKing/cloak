@@ -36,6 +36,7 @@ import { setVaultUser, forgetVaultKey } from "@/lib/crypto/local-vault";
 import { clearLocalCacheForOwner, ensurePersistentStorage } from "@/lib/cloak/local-db";
 import {
   cachedRowToMessage,
+  cacheNearbyMessage,
   cacheMessages,
   forgetCachedSignatures,
   loadCachedMessages,
@@ -68,6 +69,7 @@ import {
   deleteOutboxEntry,
   enqueueOutbox,
   listOutbox,
+  markOutboxNearbyDelivered,
   updateOutboxBody,
   type OutboxEntry,
 } from "@/lib/cloak/outbox";
@@ -88,6 +90,12 @@ import {
   waitForConversationKey,
   type IdentityStatus,
 } from "@/lib/crypto/e2ee-orchestrator";
+import {
+  acknowledgeNearbyEnvelope,
+  nearbyState,
+  subscribeNearbyEnvelopes,
+  transportManager,
+} from "@/lib/cloak/transports";
 
 /** Forward-secrecy window options (Security centre) -> milliseconds. */
 export const FS_WINDOW_MS: Record<string, number> = {
@@ -181,6 +189,7 @@ export interface AuthUser {
 /** Payload shapes returned by /api/auth/* and /api/conversations*. */
 export interface ServerMessage {
   id: string;
+  clientKey?: string | null;
   conversationId: string;
   authorId: string;
   kind: string;
@@ -200,6 +209,7 @@ export interface ServerConversation {
   groupName?: string;
   groupDescription?: string;
   memberCount?: number;
+  groupMemberIds?: string[];
   myRole?: "owner" | "admin" | "member";
   /** Circle association (circles spec §53). */
   circleId?: string;
@@ -226,6 +236,7 @@ export interface ServerContact {
   avatarInitials: string;
   verification: "verified" | "unverified" | "pending";
   about?: string;
+  identityPublicKey?: string | null;
 }
 
 /* ---------- Groups (groups & circles spec §6-§10) ---------- */
@@ -376,6 +387,7 @@ type SendOutcome =
       transferFailed?: boolean;
     }
   | { kind: "retryable"; reason: string }
+  | { kind: "nearby"; message: Message }
   | { kind: "permanent"; reason: string };
 
 /**
@@ -413,19 +425,28 @@ async function postOutgoingMessage(params: {
   attachmentId?: string;
   myUserId: string;
   forwardSecrecy: string;
+  createdAt?: number;
+  skipNearby?: boolean;
 }): Promise<SendOutcome> {
   const { conversationId, clientKey, kind, attachmentId, myUserId, forwardSecrecy } = params;
   let plaintext = params.plaintext;
 
-  await syncConversationKeys(conversationId, myUserId);
-  let readyKey = await waitForConversationKey(conversationId, 2500);
-  if (!readyKey) {
+  const offline = typeof navigator !== "undefined" && !navigator.onLine;
+  const nearbyAtStart = nearbyState();
+  const localConversationActive = nearbyAtStart.status === "connected" && nearbyAtStart.conversationId === conversationId;
+  const networkMaintenanceAvailable = !offline && !localConversationActive;
+  /* Never wait on the key-directory API while offline. The PWA can send only
+     when this device already has the conversation key; otherwise it safely
+     keeps the vault-sealed plaintext in the normal outbox. */
+  if (networkMaintenanceAvailable) await syncConversationKeys(conversationId, myUserId);
+  let readyKey = await waitForConversationKey(conversationId, networkMaintenanceAvailable ? 2500 : 300);
+  if (!readyKey && networkMaintenanceAvailable) {
     await syncConversationKeys(conversationId, myUserId);
     readyKey = await waitForConversationKey(conversationId, 1500);
   }
   /* Rotate an over-aged version BEFORE encrypting, so this message lands under
      a fresh root rather than one the window is about to retire. */
-  if (forwardSecrecy !== "off") {
+  if (networkMaintenanceAvailable && forwardSecrecy !== "off") {
     const windowMs = FS_WINDOW_MS[forwardSecrecy];
     if (windowMs) await maybeRotateForAge(conversationId, myUserId, windowMs / 2);
   }
@@ -476,11 +497,88 @@ async function postOutgoingMessage(params: {
   const encrypted = await encryptBody(conversationId, plaintext, kind, myUserId);
   if (!encrypted) return { kind: "retryable", reason: "no_conversation_key" };
 
+  const tryNearby = async (): Promise<SendOutcome | null> => {
+    const nearby = nearbyState();
+    const nearbyConversation = useCloakStore.getState().conversations.find((item) => item.id === conversationId);
+    const nearbyStateSnapshot = useCloakStore.getState();
+    const blockedIds = new Set(nearbyStateSnapshot.blockedUsers.map((entry) => entry.userId));
+    const connectedPeerIds = new Set((nearby.connectedPeers ?? [])
+      .filter((peer) => peer.conversationId === conversationId)
+      .map((peer) => peer.userId));
+    const memberIds = nearbyConversation?.isGroup ? nearbyConversation.groupMemberIds : undefined;
+    const authorizedRecipientIds = nearbyConversation?.isGroup
+      ? (memberIds ?? []).filter((userId) => userId !== myUserId && connectedPeerIds.has(userId) && !blockedIds.has(userId))
+      : nearbyConversation?.contactId && connectedPeerIds.has(nearbyConversation.contactId) && !blockedIds.has(nearbyConversation.contactId)
+        ? [nearbyConversation.contactId]
+        : [];
+    if (
+      params.skipNearby ||
+      kind !== "text" ||
+      !nearbyConversation ||
+      !connectedPeerIds.size ||
+      !authorizedRecipientIds.length ||
+      nearbyConversation.ghost ||
+      (nearbyConversation.isGroup
+        ? !memberIds?.includes(myUserId)
+        : nearbyConversation.peerVerification !== "verified" || !nearbyConversation.peerIdentityPublicKey)
+    ) return null;
+    const queued = await enqueueOutbox({ id: clientKey, conversationId, kind, plaintext, createdAt: params.createdAt });
+    if (!queued.ok) return null;
+    const delivery = await transportManager.deliver({
+      id: clientKey,
+      conversationId,
+      senderUserId: myUserId,
+      createdAt: params.createdAt ?? Date.now(),
+      kind,
+      ciphertext: encrypted,
+      recipientUserIds: authorizedRecipientIds,
+    });
+    const delivered = delivery?.transport === "nearby" && delivery.accepted && delivery.delivered;
+    if (delivered) {
+      await markOutboxNearbyDelivered(clientKey, nearbyConversation.isGroup ? {
+        deliveredTo: delivery.deliveredUserIds ?? [],
+        recipientCount: Math.max(0, (memberIds?.length ?? 0) - 1),
+      } : undefined);
+      return {
+        kind: "nearby",
+        message: {
+          id: clientKey,
+          conversationId,
+          authorId: "me",
+          kind,
+          body: params.plaintext,
+          createdAt: params.createdAt ?? Date.now(),
+          status: "delivered",
+          deliveryRoute: "nearby",
+          syncPending: true,
+          ...(nearbyConversation.isGroup ? {
+            nearbyDeliveredTo: delivery.deliveredUserIds ?? [],
+            nearbyRecipientCount: Math.max(0, (memberIds?.length ?? 0) - 1),
+          } : {}),
+        },
+      };
+    }
+    return null;
+  };
+
+  /* navigator.onLine describes the local interface, not internet reachability.
+     On a hotspot with no upstream it may still be true, so try the server route
+     with a short bound and then use Nearby after a retryable network failure. */
+  if (offline) {
+    const nearbyOutcome = await tryNearby();
+    if (nearbyOutcome) return nearbyOutcome;
+    return { kind: "retryable", reason: "offline" };
+  }
+
   const res = await api<{ message: ServerMessage; replayed?: boolean }>(
     `/api/conversations/${conversationId}/messages`,
-    { method: "POST", body: JSON.stringify({ body: encrypted, kind, clientKey }) }
+    { method: "POST", body: JSON.stringify({ body: encrypted, kind, clientKey }), signal: timeoutSignal(5_000) }
   );
   if (!res.ok) {
+    if (classifySendFailure(res.status) === "retryable") {
+      const nearbyOutcome = await tryNearby();
+      if (nearbyOutcome) return nearbyOutcome;
+    }
     return { kind: classifySendFailure(res.status), reason: res.error ?? "send_failed" };
   }
 
@@ -491,7 +589,8 @@ async function postOutgoingMessage(params: {
 
 function toClientMessage(m: ServerMessage): Message {
   return hydrateAttachmentMessage({
-    id: m.id,
+    id: m.clientKey || m.id,
+    serverId: m.id,
     conversationId: m.conversationId,
     authorId: m.authorId,
     kind: m.kind as MessageKind,
@@ -503,6 +602,21 @@ function toClientMessage(m: ServerMessage): Message {
     disappearsAfter: m.expiresAt ? "custom" : undefined,
     reactions: m.reactions ?? [],
   });
+}
+
+/** Keep the local route label after the server accepts a Nearby-delivered
+ * message. The server stores the same logical event but does not track which
+ * path delivered it first. */
+function retainNearbyRoute(message: Message, previous?: Message): Message {
+  return previous?.deliveryRoute === "nearby"
+    ? {
+        ...message,
+        deliveryRoute: "nearby",
+        syncPending: false,
+        ...(previous.nearbyDeliveredTo ? { nearbyDeliveredTo: previous.nearbyDeliveredTo } : {}),
+        ...(previous.nearbyRecipientCount !== undefined ? { nearbyRecipientCount: previous.nearbyRecipientCount } : {}),
+      }
+    : message;
 }
 
 function hydrateAttachmentMessage(message: Message): Message {
@@ -567,6 +681,7 @@ function toClientConversation(c: ServerConversation): Conversation {
     groupName: c.groupName,
     groupDescription: c.groupDescription,
     memberCount: c.memberCount,
+    groupMemberIds: c.groupMemberIds,
     myRole: c.myRole,
     circleId: c.circleId,
     circleName: c.circleName,
@@ -1368,9 +1483,17 @@ export const useCloakStore = create<CloakState>()(
       hydrateServerData: async (contacts, conversations) => {
         const currentActive = get().activeConversationId;
         const myUserId = get().auth.user?.id;
-        const clientConvs = await Promise.all(
+        const rawClientConvs = await Promise.all(
           conversations.map((c) => toClientConversationAsync(c, myUserId))
         );
+        const clientConvs = rawClientConvs.map((conversation) => {
+          const contact = contacts.find((candidate) => candidate.id === conversation.contactId);
+          return {
+            ...conversation,
+            peerIdentityPublicKey: contact?.identityPublicKey ?? null,
+            peerVerification: contact?.verification,
+          };
+        });
 
         /* MERGE over anything already on screen from the local cache. The server
            window is authoritative for the rows it contains, but it is capped
@@ -1381,7 +1504,7 @@ export const useCloakStore = create<CloakState>()(
           const existing = existingById.get(client.id);
           if (!existing?.messages.length) return client;
           const byId = new Map(existing.messages.map((m) => [m.id, m]));
-          for (const m of client.messages) byId.set(m.id, m);
+          for (const m of client.messages) byId.set(m.id, retainNearbyRoute(m, byId.get(m.id)));
           const messages = [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);
           return { ...client, messages };
         });
@@ -1429,7 +1552,13 @@ export const useCloakStore = create<CloakState>()(
             authorId: "me",
             kind: entry.kind,
             createdAt: entry.createdAt,
-            status: "queued" as MessageStatus,
+            status: entry.nearbyDelivered ? "delivered" as MessageStatus : "queued" as MessageStatus,
+            ...(entry.nearbyDelivered ? {
+              deliveryRoute: "nearby" as const,
+              syncPending: true,
+              ...(entry.nearbyDeliveredTo ? { nearbyDeliveredTo: entry.nearbyDeliveredTo } : {}),
+              ...(entry.nearbyRecipientCount !== undefined ? { nearbyRecipientCount: entry.nearbyRecipientCount } : {}),
+            } : {}),
           };
           const message = envelope
             ? attachmentMessageFromEnvelope(base, envelope)
@@ -1463,9 +1592,17 @@ export const useCloakStore = create<CloakState>()(
       },
       mergeConversationList: async (activeId, contacts, conversations) => {
         const myUserId = get().auth.user?.id;
-        const mapped = await Promise.all(
+        const rawMapped = await Promise.all(
           conversations.map((c) => toClientConversationAsync(c, myUserId))
         );
+        const mapped = rawMapped.map((conversation) => {
+          const contact = contacts.find((candidate) => candidate.id === conversation.contactId);
+          return {
+            ...conversation,
+            peerIdentityPublicKey: contact?.identityPublicKey ?? null,
+            peerVerification: contact?.verification,
+          };
+        });
         set((s) => {
           const next = [...s.conversations];
           for (let i = 0; i < mapped.length; i++) {
@@ -1478,13 +1615,17 @@ export const useCloakStore = create<CloakState>()(
               continue;
             }
             const existing = next[idx]!;
+            const mergedPreview = preview.map((message) => retainNearbyRoute(
+              message,
+              existing.messages.find((cached) => cached.id === message.id)
+            ));
             /* The open conversation owns its own message list (full sync);
                never show unread on the row the user is looking at. */
             const unread = existing.id === activeId ? 0 : server.unreadCount;
             if (existing.messages.length > preview.length) {
               /* Local history is richer — merge the preview in by id. */
               const merged = [...existing.messages];
-              for (const pm of preview) {
+              for (const pm of mergedPreview) {
                 const at = merged.findIndex((m) => m.id === pm.id);
                 if (at >= 0) merged[at] = pm;
                 else merged.push(pm);
@@ -1501,7 +1642,7 @@ export const useCloakStore = create<CloakState>()(
                 ...existing,
                 unreadCount: unread,
                 historyPolicy: client.historyPolicy ?? existing.historyPolicy,
-                messages: preview,
+                messages: mergedPreview,
               };
             }
           }
@@ -1521,7 +1662,11 @@ export const useCloakStore = create<CloakState>()(
         set((s) => ({
           conversations: s.conversations.map((c) => {
             if (c.id !== conversationId) return c;
-            const serverIds = new Set(client.map((m) => m.id));
+            const refreshed = client.map((message) => retainNearbyRoute(
+              message,
+              c.messages.find((cached) => cached.id === message.id)
+            ));
+            const serverIds = new Set(refreshed.map((m) => m.id));
             /* MERGE, not replace: the newest server window replaces its own
                rows (tick states stay fresh), but pages the user already
                loaded via "load earlier" MUST survive the 2.5s poll. Local
@@ -1536,7 +1681,7 @@ export const useCloakStore = create<CloakState>()(
               return true;
             });
             const byId = new Map(keep.map((m) => [m.id, m]));
-            for (const m of client) byId.set(m.id, m);
+            for (const m of refreshed) byId.set(m.id, m);
             const merged = [...byId.values()];
             merged.sort((a, b) => a.createdAt - b.createdAt);
             return {
@@ -1680,7 +1825,7 @@ export const useCloakStore = create<CloakState>()(
         set((s) => ({
           conversations: s.conversations.map((c) =>
             c.id === conversationId
-              ? { ...c, memberCount: members.length, myRole: myRole as Conversation["myRole"] }
+              ? { ...c, memberCount: members.length, groupMemberIds: members.map((member) => member.userId), myRole: myRole as Conversation["myRole"] }
               : c
           ),
         }));
@@ -1696,7 +1841,7 @@ export const useCloakStore = create<CloakState>()(
         const { members, unknownHandles } = res.data;
         set((s) => ({
           conversations: s.conversations.map((c) =>
-            c.id === conversationId ? { ...c, memberCount: members.length } : c
+            c.id === conversationId ? { ...c, memberCount: members.length, groupMemberIds: members.map((member) => member.userId) } : c
           ),
         }));
         /* E2EE: give the newcomers key access. History policy decides how:
@@ -1728,7 +1873,7 @@ export const useCloakStore = create<CloakState>()(
         set((s) => ({
           conversations: s.conversations.map((c) =>
             c.id === conversationId
-              ? { ...c, memberCount: Math.max(0, (c.memberCount ?? 1) - 1) }
+              ? { ...c, memberCount: Math.max(0, (c.memberCount ?? 1) - 1), groupMemberIds: c.groupMemberIds?.filter((memberId) => memberId !== userId) }
               : c
           ),
         }));
@@ -2279,13 +2424,14 @@ export const useCloakStore = create<CloakState>()(
            the rendered bubble and every retry — and it is what the server uses
            to recognise a repeat instead of creating a duplicate. */
         const id = newClientKey();
+        const createdAt = Date.now();
         const message: Message = {
           id,
           conversationId,
           authorId: "me",
           kind,
           body,
-          createdAt: Date.now(),
+          createdAt,
           status: "sending",
         };
         set((s) => ({
@@ -2312,8 +2458,9 @@ export const useCloakStore = create<CloakState>()(
             plaintext: body,
             myUserId,
             forwardSecrecy: get().forwardSecrecy,
+            createdAt,
           });
-          await settleOutgoing({ conversationId, id, kind, plaintext: body, outcome });
+          await settleOutgoing({ conversationId, id, kind, plaintext: body, createdAt, outcome });
         })();
         return id;
       },
@@ -2357,13 +2504,14 @@ export const useCloakStore = create<CloakState>()(
         /* Same contract as sendMessage: the clientKey is the optimistic id, so
            the queued row, the bubble and every retry name one value. */
         const id = newClientKey();
+        const createdAt = Date.now();
         const message = attachmentMessageFromEnvelope(
           {
             id,
             conversationId,
             authorId: "me",
             kind,
-            createdAt: Date.now(),
+            createdAt,
             status: "sending",
           },
           saved.envelope
@@ -2395,12 +2543,14 @@ export const useCloakStore = create<CloakState>()(
             attachmentId: saved.envelope.attachmentId,
             myUserId,
             forwardSecrecy: get().forwardSecrecy,
+            createdAt,
           });
           await settleOutgoing({
             conversationId,
             id,
             kind,
             plaintext,
+            createdAt,
             attachmentId: saved.envelope.attachmentId,
             outcome,
           });
@@ -2432,16 +2582,18 @@ export const useCloakStore = create<CloakState>()(
           ...(message.attachmentId ? { attachmentId: message.attachmentId } : {}),
           myUserId,
           forwardSecrecy: get().forwardSecrecy,
+          createdAt: message.createdAt,
         });
         await settleOutgoing({
           conversationId,
           id: messageId,
           kind: message.kind,
           plaintext,
+          createdAt: message.createdAt,
           ...(message.attachmentId ? { attachmentId: message.attachmentId } : {}),
           outcome,
         });
-        return outcome.kind === "sent";
+        return outcome.kind === "sent" || outcome.kind === "nearby";
       },
 
       updateMessageStatus: (conversationId, messageId, status) =>
@@ -2493,6 +2645,9 @@ export const useCloakStore = create<CloakState>()(
         })),
 
       toggleMessageReaction: async (conversationId, messageId, emoji) => {
+        const previousReactions = get().conversations
+          .find((conversation) => conversation.id === conversationId)?.messages
+          .find((message) => message.id === messageId)?.reactions;
         set((s) => ({
           conversations: s.conversations.map((c) =>
             c.id === conversationId
@@ -2509,10 +2664,23 @@ export const useCloakStore = create<CloakState>()(
         }));
 
         const res = await api<{ reactions: MessageReactionSummary[] }>(
-          `/api/conversations/${conversationId}/messages/${messageId}/reactions`,
+          `/api/conversations/${conversationId}/messages/${useCloakStore.getState().conversations.find((c) => c.id === conversationId)?.messages.find((m) => m.id === messageId)?.serverId ?? messageId}/reactions`,
           { method: "POST", body: JSON.stringify({ emoji }) }
         );
-        if (!res.ok) return;
+        if (!res.ok) {
+          /* A Nearby-only message has no server id until it synchronizes, and
+             the beta does not send reaction events locally. Revert the
+             optimistic chip instead of showing a reaction only on this device. */
+          set((s) => ({
+            conversations: s.conversations.map((c) => c.id !== conversationId ? c : {
+              ...c,
+              messages: c.messages.map((message) => message.id === messageId
+                ? { ...message, reactions: previousReactions }
+                : message),
+            }),
+          }));
+          return;
+        }
 
         set((s) => ({
           conversations: s.conversations.map((c) =>
@@ -2892,19 +3060,30 @@ async function settleOutgoing(params: {
   id: string;
   kind: MessageKind;
   plaintext: string;
+  createdAt?: number;
   attachmentId?: string;
   outcome: SendOutcome;
 }): Promise<void> {
-  const { conversationId, id, kind, plaintext, attachmentId, outcome } = params;
+  const { conversationId, id, kind, plaintext, createdAt, attachmentId, outcome } = params;
 
   if (outcome.kind === "sent") {
+    const previous = useCloakStore.getState().conversations
+      .find((conversation) => conversation.id === conversationId)?.messages
+      .find((message) => message.id === id);
+    const syncedMessage = retainNearbyRoute(outcome.message, previous);
     replaceMessage(
       conversationId,
       id,
       outcome.transferFailed
-        ? { ...outcome.message, attachmentTransferFailed: true }
-        : outcome.message
+        ? { ...syncedMessage, attachmentTransferFailed: true }
+        : syncedMessage
     );
+    return;
+  }
+
+  if (outcome.kind === "nearby") {
+    replaceMessage(conversationId, id, outcome.message);
+    await cacheNearbyMessage(outcome.message);
     return;
   }
 
@@ -2918,6 +3097,7 @@ async function settleOutgoing(params: {
     conversationId,
     kind,
     plaintext,
+    ...(createdAt ? { createdAt } : {}),
     ...(attachmentId ? { attachmentId } : {}),
   });
   if (!queued.ok) {
@@ -2967,6 +3147,9 @@ export async function flushOutbox(): Promise<void> {
         const state = useCloakStore.getState();
         const myUserId = state.auth.user?.id;
         if (!myUserId) return; // signed out mid-flush: keep the rest queued
+        /* A message already accepted by the nearby peer needs only server
+           synchronization. Do not retransmit it locally after an app reload. */
+        if (entry.nearbyDelivered && typeof navigator !== "undefined" && !navigator.onLine) continue;
 
         /* A row whose body will not open cannot be sent and cannot be fixed.
            Clear it so it does not retry forever, and say so. */
@@ -2984,18 +3167,30 @@ export async function flushOutbox(): Promise<void> {
           ...(entry.attachmentId ? { attachmentId: entry.attachmentId } : {}),
           myUserId,
           forwardSecrecy: state.forwardSecrecy,
+          createdAt: entry.createdAt,
+          skipNearby: entry.nearbyDelivered,
         });
 
         if (outcome.kind === "sent") {
           await deleteOutboxEntry(entry.id);
+          const previous = useCloakStore.getState().conversations
+            .find((conversation) => conversation.id === conversationId)?.messages
+            .find((message) => message.id === entry.id);
+          const syncedMessage = retainNearbyRoute(outcome.message, previous);
           replaceMessage(
             conversationId,
             entry.id,
             outcome.transferFailed
-              ? { ...outcome.message, attachmentTransferFailed: true }
-              : outcome.message
+              ? { ...syncedMessage, attachmentTransferFailed: true }
+              : syncedMessage
           );
           continue;
+        }
+        if (outcome.kind === "nearby") {
+          replaceMessage(conversationId, entry.id, outcome.message);
+          await cacheNearbyMessage(outcome.message);
+          /* The outbox remains until internet sync succeeds. */
+          break;
         }
         if (outcome.kind === "permanent") {
           await deleteOutboxEntry(entry.id);
@@ -3012,6 +3207,59 @@ export async function flushOutbox(): Promise<void> {
     outboxFlushing = false;
   }
 }
+
+/** Accept a locally delivered event only after the session authenticated its
+ *  sender, the cached membership snapshot authorizes both accounts, and the
+ *  ciphertext decrypts under this conversation's existing E2EE key. */
+async function receiveNearbyEnvelope(envelope: import("@/lib/cloak/transports").EncryptedEnvelope, authenticatedPeerUserId: string): Promise<boolean> {
+  const state = useCloakStore.getState();
+  const myUserId = state.auth.user?.id;
+  if (!myUserId || authenticatedPeerUserId !== envelope.senderUserId) return false;
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(envelope.id) || envelope.kind !== "text" || envelope.ciphertext.length > 64_000) return false;
+  const conversation = state.conversations.find((item) => item.id === envelope.conversationId);
+  if (!conversation || conversation.ghost) return false;
+  if (conversation.isGroup) {
+    const activeMemberIds = conversation.groupMemberIds;
+    if (!activeMemberIds?.includes(myUserId) || !activeMemberIds.includes(envelope.senderUserId)) return false;
+  } else if (conversation.contactId !== envelope.senderUserId || conversation.peerVerification !== "verified" || !conversation.peerIdentityPublicKey) return false;
+  if (state.blockedUsers.some((entry) => entry.userId === envelope.senderUserId)) return false;
+
+  const decrypted = await decryptBody(envelope.conversationId, envelope.ciphertext, envelope.kind, envelope.senderUserId, myUserId);
+  if (!decrypted.ok || decrypted.locked || decrypted.text === undefined) return false;
+  const existing = conversation.messages.find((message) => message.id === envelope.id);
+  if (existing) return existing.authorId === envelope.senderUserId && existing.body === decrypted.text;
+
+  const message: Message = {
+    id: envelope.id,
+    conversationId: envelope.conversationId,
+    authorId: envelope.senderUserId,
+    kind: "text",
+    body: decrypted.text,
+    createdAt: envelope.createdAt,
+    status: "delivered",
+    deliveryRoute: "nearby",
+  };
+  if (!(await cacheNearbyMessage(message))) return false;
+  useCloakStore.setState((current) => ({
+    conversations: current.conversations.map((item) => {
+      if (item.id !== envelope.conversationId) return item;
+      if (item.messages.some((row) => row.id === envelope.id)) return item;
+      return {
+        ...item,
+        unreadCount: current.activeConversationId === item.id ? item.unreadCount : (item.unreadCount ?? 0) + 1,
+        messages: [...item.messages, message].sort((a, b) => a.createdAt - b.createdAt),
+      };
+    }),
+  }));
+  return true;
+}
+
+subscribeNearbyEnvelopes((envelope, peerUserId, sessionId) => {
+  void receiveNearbyEnvelope(envelope, peerUserId).then(
+    (accepted) => acknowledgeNearbyEnvelope(envelope.id, accepted, sessionId),
+    () => acknowledgeNearbyEnvelope(envelope.id, false, sessionId)
+  );
+});
 
 /*
  * Flush triggers. A queue that nothing drains is just a leak, and each of these

@@ -312,7 +312,7 @@ check(
 
 check(
   "the service worker version was bumped for the new client bundle",
-  /cloak-shell-v48/.test(sw),
+  /cloak-shell-v49/.test(sw),
   true
 );
 

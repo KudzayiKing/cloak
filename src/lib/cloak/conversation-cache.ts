@@ -45,6 +45,8 @@ export async function cacheConversations(conversations: Conversation[]): Promise
       id: c.id,
       ownerUserId,
       contactId: c.contactId,
+      peerIdentityPublicKey: c.peerIdentityPublicKey,
+      peerVerification: c.peerVerification,
       isGroup: c.isGroup,
       groupName: c.groupName,
       groupDescription: c.groupDescription,
@@ -85,6 +87,8 @@ export async function loadCachedConversations(): Promise<Conversation[]> {
     .map((row) => ({
       id: row.id,
     contactId: row.contactId,
+    peerIdentityPublicKey: row.peerIdentityPublicKey,
+    peerVerification: row.peerVerification,
     isGroup: row.isGroup,
     groupName: row.groupName,
     groupDescription: row.groupDescription,

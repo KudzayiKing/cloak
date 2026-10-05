@@ -7,7 +7,7 @@
  * and a Cloak Mode redacted preview state.
  */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { formatListTime } from "@/lib/cloak/utils";
 import { useCloakStore } from "@/stores/cloak-store";
@@ -28,6 +28,8 @@ import {
   ImageIcon,
   FileTextIcon,
   EyeOffIcon,
+  WifiIcon,
+  XIcon as CloseIcon,
 } from "@animateicons/react/lucide";
 import { navigate } from "@/hooks/use-hash-route";
 import {
@@ -40,6 +42,7 @@ import { GhostGlyph } from "@/components/cloak/shared/ghost-icon";
 import { NewChatModal, CreateFilterDialog, CreateGroupDialog } from "./chat-dialogs";
 import { E2eeRestoreBanner } from "./e2ee-restore-banner";
 import { initialsOf } from "@/lib/cloak/utils";
+import { NEARBY_MESSAGING_ENABLED } from "@/lib/cloak/config";
 
 export function ChatSidebar({
   activeId,
@@ -60,6 +63,16 @@ export function ChatSidebar({
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const [offline, setOffline] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    const update = () => setOffline(!navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
+  }, []);
 
   const sorted = useMemo(() => {
     return [...conversations].sort((a, b) => {
@@ -149,6 +162,18 @@ export function ChatSidebar({
       {/* E2EE: this device lacks the identity key — offer the passphrase
           restore (only renders when the store marks keys-pending) */}
       <E2eeRestoreBanner className="mx-3.5" />
+
+      {NEARBY_MESSAGING_ENABLED && offline && !dismissed && typeof window !== "undefined" && "RTCPeerConnection" in window && (
+        <div className="mx-3.5 mb-3 flex items-start gap-2 rounded-xl border border-cloak-gold/25 bg-cloak-gold-soft/10 p-3">
+          <WifiIcon size={15} className="mt-0.5 shrink-0 text-cloak-gold" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-cloak-text">No internet connection</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-cloak-text-secondary">Nearby beta supports encrypted text with a trusted one-to-one contact on this network.</p>
+            <button onClick={() => navigate("/app/nearby")} className="mt-2 text-xs font-medium text-cloak-gold hover:underline">Open Nearby</button>
+          </div>
+          <button aria-label="Dismiss Nearby notice" onClick={() => setDismissed(true)} className="text-cloak-text-muted hover:text-cloak-text"><CloseIcon size={13} /></button>
+        </div>
+      )}
 
       {/* Filter tabs under the search input */}
       <div className="cloak-scroll flex items-center gap-1.5 overflow-x-auto px-3.5 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

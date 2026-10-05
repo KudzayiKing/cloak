@@ -365,6 +365,7 @@ function AttachmentBubble({
   const [viewerOpen, setViewerOpen] = useState(false);
   /* The decoded text of a text payload, once the viewer asks for it. */
   const [inlineText, setInlineText] = useState<string | null>(null);
+  const inlineTextTooBig = (message.fileSizeBytes ?? 0) > MAX_INLINE_TEXT_BYTES;
   const openActionSheet = useCallback(() => setActionSheetOpen(true), []);
   const { longPressHandlers } = useLongPress(openActionSheet);
   const { toast } = useToast();
@@ -373,7 +374,7 @@ function AttachmentBubble({
      poll cannot re-run it and re-download, while `attachmentBlob.k` still
      triggers exactly one retry when the crypto envelope arrives. */
   const messageRef = useRef(message);
-  messageRef.current = message;
+  useEffect(() => { messageRef.current = message; }, [message]);
 
   useEffect(() => {
     let cancelled = false;
@@ -467,10 +468,7 @@ function AttachmentBubble({
      open flag and the id, so a sync poll cannot re-read it. */
   useEffect(() => {
     if (!viewerOpen || kind === "image" || !url) return;
-    if ((message.fileSizeBytes ?? 0) > MAX_INLINE_TEXT_BYTES) {
-      setInlineText(TOO_BIG);
-      return;
-    }
+    if (inlineTextTooBig) return;
     let cancelled = false;
     void fetch(url)
       .then((r) => r.text())
@@ -483,7 +481,7 @@ function AttachmentBubble({
     return () => {
       cancelled = true;
     };
-  }, [viewerOpen, kind, url, message.fileSizeBytes]);
+  }, [viewerOpen, kind, url, inlineTextTooBig]);
 
   return (
     <div
@@ -655,9 +653,9 @@ function AttachmentBubble({
                     onClick={(e) => e.stopPropagation()}
                     className="max-h-full max-w-full rounded-xl object-contain"
                   />
-                ) : inlineText === null ? (
+                ) : inlineText === null && !inlineTextTooBig ? (
                   <p className="text-[13px] text-white/60">Preparing preview…</p>
-                ) : inlineText === TOO_BIG ? (
+                ) : inlineText === TOO_BIG || inlineTextTooBig ? (
                   <p className="max-w-xs text-center text-[13px] leading-relaxed text-white/70">
                     This file is too large to preview here. Open it in a tab or save it.
                   </p>
@@ -837,7 +835,7 @@ function VoiceNotePlayer({ message }: { message: Message }) {
      restart playback mid-note — while `attachmentBlob.k` changes exactly once,
      when the crypto envelope arrives, which is precisely when we must retry. */
   const messageRef = useRef(message);
-  messageRef.current = message;
+  useEffect(() => { messageRef.current = message; }, [message]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1145,6 +1143,21 @@ function DeliveryStatus({ message }: { message: Message }) {
       >
         {busy ? "retrying…" : "failed — tap to retry"}
       </button>
+    );
+  }
+  if (message.deliveryRoute === "nearby") {
+    const nearbySummary = message.nearbyRecipientCount !== undefined
+      ? `Nearby · ${message.nearbyDeliveredTo?.length ?? 0}/${message.nearbyRecipientCount}`
+      : "Nearby";
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-[10px] text-cloak-text-muted"
+        title={message.nearbyRecipientCount !== undefined
+          ? `Delivered directly to ${message.nearbyDeliveredTo?.length ?? 0} of ${message.nearbyRecipientCount} other group members. Server synchronization is pending.`
+          : message.syncPending ? "Delivered directly nearby. Server synchronization is pending." : "Delivered directly nearby."}
+      >
+        <CheckCheckIcon size={11} /> {nearbySummary}
+      </span>
     );
   }
   if (status === "sent") return <CheckIcon size={11} />;

@@ -53,6 +53,7 @@ import {
 
 export interface CachedMessageRow {
   id: string;
+  serverId?: string;
   /** Which account wrote this row. See ACCOUNT SCOPING above. */
   ownerUserId: string;
   conversationId: string;
@@ -61,6 +62,10 @@ export interface CachedMessageRow {
   createdAt: number;
   expiresAt?: number;
   status?: string;
+  deliveryRoute?: "internet" | "nearby";
+  syncPending?: boolean;
+  nearbyDeliveredTo?: string[];
+  nearbyRecipientCount?: number;
   authorName?: string;
   replyToId?: string;
   viewed?: boolean;
@@ -86,7 +91,12 @@ const SIGNATURE_CAP = 8000;
 
 function signatureOf(message: Message): string {
   return [
+    message.serverId ?? "",
     message.status ?? "",
+    message.deliveryRoute ?? "",
+    message.syncPending ? "1" : "0",
+    message.nearbyDeliveredTo ? JSON.stringify(message.nearbyDeliveredTo) : "",
+    message.nearbyRecipientCount ?? "",
     message.expiresAt ?? "",
     message.bodyLocked ? "1" : "0",
     message.bodyLockedReason ?? "",
@@ -129,6 +139,7 @@ export async function cacheMessages(messages: Message[]): Promise<void> {
 
     const row: CachedMessageRow = {
       id: message.id,
+      ...(message.serverId ? { serverId: message.serverId } : {}),
       ownerUserId,
       conversationId: message.conversationId,
       authorId: message.authorId,
@@ -137,6 +148,10 @@ export async function cacheMessages(messages: Message[]): Promise<void> {
       cachedAt: Date.now(),
       ...(message.expiresAt !== undefined ? { expiresAt: message.expiresAt } : {}),
       ...(message.status ? { status: message.status } : {}),
+      ...(message.deliveryRoute ? { deliveryRoute: message.deliveryRoute } : {}),
+      ...(message.syncPending ? { syncPending: true } : {}),
+      ...(message.nearbyDeliveredTo ? { nearbyDeliveredTo: message.nearbyDeliveredTo } : {}),
+      ...(message.nearbyRecipientCount !== undefined ? { nearbyRecipientCount: message.nearbyRecipientCount } : {}),
       ...(message.authorName ? { authorName: message.authorName } : {}),
       ...(message.replyToId ? { replyToId: message.replyToId } : {}),
       ...(message.viewed ? { viewed: true } : {}),
@@ -154,6 +169,39 @@ export async function cacheMessages(messages: Message[]): Promise<void> {
     } catch {
       /* A cache write failure must never break sending or rendering. */
     }
+  }
+}
+
+/** Persist one authenticated Nearby message before acknowledging its sender. */
+export async function cacheNearbyMessage(message: Message): Promise<boolean> {
+  const ownerUserId = currentVaultUserId();
+  if (!ownerUserId || !message.id || !message.conversationId || message.bodyLocked) return false;
+  const bodySealed = message.body ? await sealLocalText(message.body, vaultScope.message(message.id)) : undefined;
+  if (message.body && !bodySealed) return false;
+  try {
+    const existing = await withStore<CachedMessageRow | undefined>(STORE_MESSAGES, "readonly", (store) => store.get(message.id));
+    if (existing && existing.ownerUserId !== ownerUserId) return false;
+    const row: CachedMessageRow = {
+      id: message.id,
+      ownerUserId,
+      conversationId: message.conversationId,
+      authorId: message.authorId,
+      kind: message.kind,
+      createdAt: message.createdAt,
+      cachedAt: Date.now(),
+      status: message.status,
+      deliveryRoute: message.deliveryRoute,
+      ...(message.syncPending ? { syncPending: true } : {}),
+      ...(message.nearbyDeliveredTo ? { nearbyDeliveredTo: message.nearbyDeliveredTo } : {}),
+      ...(message.nearbyRecipientCount !== undefined ? { nearbyRecipientCount: message.nearbyRecipientCount } : {}),
+      ...(message.expiresAt !== undefined ? { expiresAt: message.expiresAt } : {}),
+      ...(bodySealed ? { bodySealed } : {}),
+    };
+    await withStore(STORE_MESSAGES, "readwrite", (store) => store.put(row));
+    writtenSignatures.set(message.id, signatureOf(message));
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -290,12 +338,17 @@ export function cachedRowToMessage(
 ): Message {
   return hydrate({
     id: row.id,
+    serverId: row.serverId,
     conversationId: row.conversationId,
     authorId: row.authorId,
     kind: row.kind as MessageKind,
     body: row.body,
     createdAt: row.createdAt,
     status: row.status as MessageStatus | undefined,
+    deliveryRoute: row.deliveryRoute,
+    syncPending: row.syncPending,
+    nearbyDeliveredTo: row.nearbyDeliveredTo,
+    nearbyRecipientCount: row.nearbyRecipientCount,
     authorName: row.authorName,
     replyToId: row.replyToId,
     viewed: row.viewed,
