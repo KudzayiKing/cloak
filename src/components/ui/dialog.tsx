@@ -37,8 +37,23 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
+      /*
+       * z-30, deliberately BELOW the app chrome (header and bottom nav, both
+       * z-40) and below dialog content (z-50).
+       *
+       * The chrome paints the safe-area strips the OS status and gesture bars
+       * abut, and the OS tint is a FIXED per-theme colour (CLOAK_THEME_COLORS,
+       * = --cloak-bg-elevated) — it cannot follow a scrim. So a scrim that
+       * covered the chrome left those strips reading #131313 dimmed to about
+       * rgb(10,10,10) while the bars themselves stayed #131313: a seam at both
+       * ends of the screen, reported on the mobile three-dot menu.
+       *
+       * Keeping the scrim under the chrome means the strips always read
+       * exactly the colour the platform was told to paint. Content stays at
+       * z-50, so a top-anchored sheet still covers the header as before.
+       */
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-30 bg-black/50",
         className
       )}
       {...props}

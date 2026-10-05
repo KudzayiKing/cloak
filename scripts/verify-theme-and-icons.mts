@@ -1246,6 +1246,58 @@ check(
     /label="Conversation details"/.test(conversationView),
     true
   );
+
+  /* ---- The dialog scrim must sit UNDER the app chrome (round 46) ---------
+   *
+   * The OS status and gesture bars abut the safe-area strips that the mobile
+   * header and bottom nav paint, and the OS tint is a FIXED per-theme colour
+   * (CLOAK_THEME_COLORS = --cloak-bg-elevated). It cannot follow a scrim. So a
+   * scrim that covered the chrome left those strips reading #131313 dimmed to
+   * about rgb(10,10,10) while the bars themselves stayed #131313 — a seam at
+   * both ends of the screen, reported on the mobile three-dot menu.
+   *
+   * The invariant is two-sided and both halves are load-bearing:
+   *   scrim   < chrome  — the strips keep exactly the colour the platform was
+   *                       told to paint, for every dialog at once.
+   *   content > chrome  — a top-anchored sheet still covers the header.
+   *
+   * These are z-index integers in two files, so pin the comparison rather than
+   * the literals. Verified against real pixels, not inference: with the menu
+   * open the strips still sample rgb(19,19,19) while the content between them
+   * dims — see the round-46 log. */
+  const dialogSrc = stripComments(read("src/components/ui/dialog.tsx"));
+  const shellSrc = stripComments(read("src/components/cloak/navigation/app-shell.tsx"));
+
+  const overlayZ = Number(
+    (dialogSrc.match(/data-slot="dialog-overlay"[\s\S]{0,600}?fixed inset-0 z-(\d+)/) || [])[1]
+  );
+  const contentZ = Number(
+    (dialogSrc.match(/data-slot="dialog-content"[\s\S]{0,900}?fixed top-\[50%\] left-\[50%\] z-(\d+)/) ||
+      [])[1]
+  );
+  const headerZ = Number(
+    (shellSrc.match(/<header className="fixed inset-x-0 top-0 z-(\d+)/) || [])[1]
+  );
+  const bottomNavZ = Number(
+    (shellSrc.match(/cloak-bottom-nav fixed inset-x-0 z-(\d+)/) || [])[1]
+  );
+
+  check("the dialog overlay z-index was found", Number.isFinite(overlayZ), true);
+  check("the dialog content z-index was found", Number.isFinite(contentZ), true);
+  check("the mobile header z-index was found", Number.isFinite(headerZ), true);
+  check("the bottom nav z-index was found", Number.isFinite(bottomNavZ), true);
+  check("the dialog scrim sits below the mobile header", overlayZ < headerZ, true);
+  check("the dialog scrim sits below the bottom nav", overlayZ < bottomNavZ, true);
+  check(
+    "the chrome that paints the OS-bar strips stays above the scrim",
+    headerZ > overlayZ && bottomNavZ > overlayZ,
+    true
+  );
+  check(
+    "dialog content still paints above the chrome (sheets cover the header)",
+    contentZ > headerZ && contentZ > bottomNavZ,
+    true
+  );
 }
 
 /* -------------------------------- report --------------------------------- */
