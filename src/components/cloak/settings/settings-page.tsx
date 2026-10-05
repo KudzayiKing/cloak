@@ -1062,7 +1062,7 @@ function NotificationsSection() {
             </p>
           </div>
           <div className="divide-y divide-cloak-border">
-            <ToggleRow label="Sounds" note="Play a quiet sound for new messages" checked={notifications.sounds} onChange={(v) => setNotifications({ sounds: v })} />
+            <ToggleRow label="Message sound" note="Play the Cloak sound when a new message arrives" checked={notifications.sounds} onChange={(v) => setNotifications({ sounds: v })} />
             <ToggleRow label="Ghost Chat notifications" note="Notify about Ghost Chats (content never shown)" checked={notifications.ghostChatNotifications} onChange={(v) => setNotifications({ ghostChatNotifications: v })} />
           </div>
         </div>

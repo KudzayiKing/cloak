@@ -17,6 +17,7 @@ import { flushOutbox, useCloakStore } from "@/stores/cloak-store";
 import type { ServerConversation, ServerContact, ServerMessage } from "@/stores/cloak-store";
 import { toast } from "@/hooks/use-toast";
 import { notificationForIncomingMessage } from "@/lib/cloak/notifications";
+import { playIncomingMessageSound } from "@/lib/cloak/message-sound";
 
 /**
  * Surface a foreground in-app notification for genuinely new incoming
@@ -38,9 +39,9 @@ function surfaceIncomingToasts(
   if (!state.auth.user) return;
   const activeId = state.activeConversationId;
   const previews = state.notifications.previews;
+  const sounds = state.notifications.sounds;
   const cloakMode = state.cloakMode;
   for (const conv of state.conversations) {
-    if (conv.id === activeId) continue; // visible inline; no toast
     const msgs = conv.messages;
     if (!msgs || msgs.length === 0) continue;
     const newest = msgs[msgs.length - 1];
@@ -49,6 +50,10 @@ function surfaceIncomingToasts(
     if (seeded.current) {
       if (seenIds.current.has(newest.id)) continue;
       seenIds.current.add(newest.id);
+      if (conv.id === activeId) {
+        if (sounds) playIncomingMessageSound();
+        continue; // visible inline; no toast
+      }
       const note = notificationForIncomingMessage({
         senderName: newest.authorName || "Someone",
         body: newest.body || "",
@@ -56,6 +61,7 @@ function surfaceIncomingToasts(
         previews,
       });
       toast({ title: note.title, description: note.body, duration: 6000 });
+      if (sounds) playIncomingMessageSound();
     } else {
       seenIds.current.add(newest.id);
     }
@@ -72,6 +78,9 @@ export function useServerSync(enabled: boolean) {
   /** Ids of incoming messages we have already surfaced as a foreground
    *  notification, so a steady-state poll never re-toasts the same message. */
   const seenIdsRef = useRef<Set<string>>(new Set());
+  /** Seeded ids for the open conversation let us detect new arrivals without
+   *  sounding for the history returned by its first poll. */
+  const activeMessageIdsRef = useRef<Map<string, Set<string>>>(new Map());
   /** Whether the backlog has been seeded — until the first list arrives we
    *  must not toast the user's entire history on login. */
   const seededRef = useRef(false);
@@ -172,6 +181,26 @@ export function useServerSync(enabled: boolean) {
       }
       if (detail?.ok) {
         const messages = detail.messages as ServerMessage[];
+        const knownIds = activeMessageIdsRef.current.get(currentActiveId);
+        const currentConversation = useCloakStore.getState().conversations.find(
+          (conversation) => conversation.id === currentActiveId
+        );
+        const seededIds = knownIds ?? new Set(currentConversation?.messages.map((message) => message.id) ?? []);
+        const incoming = messages.filter(
+          (message) => message.authorId !== "me" && !seededIds.has(message.clientKey || message.id)
+        );
+        const unsurfacedIncoming = incoming.filter(
+          (message) => !seenIdsRef.current.has(message.clientKey || message.id)
+        );
+        if (knownIds && unsurfacedIncoming.length > 0 && useCloakStore.getState().notifications.sounds) {
+          playIncomingMessageSound();
+        }
+        for (const message of messages) {
+          const id = message.clientKey || message.id;
+          seededIds.add(id);
+          seenIdsRef.current.add(id);
+        }
+        activeMessageIdsRef.current.set(currentActiveId, seededIds);
         await store.replaceServerMessages(currentActiveId, messages, detail.hasMore);
 
         /* New incoming while the chat is open -> mark read right away. */
