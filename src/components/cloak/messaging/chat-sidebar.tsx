@@ -28,7 +28,6 @@ import {
   ImageIcon,
   FileTextIcon,
   EyeOffIcon,
-  WifiIcon,
 } from "@animateicons/react/lucide";
 import { navigate } from "@/hooks/use-hash-route";
 import {
@@ -61,15 +60,6 @@ export function ChatSidebar({
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
-  const [offline, setOffline] = useState(false);
-
-  useEffect(() => {
-    const update = () => setOffline(!navigator.onLine);
-    update();
-    window.addEventListener("online", update);
-    window.addEventListener("offline", update);
-    return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
-  }, []);
 
   const sorted = useMemo(() => {
     return [...conversations].sort((a, b) => {
@@ -159,17 +149,6 @@ export function ChatSidebar({
       {/* E2EE: this device lacks the identity key — offer the passphrase
           restore (only renders when the store marks keys-pending) */}
       <E2eeRestoreBanner className="mx-3.5" />
-
-      {typeof window !== "undefined" && "RTCPeerConnection" in window && (
-        <div className="mx-3.5 mb-3 flex items-start gap-2 rounded-xl border border-cloak-gold/25 bg-cloak-gold-soft/10 p-3">
-          <WifiIcon size={15} className="mt-0.5 shrink-0 text-cloak-gold" />
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-cloak-text">Nearby messaging {offline ? "· no internet" : "· local network"}</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-cloak-text-secondary">Encrypted text for verified chats and groups. Connect each nearby group member with a QR code.</p>
-            <button onClick={() => navigate("/app/nearby")} className="mt-2 text-xs font-medium text-cloak-gold hover:underline">Open Nearby</button>
-          </div>
-        </div>
-      )}
 
       {/* Filter tabs under the search input */}
       <div className="cloak-scroll flex items-center gap-1.5 overflow-x-auto px-3.5 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

@@ -27,6 +27,8 @@ const store = readFileSync(join(root, "src/stores/cloak-store.ts"), "utf8");
 const cache = readFileSync(join(root, "src/lib/cloak/message-cache.ts"), "utf8");
 const bubble = readFileSync(join(root, "src/components/cloak/messaging/message-bubble.tsx"), "utf8");
 const sidebar = readFileSync(join(root, "src/components/cloak/messaging/chat-sidebar.tsx"), "utf8");
+const mobileMenu = readFileSync(join(root, "src/components/cloak/navigation/mobile-header-menu.tsx"), "utf8");
+const appShell = readFileSync(join(root, "src/components/cloak/navigation/app-shell.tsx"), "utf8");
 const nearbyPage = readFileSync(join(root, "src/components/cloak/messaging/nearby-page.tsx"), "utf8");
 const serverConversations = readFileSync(join(root, "src/lib/cloak/server/conversations.ts"), "utf8");
 
@@ -106,7 +108,9 @@ async function main() {
   check("Nearby messages persist sync-pending state", /message\.syncPending \? \{ syncPending: true \}/.test(cache), true);
   check("server synchronization preserves the Nearby route label", /function retainNearbyRoute\([\s\S]{0,220}?syncPending: false/.test(store), true);
   check("outgoing Nearby messages have a delivery indicator", /Delivered directly nearby/.test(bubble), true);
-  check("Nearby entry is available without a deploy-time feature flag", /Open Nearby/.test(sidebar) && !/NEXT_PUBLIC_NEARBY_MESSAGING_ENABLED/.test(sidebar + nearbyPage), true);
+  check("Nearby is linked from the mobile overflow menu", /onClick=\{handleNearby\}[\s\S]{0,250}?WifiCogIcon/.test(mobileMenu), true);
+  check("Nearby is linked between desktop notifications and settings", /NotificationsBell variant="rail"[\s\S]*?label: "Nearby"[\s\S]*?label: "Settings"/.test(appShell), true);
+  check("Nearby is removed from the chat list and has no deploy-time feature flag", !/Nearby messaging/.test(sidebar) && !/NEXT_PUBLIC_NEARBY_MESSAGING_ENABLED/.test(sidebar + nearbyPage), true);
   closeNearby();
   check("connection teardown returns the transport to idle", nearbyState().status, "idle");
 

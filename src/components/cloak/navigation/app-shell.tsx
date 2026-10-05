@@ -34,7 +34,7 @@ import {
   useIconPressAnimation,
   type IconAnimationHandle,
 } from "@/hooks/use-icon-press-animation";
-import { EyeOffIcon, EyeIcon, WaypointsIcon } from "@animateicons/react/lucide";
+import { EyeOffIcon, EyeIcon, WaypointsIcon, WifiCogIcon } from "@animateicons/react/lucide";
 import { PanelLeftCloseIcon } from "@/components/cloak/shared/panel-left-close-icon";
 import {
   DaggerButton,
@@ -418,6 +418,11 @@ export function AppShell({
           <div className={cn(sidebarCollapsed ? "flex justify-center" : "")}>
             <NotificationsBell variant="rail" collapsed={sidebarCollapsed} />
           </div>
+          <DesktopNavItem
+            item={{ label: "Nearby", path: "/app/nearby", icon: WifiCogIcon }}
+            active={active === "/app/nearby"}
+            collapsed={sidebarCollapsed}
+          />
           <DesktopNavItem
             item={{ label: "Settings", path: "/app/settings", icon: CogIcon }}
             active={active === "/app/settings"}

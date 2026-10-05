@@ -16,7 +16,7 @@
 import { useState } from "react";
 import { navigate } from "@/hooks/use-hash-route";
 import { cn } from "@/lib/utils";
-import { EyeIcon, EyeOffIcon, ShieldCheckIcon } from "@animateicons/react/lucide";
+import { EyeIcon, EyeOffIcon, ShieldCheckIcon, WifiCogIcon } from "@animateicons/react/lucide";
 import { useCloakModeSwitch } from "@/hooks/use-cloak-mode";
 import {
   Dialog,
@@ -58,6 +58,11 @@ export function MobileHeaderMenu() {
   const handleSecurity = () => {
     setOpen(false);
     navigate("/app/security");
+  };
+
+  const handleNearby = () => {
+    setOpen(false);
+    navigate("/app/nearby");
   };
 
   return (
@@ -121,6 +126,15 @@ export function MobileHeaderMenu() {
               <span className="rounded-full border border-cloak-border px-2 py-0.5 text-[10px] font-medium text-cloak-text-muted">
                 Emergency
               </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleNearby}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cloak-text-secondary transition-colors hover:bg-cloak-surface hover:text-cloak-text"
+            >
+              <WifiCogIcon size={17} />
+              <span className="flex-1 whitespace-nowrap text-left">Nearby</span>
             </button>
 
             {/* Security centre — was a bottom-nav tab; now one tap away here. */}
