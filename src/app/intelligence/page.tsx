@@ -1,13 +1,8 @@
-import { MarketingShell } from "@/components/cloak/marketing/marketing-shell";
-import { IntelligencePage } from "@/components/cloak/marketing/intelligence-page";
+import { CloakRoot } from "@/components/cloak/router/cloak-root";
 import { marketingMetadata } from "@/lib/cloak/seo";
 
 export const metadata = marketingMetadata("/intelligence");
 
 export default function Page() {
-  return (
-    <MarketingShell path="/intelligence">
-      <IntelligencePage />
-    </MarketingShell>
-  );
+  return <CloakRoot />;
 }

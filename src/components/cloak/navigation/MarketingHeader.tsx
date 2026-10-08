@@ -128,7 +128,7 @@ export function MarketingHeader({ route }: { route: RouteInfo }) {
             </a>
             {showSignIn && (
               <a
-                href="/#/app/messages"
+                href="/messages"
                 onClick={(e) => {
                   e.preventDefault();
                   navigate("/app/messages");
@@ -193,7 +193,7 @@ export function MarketingHeader({ route }: { route: RouteInfo }) {
                 </button>
                 {showSignIn && (
                   <a
-                    href="/#/app/messages"
+                    href="/messages"
                     onClick={(e) => {
                       e.preventDefault();
                       go("/app/messages");

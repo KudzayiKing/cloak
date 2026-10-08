@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * CirclesPage — #/app/circles (circles spec §28/§30/§31/§50/§52).
+ * CirclesPage — /circles (circles spec §28/§30/§31/§50/§52).
  *
  * A Circle is a private structure over trusted groups. The list shows
  * ONLY circles the viewer belongs to — no discovery, no public counts

@@ -1016,8 +1016,7 @@ export async function createCircleInvite(params: {
   return {
     invite: { id: invite.id, expiresAt, maxUses: invite.maxUses },
     token,
-    // Hash-router path segment form (#/circles/invite/<token>) — the
-    // router parses only the hash path, never query strings.
+    // Browser-path form (/circles/invite/<token>).
     url: `/circles/invite/${encodeURIComponent(token)}`,
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * CirclePage — #/app/circles/[circleId] (circles spec §29/§42-§44/§55/§68).
+ * CirclePage — /circles/[circleId] (circles spec §29/§42-§44/§55/§68).
  *
  * Layout: circle header (name, people, groups) + five sections as tabs:
  * Groups | Members | Invitations | Security | Activity, plus Settings.

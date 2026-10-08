@@ -170,7 +170,7 @@ export function AdviserInvitePage({ token }: { token: string }) {
               <Row label="Payment" value="Not required" />
               <Row label="Renewal" value="Never" />
             </dl>
-            <Button className="mt-7 h-11 w-full bg-cloak-gold text-black hover:bg-cloak-gold-bright" onClick={() => { window.location.href = "/#/app/settings/membership"; }}>
+            <Button className="mt-7 h-11 w-full bg-cloak-gold text-black hover:bg-cloak-gold-bright" onClick={() => { window.location.href = "/settings/membership"; }}>
               Open {BRAND.name}
             </Button>
           </Panel>

@@ -142,14 +142,13 @@ const BADGE_ICON = "/icons/icon-192.png";
  *  circle page; group and chat → the message list, which is where the app
  *  lands and where the unread row lives).
  *
- *  A chat cannot deep-link to the individual thread: the hash router carries
- *  no query string, and the open conversation is store state rather than a
- *  route. Landing on the list with the thread at the top is the honest
+ *  A chat cannot deep-link to the individual thread: the open conversation is
+ *  store state rather than a route. Landing on the list with the thread at the top is the honest
  *  behaviour today. */
 function targetUrlFor(data) {
-  if (data && data.circleId) return `/#/app/circles/${data.circleId}`;
-  if (data && (data.groupId || data.conversationId)) return "/#/app/messages";
-  return "/#/app";
+  if (data && data.circleId) return `/circles/${data.circleId}`;
+  if (data && (data.groupId || data.conversationId)) return "/messages";
+  return "/messages";
 }
 
 /** Collapse key. Structural events collapse by TYPE — one row per kind of
@@ -221,7 +220,7 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/#/app";
+  const url = (event.notification.data && event.notification.data.url) || "/messages";
 
   event.waitUntil(
     (async () => {
@@ -234,8 +233,7 @@ self.addEventListener("notificationclick", (event) => {
             try {
               await client.navigate(url);
             } catch {
-              // Hash navigation inside a focused client is fine — the app
-              // router reads the hash on focus.
+              // The route still opens through the app's browser-path router.
             }
           }
           return;

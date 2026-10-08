@@ -1284,8 +1284,8 @@ function StorageRow({ label, note, value }: { label: string; note: string; value
 
 /*
  * The operator panel is a standalone server-rendered page at /admin — outside
- * the hash router, so it needs a real anchor rather than navigate(), which only
- * writes location.hash. The overview is the entry point; the Founding Adviser
+ * the browser-path router, so it needs a real anchor rather than navigate(), which only
+ * changes the browser pathname. The overview is the entry point; the Founding Adviser
  * invitations hang off it.
  *
  * This section is a doorway, not a gate. It renders only for allowlisted

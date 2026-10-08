@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
 
   const link = program === "founding_adviser"
     ? `https://cloakdagger.app/invite/trusted/${encodeURIComponent(token)}`
-    : `${req.nextUrl.origin}/#/invite/${token}`;
+    : `${req.nextUrl.origin}/invite/${token}`;
   let qrDataUrl: string | null = null;
   if (method === "qr") {
     try {

@@ -503,7 +503,7 @@ check("selection colours follow the theme", /var\(--cloak-selection\)/.test(css)
   check(
     "the installed app opens the chat app, not the marketing homepage",
     manifest.start_url ?? "",
-    "/#/app/messages"
+    "/messages"
   );
   check("  ... and the install's identity is left alone", manifest.id ?? "", "/");
 

@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * InvitePage — #/invite/[token] (pricing & membership update spec §9, §41-§43).
+ * InvitePage — /invite/[token] (pricing & membership update spec §9, §41-§43).
  *
  * Flow: open invite -> validate token against the server (no auth needed —
  * the 256-bit token in the link IS the capability) -> show invitation ->

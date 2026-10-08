@@ -1,42 +1,67 @@
 "use client";
 
 /*
- * Hash-based router.
+ * Browser-path router for Cloak's client-side product shell.
  *
- * The sandbox preview exposes a single Next.js route, so Cloak's full route
- * map (marketing + app) is delivered through hash paths: #/, #/security,
- * #/messages, #/security/devices ... The path strings match the eventual
- * file-system routes exactly, so migrating to real routes is a
- * mechanical change: replace `navigate()` with `next/link` and split
- * components into page files.
+ * Next.js owns the public URL (for example /messages or /circles/abc), while
+ * CloakApp continues to use its existing route map. Old hash URLs are
+ * normalized on entry so saved links and installed app shortcuts keep working.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { isPublicMarketingPath } from "@/lib/cloak/seo";
 
 export interface RouteInfo {
-  /** Normalized path without leading '#', always starts with '/'. */
+  /** Current browser pathname, normalized without a trailing slash. */
   path: string;
   segments: string[];
 }
 
-function parseHash(): RouteInfo {
-  const raw = typeof window === "undefined" ? "" : window.location.hash;
-  let path = raw.replace(/^#/, "");
-  if (!path || path === "/") path = "/";
-  if (!path.startsWith("/")) path = "/" + path;
-  // Strip trailing slash except root
-  if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
-  return { path, segments: path.split("/").filter(Boolean) };
+function normalizePath(path: string): string {
+  let normalized = path || "/";
+  if (!normalized.startsWith("/")) normalized = `/${normalized}`;
+  if (normalized.length > 1 && normalized.endsWith("/")) {
+    normalized = normalized.slice(0, -1);
+  }
+  return normalized;
+}
+
+function publicPathFor(route: string): string {
+  const path = normalizePath(route);
+  if (path === "/app") return "/";
+  if (path.startsWith("/app/")) return path.slice("/app".length);
+  return path;
+}
+
+function normalizeLegacyUrl() {
+  if (typeof window === "undefined") return;
+
+  const hashRoute = window.location.hash.startsWith("#/")
+    ? window.location.hash.slice(1)
+    : null;
+  const pathRoute = window.location.pathname.startsWith("/app/")
+    ? window.location.pathname
+    : null;
+  const legacyRoute = hashRoute ?? pathRoute;
+  if (!legacyRoute) return;
+
+  const destination = publicPathFor(legacyRoute);
+  window.history.replaceState(
+    null,
+    "",
+    `${destination}${window.location.search}`
+  );
 }
 
 export function navigate(path: string) {
   if (typeof window === "undefined") return;
-  const target = path.startsWith("/") ? path : "/" + path;
-  const [pathname, anchor] = target.split("#", 2);
-  if (isPublicMarketingPath(pathname)) {
-    const destination = anchor ? `${pathname}#${anchor}` : pathname;
-    if (window.location.pathname === pathname) {
+  const target = path.startsWith("/") ? path : `/${path}`;
+  const [route, anchor] = target.split("#", 2);
+
+  if (isPublicMarketingPath(route)) {
+    const destination = anchor ? `${route}#${anchor}` : route;
+    if (window.location.pathname === route) {
       if (anchor) {
         document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
       } else {
@@ -47,23 +72,19 @@ export function navigate(path: string) {
     window.location.assign(destination);
     return;
   }
-  if (window.location.hash === "#" + target) {
-    // Force scroll reset for same-route navigation
+
+  const destination = `${publicPathFor(route)}${anchor ? `#${anchor}` : ""}`;
+  if (window.location.pathname === publicPathFor(route) && !anchor) {
     window.scrollTo({ top: 0 });
     return;
   }
-  window.location.hash = target;
+  window.history.pushState(null, "", destination);
 }
 
-/**
- * Navigate to a route, then scroll to an in-page section id.
- * Used for footer/trust links such as "Threat model" -> /security#threat-model.
- * The hash router owns location.hash, so anchors are resolved after the
- * route renders (short delay), never via the raw URL fragment.
- */
+/** Navigate to a route, then scroll to an in-page section id. */
 export function navigateToSection(path: string, anchor: string) {
   if (typeof window === "undefined") return;
-  const target = path.startsWith("/") ? path : "/" + path;
+  const target = path.startsWith("/") ? path : `/${path}`;
   if (isPublicMarketingPath(target)) {
     if (window.location.pathname === target) {
       document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -72,35 +93,21 @@ export function navigateToSection(path: string, anchor: string) {
     window.location.assign(`${target}#${anchor}`);
     return;
   }
-  const scroll = () => {
-    window.setTimeout(() => {
-      document
-        .getElementById(anchor)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 120);
-  };
-  if (window.location.hash === "#" + (path.startsWith("/") ? path : "/" + path)) {
-    scroll();
-    return;
-  }
-  navigate(path);
-  scroll();
+  navigate(`${target}#${anchor}`);
+  window.setTimeout(() => {
+    document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 120);
 }
 
 export function useHashRoute(): RouteInfo {
-  const [route, setRoute] = useState<RouteInfo>({ path: "/", segments: [] });
+  const pathname = usePathname();
 
   useEffect(() => {
-    const update = () => {
-      setRoute(parseHash());
-      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-    };
-    update();
-    window.addEventListener("hashchange", update);
-    return () => window.removeEventListener("hashchange", update);
-  }, []);
+    normalizeLegacyUrl();
+  }, [pathname]);
 
-  return route;
+  const path = normalizePath(pathname ?? "/");
+  return { path, segments: path.split("/").filter(Boolean) };
 }
 
 /** Programmatic navigation helper for event handlers. */

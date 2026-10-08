@@ -27,6 +27,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
+import { navigate } from "@/hooks/use-hash-route";
 import { Input } from "@/components/ui/input";
 import { InstallPWAButton } from "@/components/cloak/pwa/install-pwa-button";
 import {
@@ -377,7 +378,7 @@ function CheckoutBody({
                 className="h-10 border-cloak-border-strong text-[13px] text-cloak-text hover:bg-cloak-surface"
                 onClick={() => {
                   onClose();
-                  window.location.hash = "#/app/messages";
+                  navigate("/app/messages");
                 }}
               >
                 Open Cloak Dagger
@@ -389,7 +390,7 @@ function CheckoutBody({
           className="cloak-cta-gold h-11 w-full border border-black/20 text-sm font-medium text-[#141310] hover:text-[#141310]"
           onClick={() => {
             onClose();
-            if (authUser) window.location.hash = "#/app/messages";
+            if (authUser) navigate("/app/messages");
           }}
         >
           {accountCreated ? "Done" : authUser ? "Open Cloak Dagger" : "Done"}

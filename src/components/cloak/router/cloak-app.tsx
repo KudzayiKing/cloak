@@ -1,16 +1,15 @@
 "use client";
 
 /*
- * CloakApp — hash router switch.
+ * CloakApp — product and marketing route switch.
  *
  * Route map (mirrors the eventual file-system routes, spec §8/§16;
  * review spec §33/§35/§50):
- *   Marketing: #/  #/security  #/intelligence  #/pricing  #/download
- *              #/advisers  #/partners  #/about
- *   Invite:    #/invite/{token}   (standalone — no marketing chrome)
- *   App:       #/app/messages  #/app/intelligence  #/app/contacts
- *              #/app/security  #/app/security/devices
- *              #/app/settings  #/app/settings/{membership|cloak|privacy|notifications|ai|storage|appearance}
+ *   Marketing: /  /security  /intelligence  /pricing  /download
+ *              /advisers  /partners  /about
+ *   Invite:    /invite/{token}   (standalone — no marketing chrome)
+ *   App:       /messages  /intelligence  /contacts  /circles
+ *              /security  /settings/{membership|cloak|privacy|notifications|ai|storage|appearance}
  *
  * /security and /intelligence exist in both worlds in the spec (§8 vs §16):
  * they resolve to marketing pages pre-auth and to app pages once inside.
@@ -61,15 +60,19 @@ const KNOWN_MARKETING = [
   "/about",
 ];
 
+function appSegments(segments: string[]): string[] {
+  return segments[0] === "app" ? segments.slice(1) : segments;
+}
+
 function isAppRoute(segments: string[]): boolean {
-  return segments[0] === "app" && APP_SEGMENTS.includes(segments[1] ?? "");
+  return APP_SEGMENTS.includes(appSegments(segments)[0] ?? "");
 }
 
 function isInviteRoute(segments: string[]): boolean {
   return segments[0] === "invite" && !!segments[1];
 }
 
-/** Public circle-invite landing (circles spec §40): #/circles/invite/<token>. */
+/** Public circle-invite landing (circles spec §40): /circles/invite/<token>. */
 function isCircleInviteRoute(segments: string[]): boolean {
   return segments[0] === "circles" && segments[1] === "invite" && !!segments[2];
 }
@@ -77,7 +80,7 @@ function isCircleInviteRoute(segments: string[]): boolean {
 /*
  * Installed-app entry (owner round 18).
  *
- * The manifest's start_url is /#/app/messages, but an install already sitting
+ * The manifest's start_url is /messages, but an install already sitting
  * on a home screen keeps whatever start_url its WebAPK was generated with, and
  * Android only regenerates that on its own schedule. So a cold launch of an
  * older install would still open the marketing homepage.
@@ -106,6 +109,7 @@ function useInstalledEntryRedirect(path: string) {
 
 export function CloakApp({ route }: { route: RouteInfo }) {
   const { path, segments } = route;
+  const productSegments = appSegments(segments);
   const membership = useCloakStore((s) => s.membership.membership);
   const membershipActive = useCloakStore((s) => s.membership.active);
   const authUser = useCloakStore((s) => s.auth.user);
@@ -148,7 +152,7 @@ export function CloakApp({ route }: { route: RouteInfo }) {
   }
 
   /* ---------- Application routes ---------- */
-  if (isAppRoute(segments)) {
+  if (isAppRoute(segments) && (!KNOWN_MARKETING.includes(path) || !!authUser)) {
     /* Identity gate: wait for the session check, then require sign-in. */
     if (!authChecked) {
       return (
@@ -165,19 +169,19 @@ export function CloakApp({ route }: { route: RouteInfo }) {
     if (!membershipActive || membership === "none") {
       return <PremiumAccessScreen />;
     }
-    switch (segments[1]) {
+    switch (productSegments[0]) {
       case "messages":
         return <MessagesPage />;
       case "nearby":
         return <NearbyPage />;
       case "circles":
-        return segments[2] ? <CirclePage circleId={segments[2]} /> : <CirclesPage />;
+        return productSegments[1] ? <CirclePage circleId={productSegments[1]} /> : <CirclesPage />;
       case "intelligence":
         return <IntelligencePage />;
       case "contacts":
         return <ContactsPage />;
       case "security":
-        return segments[2] === "devices" ? <DevicesPage /> : <SecurityCentrePage />;
+        return productSegments[1] === "devices" ? <DevicesPage /> : <SecurityCentrePage />;
       case "settings": {
         const sectionMap: Record<
           string,
@@ -201,8 +205,8 @@ export function CloakApp({ route }: { route: RouteInfo }) {
              re-checks, and the API refuses regardless of the URL. */
           admin: "admin",
         };
-        const section = segments[2] ? sectionMap[segments[2]] : undefined;
-        if (segments[2] && !section) {
+        const section = productSegments[1] ? sectionMap[productSegments[1]] : undefined;
+        if (productSegments[1] && !section) {
           return <SettingsPage section="account" />;
         }
         return <SettingsPage section={section ?? "account"} />;
